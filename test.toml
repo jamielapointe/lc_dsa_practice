@@ -1,0 +1,8 @@
+[project]
+name = "test"
+
+[tool.pytest]
+opt = true
+
+[foo]
+bar = "baz"
