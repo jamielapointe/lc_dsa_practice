@@ -1,0 +1,33 @@
+# .cmake-format.yaml
+# Formatting and linting configuration based on the Google Style Guide for CMake:
+# - 2-space indentation level, no hard tab characters
+# - 100-character line width limit
+# - Lowercase command names (e.g., add_library, target_link_libraries)
+# - Uppercase keywords and built-in variables (e.g., PRIVATE, INTERFACE, CMAKE_BUILD_TYPE)
+# - Attached parentheses without separating space (e.g., if(condition), function(name))
+# - Compact parentheses placement without trailing dangling parens
+# - Sorted argument lists where applicable
+
+format:
+  line_width: 100
+  tab_size: 2
+  use_tabchars: false
+  fractional_tab_policy: use-space
+  command_case: lower
+  keyword_case: upper
+  separate_ctrl_name_with_space: false
+  separate_fn_name_with_space: false
+  dangle_parens: false
+  enable_sort: true
+
+lint:
+  disabled_codes: []
+  function_pattern: '[0-9a-z_]+'
+  macro_pattern: '[0-9A-Z_]+'
+  global_var_pattern: '[A-Z][0-9A-Z_]+'
+  internal_var_pattern: '_[A-Z][0-9A-Z_]+'
+  local_var_pattern: '[a-z][a-z0-9_]+'
+  private_var_pattern: '_[0-9a-z_]+'
+  public_var_pattern: '[A-Z][0-9A-Z_]+'
+  argument_var_pattern: '[a-z][a-z0-9_]+'
+  keyword_pattern: '[A-Z][0-9A-Z_]+'

@@ -1,69 +1,81 @@
-# Prerequisites
-*.d
+# ==============================================================================
+# Git Ignore - C++23 LeetCode DSA Practice Project
+# ==============================================================================
 
-# Compiled Object files
-*.slo
-*.lo
+# Prerequisites & Object files
+*.d
 *.o
 *.obj
-
-# Precompiled Headers
+*.lo
+*.slo
 *.gch
 *.pch
-
-# Linker files
 *.ilk
-
-# Debugger Files
 *.pdb
+*.dwo
 
-# Compiled Dynamic libraries
+# Libraries and Executables
 *.so
+*.so.*
 *.dylib
 *.dll
-*.so.*
-
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
 *.lai
 *.la
 *.a
 *.lib
-
-# Executables
 *.exe
 *.out
 *.app
 
-# Build directories
+# Fortran modules
+*.mod
+*.smod
+
+# CMake Build Directories & Generated Files
 build/
 Build/
 build-*/
-
-# CMake generated files
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
 Makefile
 install_manifest.txt
 compile_commands.json
+CTestTestfile.cmake
+Testing/
 
-# Temporary files
+# CMake User Presets (per Modern CMake standards, CMakeUserPresets.json is gitignored)
+CMakeUserPresets.json
+
+# C++ Package Managers / Dependencies
+vcpkg_installed/
+_deps/
+
+# Caches & Clang Diagnostics
+.cache/
+*.orig
+*.rej
+
+# Python & uv Environment
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Teamwork Agent Working Directory
+.agents/
+
+# Operating System & IDE Metadata
+.DS_Store
+._*
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
 *.tmp
 *.log
-*.bak
-*.swp
-
-# vcpkg
-vcpkg_installed/
-
-# debug information files
-*.dwo
-
-# test output & cache
-Testing/
-.cache/
+*~

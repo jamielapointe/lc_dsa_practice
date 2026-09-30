@@ -1,0 +1,16 @@
+[project]
+name = "lc-dsa-practice"
+version = "0.1.0"
+description = "C++23 LeetCode DSA practice project featuring modular CMake, Google Test, and pre-commit checks"
+requires-python = ">=3.12"
+dependencies = [
+    "pre-commit>=4.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.0.0",
+]
+
+[tool.uv]
+managed = true

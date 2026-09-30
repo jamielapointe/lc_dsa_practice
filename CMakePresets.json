@@ -1,0 +1,314 @@
+{
+  "version": 10,
+  "cmakeMinimumRequired": {
+    "major": 4,
+    "minor": 4,
+    "patch": 2
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "dev-debug",
+      "inherits": "base",
+      "displayName": "Developer Debug (ASan + UBSan)",
+      "description": "Local debug configuration with AddressSanitizer and UndefinedBehaviorSanitizer enabled",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_SANITIZER_ADDRESS": "ON",
+        "ENABLE_SANITIZER_UNDEFINED": "ON",
+        "BUILD_TESTING": "ON",
+        "WARNINGS_AS_ERRORS": "ON"
+      }
+    },
+    {
+      "name": "dev-release",
+      "inherits": "base",
+      "displayName": "Developer Release (Optimized)",
+      "description": "Local release build with compiler optimizations enabled",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_IPO": "ON",
+        "BUILD_TESTING": "ON"
+      }
+    },
+    {
+      "name": "apple-clang-debug",
+      "inherits": "dev-debug",
+      "displayName": "Apple Clang Debug",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "/usr/bin/clang",
+        "CMAKE_CXX_COMPILER": "/usr/bin/clang++"
+      }
+    },
+    {
+      "name": "apple-clang-release",
+      "inherits": "dev-release",
+      "displayName": "Apple Clang Release",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "/usr/bin/clang",
+        "CMAKE_CXX_COMPILER": "/usr/bin/clang++"
+      }
+    },
+    {
+      "name": "llvm-debug",
+      "inherits": "dev-debug",
+      "displayName": "LLVM Clang 23.1 Debug",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "/opt/homebrew/opt/llvm/bin/clang",
+        "CMAKE_CXX_COMPILER": "/opt/homebrew/opt/llvm/bin/clang++"
+      }
+    },
+    {
+      "name": "llvm-release",
+      "inherits": "dev-release",
+      "displayName": "LLVM Clang 23.1 Release",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "/opt/homebrew/opt/llvm/bin/clang",
+        "CMAKE_CXX_COMPILER": "/opt/homebrew/opt/llvm/bin/clang++"
+      }
+    },
+    {
+      "name": "ci-debug",
+      "inherits": "dev-debug",
+      "displayName": "CI Strict Debug (Clang-Tidy + Sanitizers)",
+      "description": "Full strict validation preset with clang-tidy active during compilation",
+      "cacheVariables": {
+        "ENABLE_CLANG_TIDY": "ON",
+        "WARNINGS_AS_ERRORS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "dev-debug",
+      "configurePreset": "dev-debug",
+      "displayName": "Build Developer Debug"
+    },
+    {
+      "name": "dev-release",
+      "configurePreset": "dev-release",
+      "displayName": "Build Developer Release"
+    },
+    {
+      "name": "apple-clang-debug",
+      "configurePreset": "apple-clang-debug",
+      "displayName": "Build Apple Clang Debug"
+    },
+    {
+      "name": "apple-clang-release",
+      "configurePreset": "apple-clang-release",
+      "displayName": "Build Apple Clang Release"
+    },
+    {
+      "name": "llvm-debug",
+      "configurePreset": "llvm-debug",
+      "displayName": "Build LLVM Debug"
+    },
+    {
+      "name": "llvm-release",
+      "configurePreset": "llvm-release",
+      "displayName": "Build LLVM Release"
+    },
+    {
+      "name": "ci-debug",
+      "configurePreset": "ci-debug",
+      "displayName": "Build CI Strict Debug"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "dev-debug",
+      "configurePreset": "dev-debug",
+      "displayName": "Run Tests (Developer Debug)",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "dev-release",
+      "configurePreset": "dev-release",
+      "displayName": "Run Tests (Developer Release)",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "apple-clang-debug",
+      "configurePreset": "apple-clang-debug",
+      "displayName": "Run Tests (Apple Clang Debug)",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "apple-clang-release",
+      "configurePreset": "apple-clang-release",
+      "displayName": "Run Tests (Apple Clang Release)",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "llvm-debug",
+      "configurePreset": "llvm-debug",
+      "displayName": "Run Tests (LLVM Debug)",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "llvm-release",
+      "configurePreset": "llvm-release",
+      "displayName": "Run Tests (LLVM Release)",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "ci-debug",
+      "configurePreset": "ci-debug",
+      "displayName": "Run Tests (CI Debug)",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "dev-debug",
+      "displayName": "Full Developer Debug Pipeline",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "dev-debug"
+        },
+        {
+          "type": "build",
+          "name": "dev-debug"
+        },
+        {
+          "type": "test",
+          "name": "dev-debug"
+        }
+      ]
+    },
+    {
+      "name": "dev-release",
+      "displayName": "Full Developer Release Pipeline",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "dev-release"
+        },
+        {
+          "type": "build",
+          "name": "dev-release"
+        },
+        {
+          "type": "test",
+          "name": "dev-release"
+        }
+      ]
+    },
+    {
+      "name": "apple-clang-debug",
+      "displayName": "Full Apple Clang Debug Pipeline",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "apple-clang-debug"
+        },
+        {
+          "type": "build",
+          "name": "apple-clang-debug"
+        },
+        {
+          "type": "test",
+          "name": "apple-clang-debug"
+        }
+      ]
+    },
+    {
+      "name": "llvm-debug",
+      "displayName": "Full LLVM Clang Debug Pipeline",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "llvm-debug"
+        },
+        {
+          "type": "build",
+          "name": "llvm-debug"
+        },
+        {
+          "type": "test",
+          "name": "llvm-debug"
+        }
+      ]
+    },
+    {
+      "name": "ci-debug",
+      "displayName": "Full CI Validation Pipeline",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "ci-debug"
+        },
+        {
+          "type": "build",
+          "name": "ci-debug"
+        },
+        {
+          "type": "test",
+          "name": "ci-debug"
+        }
+      ]
+    }
+  ]
+}

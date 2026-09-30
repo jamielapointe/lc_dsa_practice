@@ -1,0 +1,22 @@
+---
+# .clang-tidy
+# Static analysis configuration for C++23 LeetCode DSA Practice Project
+Checks: >
+  bugprone-*,
+  clang-analyzer-*,
+  google-*,
+  cppcoreguidelines-*,
+  performance-*,
+  readability-*,
+  modernize-*,
+  -bugprone-exception-escape,
+  -modernize-use-trailing-return-type,
+  -cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
+  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+  -readability-magic-numbers,
+  -cppcoreguidelines-avoid-magic-numbers
+
+WarningsAsErrors: '*'
+HeaderFilterRegex: '(src|include)/.*'
+FormatStyle: file
+...

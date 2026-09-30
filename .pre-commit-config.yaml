@@ -1,0 +1,41 @@
+# .pre-commit-config.yaml
+# Managed via uv (uv run pre-commit run --all-files)
+default_stages: [pre-commit]
+fail_fast: true
+
+repos:
+  - repo: local
+    hooks:
+      # 1. Formatting Check (clang-format)
+      - id: clang-format
+        name: clang-format
+        description: "Enforce C++ formatting standards using clang-format"
+        entry: clang-format --dry-run --Werror
+        language: system
+        files: \.(cpp|cc|cxx|hpp|h)$
+
+      # 2. CMake Configure & Build (cmake build)
+      - id: cmake-build
+        name: cmake-build
+        description: "Configure and compile the project using CMake presets"
+        entry: bash -c "cmake --preset dev-debug && cmake --build --preset dev-debug"
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      # 3. Static Analysis Linting (clang-tidy)
+      - id: clang-tidy
+        name: clang-tidy
+        description: "Lint C++ source files against compilation database using clang-tidy"
+        entry: clang-tidy -p build/dev-debug
+        language: system
+        files: \.(cpp|cc|cxx)$
+
+      # 4. Unit Testing (ctest)
+      - id: ctest
+        name: ctest
+        description: "Execute unit tests using ctest"
+        entry: ctest --preset dev-debug --output-on-failure
+        language: system
+        pass_filenames: false
+        always_run: true
