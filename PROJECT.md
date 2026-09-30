@@ -1,9 +1,10 @@
 # Project: LeetCode DSA Practice Antigravity Plugin & C++23 Automation
 
 ## Architecture
+
 The project delivers an Antigravity Plugin in `.agents/plugins/leetcode` that automates the setup of LeetCode DSA practice problems in modern C++23.
 
-```
+```text
                       +------------------------------------------+
                       |         Antigravity Agent Runtime        |
                       +------------------------------------------+
@@ -30,6 +31,7 @@ The project delivers an Antigravity Plugin in `.agents/plugins/leetcode` that au
 ```
 
 ## Feature Inventory
+
 | # | Feature | Description | Milestone | Source |
 |---|---------|-------------|-----------|--------|
 | 1 | Plugin Manifest & Config | `plugin.json` and `mcp_config.json` exposing stdio transport via `uv` | M2 | R1, survey_2 |
@@ -51,6 +53,7 @@ The project delivers an Antigravity Plugin in `.agents/plugins/leetcode` that au
 | 17 | Opaque-Box E2E Test Suite | 4-Tier requirement-driven E2E test suite published with `TEST_READY.md` | E2E | Dual Track |
 
 ## Milestones
+
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
 | E2E | E2E Testing Track | Requirement-driven test suite for plugin manifest, MCP server, skill, and build integration | None | DONE |
@@ -62,14 +65,18 @@ The project delivers an Antigravity Plugin in `.agents/plugins/leetcode` that au
 ## Interface Contracts
 
 ### 1. MCP Server Tool Contract (`leetcode_mcp` -> Agent/Skill)
+
 - Tool Name: `get_problem`
 - Input schema:
+
   ```json
   {
     "problem_query": "string (numeric ID, slug, URL, or title)"
   }
   ```
+
 - Output schema (Pydantic `ProblemDetails` serialized to JSON):
+
   ```json
   {
     "frontend_id": 2,
@@ -89,6 +96,7 @@ The project delivers an Antigravity Plugin in `.agents/plugins/leetcode` that au
   ```
 
 ### 2. Shared Data Structure Contract (`lc_dsa::ListNode`)
+
 - Header: `include/lc_dsa/list_node.hpp`
 - Types:
   - `struct ListNode { int val; ListNode* next; ... };`
@@ -98,6 +106,7 @@ The project delivers an Antigravity Plugin in `.agents/plugins/leetcode` that au
   - `void free_linked_list(ListNode* head) noexcept;`
 
 ### 3. Generated Problem Files Contract
+
 - Header: `include/lc_dsa/<slug_snake>.hpp`
   - Include guard: `#pragma once`
   - Namespace: `namespace lc_dsa`
@@ -112,7 +121,9 @@ The project delivers an Antigravity Plugin in `.agents/plugins/leetcode` that au
   - Non-crashing assertions (`ASSERT_NE(res, nullptr)`)
 
 ### 4. CMake Registration Contract
+
 - `src/CMakeLists.txt`:
+
   ```cmake
   add_library(<slug_snake> STATIC <slug_snake>.cpp)
   add_library(lc_dsa::<slug_snake> ALIAS <slug_snake>)
@@ -120,12 +131,15 @@ The project delivers an Antigravity Plugin in `.agents/plugins/leetcode` that au
   target_compile_features(<slug_snake> PUBLIC cxx_std_23)
   target_link_libraries(<slug_snake> PRIVATE project_options project_warnings project_sanitizers project_architecture)
   ```
+
 - `tests/CMakeLists.txt`:
+
   ```cmake
   add_project_test(<slug_snake>_test SOURCES <slug_snake>_test.cpp LIBS lc_dsa::<slug_snake>)
   ```
 
 ## Code Layout
+
 - Existing C++ Source & Headers:
   - `include/lc_dsa/`
   - `src/`
