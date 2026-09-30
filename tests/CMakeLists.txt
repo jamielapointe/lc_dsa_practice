@@ -22,3 +22,10 @@ add_project_test(
   LIBS
   lc_dsa::add_two_numbers
   lc_dsa::list_node)
+
+add_project_test(
+  shortest_path_in_binary_matrix_test
+  SOURCES
+  shortest_path_in_binary_matrix_test.cpp
+  LIBS
+  lc_dsa::shortest_path_in_binary_matrix)

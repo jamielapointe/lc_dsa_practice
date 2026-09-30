@@ -47,3 +47,19 @@ target_link_libraries(
           project_sanitizers
           project_architecture
   PUBLIC lc_dsa::list_node)
+
+# Static library target for Shortest Path in Binary Matrix DSA practice library
+add_library(shortest_path_in_binary_matrix STATIC shortest_path_in_binary_matrix.cpp)
+add_library(lc_dsa::shortest_path_in_binary_matrix ALIAS shortest_path_in_binary_matrix)
+
+target_include_directories(shortest_path_in_binary_matrix PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+                                                                 $<INSTALL_INTERFACE:include>)
+
+target_compile_features(shortest_path_in_binary_matrix PUBLIC cxx_std_23)
+
+target_link_libraries(
+  shortest_path_in_binary_matrix
+  PRIVATE project_options
+          project_warnings
+          project_sanitizers
+          project_architecture)
