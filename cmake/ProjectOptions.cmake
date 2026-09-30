@@ -33,15 +33,12 @@ if(ENABLE_IPO)
 endif()
 
 # Static Analysis (clang-tidy during build)
-option(ENABLE_CLANG_TIDY "Enable clang-tidy static analysis during compilation" OFF)
-if(ENABLE_CLANG_TIDY)
-  find_program(CLANG_TIDY_PROGRAM NAMES clang-tidy clang-tidy-23 clang-tidy-21)
-  if(CLANG_TIDY_PROGRAM)
-    message(STATUS "clang-tidy static analysis enabled: ${CLANG_TIDY_PROGRAM}")
-    set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_PROGRAM};--extra-arg=-Wno-unknown-warning-option")
-  else()
-    message(FATAL_ERROR "ENABLE_CLANG_TIDY is ON but clang-tidy executable was not found.")
-  endif()
+find_program(CLANG_TIDY_PROGRAM NAMES clang-tidy clang-tidy-23 clang-tidy-21)
+if(CLANG_TIDY_PROGRAM)
+  message(STATUS "clang-tidy static analysis enabled: ${CLANG_TIDY_PROGRAM}")
+  set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_PROGRAM};--extra-arg=-Wno-unknown-warning-option")
+else()
+  message(FATAL_ERROR "clang-tidy executable was not found. It is required for this project.")
 endif()
 
 # Native Linker Selection (LLD on Linux/ELF)
@@ -58,5 +55,4 @@ if(NOT DEFINED CMAKE_LINKER_TYPE
 endif()
 
 # Target compile definitions
-target_compile_definitions(project_options INTERFACE $<$<CONFIG:Debug>:DEBUG=1>
-                                                     $<$<CONFIG:Release>:NDEBUG=1>)
+target_compile_definitions(project_options INTERFACE $<$<CONFIG:Debug>:DEBUG=1> $<$<CONFIG:Release>:NDEBUG=1>)

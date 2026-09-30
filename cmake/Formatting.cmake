@@ -44,6 +44,5 @@ if(CLANG_FORMAT_PROGRAM)
       VERBATIM)
   endif()
 else()
-  message(
-    WARNING "clang-format not found. Targets 'format' and 'format-check' will not be available.")
+  message(WARNING "clang-format not found. Targets 'format' and 'format-check' will not be available.")
 endif()

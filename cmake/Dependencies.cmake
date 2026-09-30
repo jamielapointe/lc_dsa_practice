@@ -6,12 +6,15 @@ include(FetchContent)
 if(NOT DEFINED BUILD_TESTING OR BUILD_TESTING)
   # Modern dependency resolution: Tries find_package(GTest CONFIG) first to use pre-installed system
   # package (Homebrew 1.18.0) Falls back to FetchContent from GitHub v1.16.0 if not found.
-  fetchcontent_declare(
+  FetchContent_Declare(
     googletest
     SYSTEM
     GIT_REPOSITORY https://github.com/google/googletest.git
     GIT_TAG v1.16.0
-    FIND_PACKAGE_ARGS NAMES GTest CONFIG)
+    FIND_PACKAGE_ARGS
+    NAMES
+    GTest
+    CONFIG)
 
   # Prevent Google Test from overriding parent project install targets and options
   set(INSTALL_GTEST
@@ -25,5 +28,5 @@ if(NOT DEFINED BUILD_TESTING OR BUILD_TESTING)
       ON
       CACHE BOOL "Use shared CRT" FORCE)
 
-  fetchcontent_makeavailable(googletest)
+  FetchContent_MakeAvailable(googletest)
 endif()

@@ -1,41 +1,64 @@
-# .pre-commit-config.yaml
-# Managed via uv (uv run pre-commit run --all-files)
-default_stages: [pre-commit]
-fail_fast: true
+exclude: '\.agents/|\.dvc/|data/|AGENT\.md|GEMINI\.md|PROJECT\.md|build/'
 
 repos:
+  # ---------------------------------------------------------------------------
+  # 1. Repository & File Hygiene
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=1000"]
+      - id: check-case-conflict
+      - id: check-symlinks
+      - id: destroyed-symlinks
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-ast
+      - id: check-json
+      - id: debug-statements
+
+  # ---------------------------------------------------------------------------
+  # 2. CMake Formatting (Uses your .cmake-format.yaml)
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/cheshirekow/cmake-format-precommit
+    rev: v0.6.13
+    hooks:
+      - id: cmake-format
+        additional_dependencies: [pyyaml]
+        always_run: true
+      - id: cmake-lint
+        additional_dependencies: [pyyaml]
+        always_run: true
+
+  # ---------------------------------------------------------------------------
+  # 2.5 CMake Configure (Generate compile_commands.json for Clang-Tidy)
+  # ---------------------------------------------------------------------------
   - repo: local
     hooks:
-      # 1. Formatting Check (clang-format)
-      - id: clang-format
-        name: clang-format
-        description: "Enforce C++ formatting standards using clang-format"
-        entry: clang-format --dry-run --Werror
-        language: system
-        files: \.(cpp|cc|cxx|hpp|h)$
-
-      # 2. CMake Configure & Build (cmake build)
-      - id: cmake-build
-        name: cmake-build
+      - id: cmake-build-test
+        name: CMake Workflow (release)
         description: "Configure and compile the project using CMake presets"
-        entry: bash -c "cmake --preset dev-debug && cmake --build --preset dev-debug"
+        entry: cmake --workflow --preset dev-release
         language: system
+        types_or: [c++, c, cmake]
         pass_filenames: false
         always_run: true
 
-      # 3. Static Analysis Linting (clang-tidy)
-      - id: clang-tidy
-        name: clang-tidy
-        description: "Lint C++ source files against compilation database using clang-tidy"
-        entry: clang-tidy -p build/dev-debug
-        language: system
-        files: \.(cpp|cc|cxx)$
-
-      # 4. Unit Testing (ctest)
-      - id: ctest
-        name: ctest
-        description: "Execute unit tests using ctest"
-        entry: ctest --preset dev-debug --output-on-failure
-        language: system
-        pass_filenames: false
+  # ---------------------------------------------------------------------------
+  # 3. C++ Formatting & Static Analysis
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/pocc/pre-commit-hooks
+    rev: v1.4.0
+    hooks:
+      - id: clang-format
+        types_or: [c++, c, cuda]
+        args: ["-i"]
         always_run: true
