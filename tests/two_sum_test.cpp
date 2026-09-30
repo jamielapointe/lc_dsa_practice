@@ -1,6 +1,7 @@
 /**
  * @file two_sum_test.cpp
- * @brief Comprehensive 4-Tier Google Test suite for C++23 Two Sum practice library.
+ * @brief Comprehensive 4-Tier Google Test suite for C++23 Two Sum practice
+ * library.
  *
  * Conforms to TEST_INFRA.md and PROJECT.md specifications:
  * - Tier 1: Canonical Feature Coverage (Standard pairs, spans, wrapper)
@@ -333,11 +334,12 @@ TEST(TwoSumTest, SignedIntegerUnderflowGuardMinPositive) {
   EXPECT_EQ(result.error(), "No two sum solution found");
 }
 
-// T2-ALG-18: Adversarial overflow test: prevents naive 32-bit wrap to -1 from matching
+// T2-ALG-18: Adversarial overflow test: prevents naive 32-bit wrap to -1 from
+// matching
 TEST(TwoSumTest, SignedIntegerOverflowDoesNotMatchWrappedNegativeOne) {
-  // If complement were computed as 32-bit int: INT_MAX - INT_MIN = 2147483647 - (-2147483648)
-  // wraps to -1 in 2's complement. If -1 is present, a naive implementation would erroneously
-  // match!
+  // If complement were computed as 32-bit int: INT_MAX - INT_MIN = 2147483647 -
+  // (-2147483648) wraps to -1 in 2's complement. If -1 is present, a naive
+  // implementation would erroneously match!
   const std::vector<int> nums = {std::numeric_limits<int>::min(), -1, 10};
   constexpr int kTarget = std::numeric_limits<int>::max();
   const auto result = lc_dsa::two_sum(nums, kTarget);
@@ -346,7 +348,8 @@ TEST(TwoSumTest, SignedIntegerOverflowDoesNotMatchWrappedNegativeOne) {
   EXPECT_EQ(result.error(), "No two sum solution found");
 }
 
-// T2-ALG-19: Adversarial underflow test: prevents naive 32-bit wrap from matching
+// T2-ALG-19: Adversarial underflow test: prevents naive 32-bit wrap from
+// matching
 TEST(TwoSumTest, SignedIntegerUnderflowDoesNotMatchWrappedZero) {
   const std::vector<int> nums = {std::numeric_limits<int>::max(), 1, 10};
   constexpr int kTarget = std::numeric_limits<int>::min();
@@ -363,7 +366,8 @@ TEST(TwoSumTest, EmptySpanReturnsError) {
   const auto result = lc_dsa::two_sum(empty_nums, kTarget);
 
   EXPECT_FALSE(result.has_value());
-  EXPECT_EQ(result.error(), "Input sequence must contain at least two elements");
+  EXPECT_EQ(result.error(),
+            "Input sequence must contain at least two elements");
 }
 
 // T2-ALG-21: Single element span returns std::unexpected with informative error
@@ -373,7 +377,8 @@ TEST(TwoSumTest, SingleElementSpanReturnsError) {
   const auto result = lc_dsa::two_sum(single_num, kTarget);
 
   EXPECT_FALSE(result.has_value());
-  EXPECT_EQ(result.error(), "Input sequence must contain at least two elements");
+  EXPECT_EQ(result.error(),
+            "Input sequence must contain at least two elements");
 }
 
 // T2-ALG-22: No solution exists in non-trivial array
@@ -392,36 +397,45 @@ TEST(TwoSumTest, LeetCodeWrapperEmptyThrows) {
   constexpr int kTarget = 5;
 
   EXPECT_THROW(
-      { static_cast<void>(lc_dsa::solve_leetcode_two_sum(empty_nums, kTarget)); },
+      {
+        static_cast<void>(lc_dsa::solve_leetcode_two_sum(empty_nums, kTarget));
+      },
       std::invalid_argument);
 }
 
-// T2-ALG-24: LeetCode wrapper throws std::invalid_argument on single-element vector
+// T2-ALG-24: LeetCode wrapper throws std::invalid_argument on single-element
+// vector
 TEST(TwoSumTest, LeetCodeWrapperSingleElementThrows) {
   const std::vector<int> single_num = {42};
   constexpr int kTarget = 42;
 
   EXPECT_THROW(
-      { static_cast<void>(lc_dsa::solve_leetcode_two_sum(single_num, kTarget)); },
+      {
+        static_cast<void>(lc_dsa::solve_leetcode_two_sum(single_num, kTarget));
+      },
       std::invalid_argument);
 }
 
-// T2-ALG-25: LeetCode wrapper throws std::invalid_argument when no solution exists
+// T2-ALG-25: LeetCode wrapper throws std::invalid_argument when no solution
+// exists
 TEST(TwoSumTest, LeetCodeWrapperNoSolutionThrows) {
   const std::vector<int> nums = {1, 3, 5};
   constexpr int kTarget = 100;
 
   EXPECT_THROW(
-      { static_cast<void>(lc_dsa::solve_leetcode_two_sum(nums, kTarget)); }, std::invalid_argument);
+      { static_cast<void>(lc_dsa::solve_leetcode_two_sum(nums, kTarget)); },
+      std::invalid_argument);
 }
 
-// T2-ALG-26: LeetCode wrapper preserves explanatory error string in exception message
+// T2-ALG-26: LeetCode wrapper preserves explanatory error string in exception
+// message
 TEST(TwoSumTest, LeetCodeWrapperExceptionMessageMatches) {
   try {
     static_cast<void>(lc_dsa::solve_leetcode_two_sum({}, 10));
     FAIL() << "Expected std::invalid_argument not thrown for empty vector";
   } catch (const std::invalid_argument& caught_exception) {
-    EXPECT_STREQ(caught_exception.what(), "Input sequence must contain at least two elements");
+    EXPECT_STREQ(caught_exception.what(),
+                 "Input sequence must contain at least two elements");
   }
 
   try {
@@ -453,7 +467,8 @@ TEST(TwoSumTest, LargeScale10kElementsPerformance) {
   ASSERT_TRUE(result.has_value());
   EXPECT_NE(result->first, result->second);
   EXPECT_EQ(nums[result->first] + nums[result->second], target);
-  EXPECT_LT(elapsed.count(), 100);  // Expected < 100ms even under ASan/UBSan Debug
+  EXPECT_LT(elapsed.count(),
+            100);  // Expected < 100ms even under ASan/UBSan Debug
 }
 
 // T4-STRESS-02: 100,000 Elements Extreme-Scale Performance Workload Test
@@ -475,7 +490,8 @@ TEST(TwoSumTest, LargeScale100kElementsPerformance) {
   ASSERT_TRUE(result.has_value());
   EXPECT_NE(result->first, result->second);
   EXPECT_EQ(nums[result->first] + nums[result->second], target);
-  EXPECT_LT(elapsed.count(), 500);  // Expected < 500ms even under ASan/UBSan Debug
+  EXPECT_LT(elapsed.count(),
+            500);  // Expected < 500ms even under ASan/UBSan Debug
 }
 
 struct TestCase {
@@ -483,14 +499,16 @@ struct TestCase {
   int target;
 };
 
-void VerifyOnlineJudgeSolution(const std::vector<int>& solution, const TestCase& test_case) {
+void VerifyOnlineJudgeSolution(const std::vector<int>& solution,
+                               const TestCase& test_case) {
   ASSERT_EQ(solution.size(), 2U);
   const int idx1 = solution[0];
   const int idx2 = solution[1];
 
   EXPECT_NE(idx1, idx2);
-  const bool bounds_valid = idx1 >= 0 && static_cast<std::size_t>(idx1) < test_case.nums.size() &&
-                            idx2 >= 0 && static_cast<std::size_t>(idx2) < test_case.nums.size();
+  const bool bounds_valid =
+      idx1 >= 0 && static_cast<std::size_t>(idx1) < test_case.nums.size() &&
+      idx2 >= 0 && static_cast<std::size_t>(idx2) < test_case.nums.size();
   EXPECT_TRUE(bounds_valid);
   if (bounds_valid) {
     EXPECT_EQ(test_case.nums[static_cast<std::size_t>(idx1)] +
@@ -502,18 +520,19 @@ void VerifyOnlineJudgeSolution(const std::vector<int>& solution, const TestCase&
 // T4-LC-01: LeetCode Online Judge Simulation Harness
 TEST(TwoSumTest, LeetCodeOnlineJudgeSimulationHarness) {
   const std::vector<TestCase> test_cases = {
-      {.nums = {2, 7, 11, 15},       .target = 9  },
-      {.nums = {3, 2, 4},            .target = 6  },
-      {.nums = {3, 3},               .target = 6  },
-      {.nums = {-1, -2, -3, -4, -5}, .target = -8 },
-      {.nums = {0, 4, 3, 0},         .target = 0  },
-      {.nums = {1, 5, 8, 12, 19},    .target = 20 },
+      {.nums = {2, 7, 11, 15}, .target = 9},
+      {.nums = {3, 2, 4}, .target = 6},
+      {.nums = {3, 3}, .target = 6},
+      {.nums = {-1, -2, -3, -4, -5}, .target = -8},
+      {.nums = {0, 4, 3, 0}, .target = 0},
+      {.nums = {1, 5, 8, 12, 19}, .target = 20},
       {.nums = {100, 200, 300, 400}, .target = 500},
-      {.nums = {-50, 0, 50},         .target = 0  },
+      {.nums = {-50, 0, 50}, .target = 0},
   };
 
   for (const auto& test_case : test_cases) {
-    const auto solution = lc_dsa::solve_leetcode_two_sum(test_case.nums, test_case.target);
+    const auto solution =
+        lc_dsa::solve_leetcode_two_sum(test_case.nums, test_case.target);
     VerifyOnlineJudgeSolution(solution, test_case);
   }
 }

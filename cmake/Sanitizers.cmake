@@ -16,7 +16,11 @@ if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang"
   set(SANITIZER_FLAGS "")
 
   if(ENABLE_SANITIZER_ADDRESS)
-    list(APPEND SANITIZER_FLAGS "-fsanitize=address" "-fno-omit-frame-pointer")
+    list(
+      APPEND
+      SANITIZER_FLAGS
+      "-fsanitize=address"
+      "-fno-omit-frame-pointer")
   endif()
 
   if(ENABLE_SANITIZER_UNDEFINED)
@@ -25,14 +29,17 @@ if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang"
 
   if(ENABLE_SANITIZER_THREAD)
     if(ENABLE_SANITIZER_ADDRESS OR ENABLE_SANITIZER_MEMORY)
-      message(
-        FATAL_ERROR "ThreadSanitizer cannot be combined with AddressSanitizer or MemorySanitizer")
+      message(FATAL_ERROR "ThreadSanitizer cannot be combined with AddressSanitizer or MemorySanitizer")
     endif()
     list(APPEND SANITIZER_FLAGS "-fsanitize=thread")
   endif()
 
   if(ENABLE_SANITIZER_MEMORY)
-    list(APPEND SANITIZER_FLAGS "-fsanitize=memory" "-fno-omit-frame-pointer")
+    list(
+      APPEND
+      SANITIZER_FLAGS
+      "-fsanitize=memory"
+      "-fno-omit-frame-pointer")
   endif()
 
   if(SANITIZER_FLAGS)

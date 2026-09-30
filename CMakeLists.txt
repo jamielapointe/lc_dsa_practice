@@ -21,8 +21,7 @@ project(
 
 # Prevent in-source builds
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
-  message(
-    FATAL_ERROR "In-source builds are strictly prohibited. Use CMakePresets or build/<preset>.")
+  message(FATAL_ERROR "In-source builds are strictly prohibited. Use CMakePresets or build/<preset>.")
 endif()
 
 # Enforce C++23 standard globally

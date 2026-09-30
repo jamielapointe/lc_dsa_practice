@@ -6,7 +6,12 @@ include(GoogleTest)
 
 # Helper function to register and configure a Google Test executable.
 function(add_project_test test_target)
-  cmake_parse_arguments(ARG "" "" "SOURCES;LIBS" ${ARGN})
+  cmake_parse_arguments(
+    ARG
+    ""
+    ""
+    "SOURCES;LIBS"
+    ${ARGN})
 
   if(NOT ARG_SOURCES)
     message(FATAL_ERROR "add_project_test called without SOURCES for target ${test_target}")
@@ -15,8 +20,13 @@ function(add_project_test test_target)
   add_executable(${test_target} ${ARG_SOURCES})
 
   target_link_libraries(
-    ${test_target} PRIVATE ${ARG_LIBS} GTest::gtest_main project_options project_warnings
-                           project_sanitizers project_architecture)
+    ${test_target}
+    PRIVATE ${ARG_LIBS}
+            GTest::gtest_main
+            project_options
+            project_warnings
+            project_sanitizers
+            project_architecture)
 
   if(TARGET GTest::gmock)
     target_link_libraries(${test_target} PRIVATE GTest::gmock)

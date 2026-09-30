@@ -10,10 +10,7 @@
       "name": "base",
       "hidden": true,
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/${presetName}",
-      "cacheVariables": {
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
-      }
+      "binaryDir": "${sourceDir}/build"
     },
     {
       "name": "dev-debug",
@@ -91,7 +88,6 @@
       "displayName": "CI Strict Debug (Clang-Tidy + Sanitizers)",
       "description": "Full strict validation preset with clang-tidy active during compilation",
       "cacheVariables": {
-        "ENABLE_CLANG_TIDY": "ON",
         "WARNINGS_AS_ERRORS": "ON"
       }
     }

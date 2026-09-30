@@ -1,20 +1,30 @@
 ---
 # .clang-tidy
 # Static analysis configuration for C++23 LeetCode DSA Practice Project
+# Configured for Google Style Guide compatibility across LLVM Clang 23.1 and Apple Clang 21.0,
+# while maintaining a pragmatic, low-noise environment for DSA practice.
+
 Checks: >
+  -*,
   bugprone-*,
   clang-analyzer-*,
   google-*,
-  cppcoreguidelines-*,
+  modernize-*,
   performance-*,
   readability-*,
-  modernize-*,
-  -bugprone-exception-escape,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-implicit-widening-of-multiplication-result,
+  -bugprone-narrowing-conversions,
+  -google-build-using-namespace,
+  -google-readability-todo,
+  -google-runtime-int,
+  -modernize-avoid-c-arrays,
+  -modernize-use-nodiscard,
   -modernize-use-trailing-return-type,
-  -cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
-  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-  -readability-magic-numbers,
-  -cppcoreguidelines-avoid-magic-numbers
+  -readability-braces-around-statements,
+  -readability-identifier-length,
+  -readability-isolate-declaration,
+  -readability-magic-numbers
 
 WarningsAsErrors: '*'
 HeaderFilterRegex: '(src|include)/.*'

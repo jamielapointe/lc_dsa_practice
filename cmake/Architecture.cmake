@@ -47,8 +47,7 @@ if(TARGET_ARCH_FAMILY STREQUAL "ARM64" AND (CMAKE_CXX_COMPILER_ID MATCHES ".*Cla
   endif()
 
   # Dynamic SIMD Feature Checks (x86_64)
-elseif(TARGET_ARCH_FAMILY STREQUAL "X86_64" AND (CMAKE_CXX_COMPILER_ID MATCHES
-                                                 ".*Clang|AppleClang|GNU"))
+elseif(TARGET_ARCH_FAMILY STREQUAL "X86_64" AND (CMAKE_CXX_COMPILER_ID MATCHES ".*Clang|AppleClang|GNU"))
   cmake_push_check_state()
   set(CMAKE_REQUIRED_FLAGS "-mavx2 -mfma")
   check_cxx_source_compiles(
