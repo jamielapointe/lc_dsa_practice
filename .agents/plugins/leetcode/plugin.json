@@ -1,0 +1,12 @@
+{
+  "name": "leetcode",
+  "displayName": "LeetCode C++23 Practice",
+  "version": "0.1.0",
+  "description": "Automates setting up LeetCode DSA practice problems with modern C++23, Google Test, and CMake integration.",
+  "suggestedPrompts": [
+    "Set up LeetCode #2",
+    "Set up LeetCode problem add-two-numbers",
+    "Fetch LeetCode #1 and generate C++23 solution skeleton"
+  ],
+  "logo": "assets/logo.svg"
+}
