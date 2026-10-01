@@ -12,6 +12,7 @@ Checks: >
   modernize-*,
   performance-*,
   readability-*,
+  misc-include-cleaner,
   -bugprone-easily-swappable-parameters,
   -bugprone-implicit-widening-of-multiplication-result,
   -bugprone-narrowing-conversions,

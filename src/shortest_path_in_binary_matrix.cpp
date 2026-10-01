@@ -3,8 +3,10 @@
 #include <array>
 #include <cstddef>
 #include <deque>
+#include <functional>
 #include <span>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace lc_dsa {
