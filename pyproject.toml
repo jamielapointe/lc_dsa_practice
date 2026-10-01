@@ -1,11 +1,11 @@
 [project]
-name = "lc-dsa-practice"
-version = "0.1.0"
-description = "C++23 LeetCode DSA practice project featuring modular CMake, Google Test, and pre-commit checks"
-requires-python = ">=3.12"
 dependencies = [
     "pre-commit>=4.0.0",
 ]
+description = "C++23 LeetCode DSA practice project featuring modular CMake, Google Test, and pre-commit checks"
+name = "lc-dsa-practice"
+requires-python = ">=3.14"
+version = "0.1.0"
 
 [dependency-groups]
 dev = [
@@ -15,10 +15,154 @@ dev = [
     "mypy>=2.3.1",
     "pre-commit>=4.0.0",
     "pydantic>=2.13.5",
-    "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
+    "pytest>=9.1.1",
     "ruff>=0.16.9",
 ]
 
 [tool.uv]
 managed = true
+
+[tool.ruff]
+exclude = [
+    ".venv",
+    "build",
+    "src",
+]
+line-length = 120
+preview = true
+target-version = "py314"
+
+[tool.ruff.format]
+indent-style = "space"
+quote-style = "single"
+skip-magic-trailing-comma = false
+
+[tool.ruff.lint]
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+fixable = [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "I",
+    "N",
+    "RUF",
+    "UP",
+    "W",
+]
+select = [
+    "ANN",
+    "ARG",
+    "B",
+    "D",
+    "DOC",
+    "E",
+    "F",
+    "I",
+    "N",
+    "NPY",
+    "PD",
+    "PERF",
+    "PYI",
+    "RUF",
+    "S",
+    "T20",
+    "TC",
+    "UP",
+    "W",
+]
+unfixable = []
+
+[tool.ruff.lint.isort]
+force-single-line = true
+lines-after-imports = 2
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "S101",
+]
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 120
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.mypy]
+check_untyped_defs = true
+disallow_any_generics = true
+disallow_incomplete_defs = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+enable_error_code = [
+    "ignore-without-code",
+]
+files = [
+    "scripts",
+    "tests/python",
+]
+follow_imports = "normal"
+ignore_missing_imports = false
+mypy_path = [
+    ".",
+]
+no_implicit_optional = true
+plugins = [
+    "pydantic.mypy",
+]
+pretty = true
+python_version = "3.14"
+show_error_codes = true
+show_error_context = true
+show_traceback = true
+strict = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_ignores = true
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-markers --strict-config"
+pythonpath = [
+    ".",
+]
+testpaths = [
+    "tests/python",
+]
+
+[tool.rumdl]
+exclude = [
+    ".agents",
+    ".git",
+    ".venv",
+    "build",
+    "dist",
+]
+flavor = "gfm"
+line-length = 160
+respect-gitignore = true
+
+[tool.rumdl.MD013]
+code-blocks = false
+headings = false
+line-length = 160
+math-blocks = false
+tables = false
+
+[tool.rumdl.MD033]
+allowed-elements = [
+    "a",
+    "br",
+    "details",
+    "div",
+    "img",
+    "kbd",
+    "p",
+    "span",
+    "sub",
+    "summary",
+    "sup",
+]

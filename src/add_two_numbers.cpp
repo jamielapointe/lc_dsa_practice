@@ -9,6 +9,8 @@
 
 #include "lc_dsa/add_two_numbers.hpp"
 
+#include "lc_dsa/list_node.hpp"
+
 namespace lc_dsa {
 
 inline void sum_carry(int& sum, int& carry) {

@@ -63,3 +63,19 @@ target_link_libraries(
           project_warnings
           project_sanitizers
           project_architecture)
+
+# Static library target for Number of Islands DSA practice library
+add_library(number_of_islands STATIC number_of_islands.cpp)
+add_library(lc_dsa::number_of_islands ALIAS number_of_islands)
+
+target_include_directories(number_of_islands PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+                                                    $<INSTALL_INTERFACE:include>)
+
+target_compile_features(number_of_islands PUBLIC cxx_std_23)
+
+target_link_libraries(
+  number_of_islands
+  PRIVATE project_options
+          project_warnings
+          project_sanitizers
+          project_architecture)

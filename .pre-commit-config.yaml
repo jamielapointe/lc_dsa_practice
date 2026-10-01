@@ -1,4 +1,4 @@
-exclude: '\.agents/|\.dvc/|data/|AGENT\.md|GEMINI\.md|PROJECT\.md|build/'
+exclude: 'build/'
 
 repos:
   # ---------------------------------------------------------------------------
@@ -61,4 +61,42 @@ repos:
       - id: clang-format
         types_or: [c++, c, cuda]
         args: ["-i"]
-        always_run: true
+
+  # ---------------------------------------------------------------------------
+  # 4. Python Linting & Formatting (Ruff matching pyproject.toml)
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.9
+    hooks:
+      - id: ruff-check
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+  # ---------------------------------------------------------------------------
+  # 4.5 Markdown Linting & Formatting (rumdl)
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/rvben/rumdl-pre-commit
+    rev: v0.2.77
+    hooks:
+      - id: rumdl
+        args: [--fix]
+      - id: rumdl-fmt
+
+  # ---------------------------------------------------------------------------
+  # 5. Local Runners (Type checking, Jupyter check, MathJax validation)
+  # ---------------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy (uv)
+        entry: uv run mypy
+        language: system
+        types: [python]
+        require_serial: true
+        pass_filenames: true
+      - id: sort-pyproject-toml
+        name: Organize and Sort pyproject.toml
+        entry: uv run python scripts/ci/reorder_pyproject.py
+        language: system
+        files: pyproject\.toml
+        pass_filenames: true

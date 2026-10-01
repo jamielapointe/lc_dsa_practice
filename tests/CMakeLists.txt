@@ -29,3 +29,10 @@ add_project_test(
   shortest_path_in_binary_matrix_test.cpp
   LIBS
   lc_dsa::shortest_path_in_binary_matrix)
+
+add_project_test(
+  number_of_islands_test
+  SOURCES
+  number_of_islands_test.cpp
+  LIBS
+  lc_dsa::number_of_islands)
