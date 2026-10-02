@@ -79,3 +79,35 @@ target_link_libraries(
           project_warnings
           project_sanitizers
           project_architecture)
+
+# Static library target for Robot Helper
+add_library(robot STATIC robot.cpp)
+add_library(lc_dsa::robot ALIAS robot)
+
+target_include_directories(robot PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
+
+target_compile_features(robot PUBLIC cxx_std_23)
+
+target_link_libraries(
+  robot
+  PRIVATE project_options
+          project_warnings
+          project_sanitizers
+          project_architecture)
+
+# Static library target for Robot Room Cleaner DSA practice library
+add_library(robot_room_cleaner STATIC robot_room_cleaner.cpp)
+add_library(lc_dsa::robot_room_cleaner ALIAS robot_room_cleaner)
+
+target_include_directories(robot_room_cleaner PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+                                                     $<INSTALL_INTERFACE:include>)
+
+target_compile_features(robot_room_cleaner PUBLIC cxx_std_23)
+
+target_link_libraries(
+  robot_room_cleaner
+  PRIVATE project_options
+          project_warnings
+          project_sanitizers
+          project_architecture
+  PUBLIC lc_dsa::robot)

@@ -10,7 +10,7 @@ function(add_project_test test_target)
     ARG
     ""
     ""
-    "SOURCES;LIBS"
+    "SOURCES;LIBS;LABELS"
     ${ARGN})
 
   if(NOT ARG_SOURCES)
@@ -33,9 +33,16 @@ function(add_project_test test_target)
   endif()
 
   if(NOT CMAKE_CROSSCOMPILING)
-    gtest_discover_tests(
-      ${test_target} DISCOVERY_MODE POST_BUILD
-      PROPERTIES
-      TIMEOUT 60)
+    if(ARG_LABELS)
+      gtest_discover_tests(
+        ${test_target} DISCOVERY_MODE POST_BUILD
+        PROPERTIES
+        TIMEOUT 60 LABELS "${ARG_LABELS}")
+    else()
+      gtest_discover_tests(
+        ${test_target} DISCOVERY_MODE POST_BUILD
+        PROPERTIES
+        TIMEOUT 60)
+    endif()
   endif()
 endfunction()
