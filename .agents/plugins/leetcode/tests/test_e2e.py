@@ -141,7 +141,7 @@ class TestTier4LeetCode2ArtifactsAndBuild:
         assert build_res.returncode == 0, f"Compilation failed: {build_res.stderr}"
 
         # 2. Run test executable: must fail cleanly on assertion (exit code != 0, 0 segfaults)
-        test_bin = REPO_ROOT / "build" / "dev-debug" / "bin" / "add_two_numbers_test"
+        test_bin = REPO_ROOT / "build" / "bin" / "add_two_numbers_test"
         assert test_bin.is_file()
 
         run_res = subprocess.run(
