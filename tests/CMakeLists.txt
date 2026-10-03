@@ -36,3 +36,26 @@ add_project_test(
   number_of_islands_test.cpp
   LIBS
   lc_dsa::number_of_islands)
+
+add_project_test(
+  robot_room_cleaner_test
+  SOURCES
+  robot_room_cleaner_test.cpp
+  LIBS
+  lc_dsa::robot_room_cleaner)
+
+add_project_test(
+  robot_test
+  SOURCES
+  robot_test.cpp
+  LIBS
+  lc_dsa::robot)
+
+add_project_test(
+  robot_room_cleaner_perf_test
+  SOURCES
+  robot_room_cleaner_perf_test.cpp
+  LIBS
+  lc_dsa::robot_room_cleaner
+  LABELS
+  Performance)

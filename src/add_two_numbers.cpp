@@ -13,11 +13,29 @@
 
 namespace lc_dsa {
 
-[[nodiscard]] auto add_two_numbers(const ListNode* const list1,
-                                   const ListNode* const list2) -> ListNode* {
-  static_cast<void>(list1);
-  static_cast<void>(list2);
-  return nullptr;
+[[nodiscard]] auto add_two_numbers(const ListNode* list1, const ListNode* list2)
+    -> ListNode* {
+  ListNode dummy{0};
+  ListNode* tail = &dummy;
+  int carry = 0;
+
+  while (list1 != nullptr || list2 != nullptr || carry != 0) {
+    int sum = carry;
+    if (list1 != nullptr) {
+      sum += list1->val;
+      list1 = list1->next;
+    }
+    if (list2 != nullptr) {
+      sum += list2->val;
+      list2 = list2->next;
+    }
+    carry = sum / 10;
+    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory)
+    tail->next = new ListNode(sum % 10);
+    tail = tail->next;
+  }
+
+  return dummy.next;
 }
 
 [[nodiscard]] auto Solution::addTwoNumbers(ListNode* list1, ListNode* list2)
