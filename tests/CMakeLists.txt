@@ -59,3 +59,10 @@ add_project_test(
   lc_dsa::robot_room_cleaner
   LABELS
   Performance)
+
+add_project_test(
+  lru_cache_test
+  SOURCES
+  lru_cache_test.cpp
+  LIBS
+  lc_dsa::lru_cache)
