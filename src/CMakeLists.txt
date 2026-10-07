@@ -111,3 +111,18 @@ target_link_libraries(
           project_sanitizers
           project_architecture
   PUBLIC lc_dsa::robot)
+
+add_library(lru_cache STATIC lru_cache.cpp)
+add_library(lc_dsa::lru_cache ALIAS lru_cache)
+
+target_include_directories(lru_cache PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+                                            $<INSTALL_INTERFACE:include>)
+
+target_compile_features(lru_cache PUBLIC cxx_std_23)
+
+target_link_libraries(
+  lru_cache
+  PRIVATE project_options
+          project_warnings
+          project_sanitizers
+          project_architecture)
