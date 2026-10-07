@@ -25,7 +25,17 @@ description: Automates setting up LeetCode DSA practice problems in modern C++23
 
 ## Autonomous Execution Workflow
 
-### Step 1: Query Problem Data via MCP Server
+### Step 1: Verify Clean Git Workspace
+Prior to doing anything, the agent MUST verify that the git workspace is clean (e.g., using `git status`). If the workspace is not clean, exit immediately and issue a warning to the user that they need to clean the workspace first.
+
+### Step 2: Standard GitHub Workflow
+Before making any code changes, you MUST follow this standard GitHub workflow:
+1. Checkout main and update: `git checkout main && git fetch --all --prune && git pull` (or `gco main` if aliased).
+2. Use the `github-mcp-server` to create a GitHub issue with details of the problem you are trying to solve.
+3. Use the `github-mcp-server` to create a remote feature branch associated with the newly created GitHub issue.
+4. Sync with the remote GitHub server (`git fetch`) and locally checkout that new feature branch in Git.
+
+### Step 3: Query Problem Data via MCP Server
 Invoke the LeetCode MCP server tool `get_problem`:
 ```json
 {
@@ -59,7 +69,7 @@ Derive naming conventions:
 
 ---
 
-### Step 2: Shared Data Structure Resolution
+### Step 4: Shared Data Structure Resolution
 Analyze the official C++ code snippet:
 - If the signature references `ListNode`:
   - Check if `include/lc_dsa/list_node.hpp` exists.
@@ -69,7 +79,7 @@ Analyze the official C++ code snippet:
 
 ---
 
-### Step 3: Generate C++23 Header (`include/lc_dsa/<slug_snake>.hpp`)
+### Step 5: Generate C++23 Header (`include/lc_dsa/<slug_snake>.hpp`)
 Requirements:
 1. Include guard: `#pragma once`.
 2. Include necessary standard headers (`<cstddef>`, `<span>`, `<vector>`, etc.) and `lc_dsa/list_node.hpp` if needed.
@@ -92,7 +102,7 @@ Requirements:
 
 ---
 
-### Step 4: Generate Barebones Source (`src/<slug_snake>.cpp`)
+### Step 6: Generate Barebones Source (`src/<slug_snake>.cpp`)
 Requirements:
 1. Include the corresponding header `#include "lc_dsa/<slug_snake>.hpp"`.
 2. Open namespace `namespace lc_dsa { ... }`.
@@ -112,7 +122,7 @@ Requirements:
 
 ---
 
-### Step 5: Generate Comprehensive 4-Tier Google Test Suite (`tests/<slug_snake>_test.cpp`)
+### Step 7: Generate Comprehensive 4-Tier Google Test Suite (`tests/<slug_snake>_test.cpp`)
 Requirements:
 1. Include `#include "lc_dsa/<slug_snake>.hpp"`, `#include <gtest/gtest.h>`, and standard containers.
 2. If using linked lists, include `#include "lc_dsa/list_node.hpp"`.
@@ -141,7 +151,7 @@ Requirements:
 
 ---
 
-### Step 6: Update CMake Build System
+### Step 8: Update CMake Build System
 Adhering strictly to `cmake-pro` target-based design:
 1. In `src/CMakeLists.txt`, append the static library target:
    ```cmake
@@ -170,7 +180,7 @@ Adhering strictly to `cmake-pro` target-based design:
 
 ---
 
-### Step 7: Compilation & Test Verification
+### Step 9: Compilation & Test Verification
 1. Build the new test target:
    ```bash
    cmake --build --preset dev-debug --target <slug_snake>_test
