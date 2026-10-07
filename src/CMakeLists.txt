@@ -126,3 +126,18 @@ target_link_libraries(
           project_warnings
           project_sanitizers
           project_architecture)
+
+add_library(moving_average_from_data_stream STATIC moving_average_from_data_stream.cpp)
+add_library(lc_dsa::moving_average_from_data_stream ALIAS moving_average_from_data_stream)
+
+target_include_directories(moving_average_from_data_stream PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+                                                                  $<INSTALL_INTERFACE:include>)
+
+target_compile_features(moving_average_from_data_stream PUBLIC cxx_std_23)
+
+target_link_libraries(
+  moving_average_from_data_stream
+  PRIVATE project_options
+          project_warnings
+          project_sanitizers
+          project_architecture)
