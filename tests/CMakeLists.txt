@@ -73,3 +73,10 @@ add_project_test(
   moving_average_from_data_stream_test.cpp
   LIBS
   lc_dsa::moving_average_from_data_stream)
+
+add_project_test(
+  design_hit_counter_test
+  SOURCES
+  design_hit_counter_test.cpp
+  LIBS
+  lc_dsa::design_hit_counter)
