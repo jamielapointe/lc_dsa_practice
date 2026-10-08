@@ -35,9 +35,9 @@ TEST(DesignHitCounterTest, EdgeCases) {
   EXPECT_EQ(counter.getHits(2), 4);
 
   // Exactly 300 seconds diff
-  EXPECT_EQ(counter.getHits(301), 4);
+  EXPECT_EQ(counter.getHits(300), 4);
   // 301 seconds diff -> the hit at 1 is dropped
-  EXPECT_EQ(counter.getHits(302), 3);
+  EXPECT_EQ(counter.getHits(301), 3);
 }
 
 // Tier 3: Sanitizer & Memory Invariants

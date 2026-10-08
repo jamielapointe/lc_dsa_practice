@@ -39,6 +39,9 @@
 /// Time Complexity: $O(1)$
 /// Space Complexity: $O(1)$ auxiliary space
 
+#include <array>
+#include <utility>
+
 namespace lc_dsa {
 
 class HitCounter {
@@ -55,6 +58,17 @@ class HitCounter {
   auto hit(int timestamp) -> void;
 
   [[nodiscard]] auto getHits(int timestamp) -> int;
+
+ private:
+  static constexpr size_t kBucketSize = 300;
+  std::array<std::pair<int, int>, kBucketSize> buckets_{
+      {
+          {0, 0},
+      },
+  };  // <timestamp, count>
+  size_t head_{0};
+  size_t tail_{0};
+  bool is_start_{true};
 };
 
 }  // namespace lc_dsa
