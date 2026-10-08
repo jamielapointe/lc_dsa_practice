@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstddef>
-#include <deque>
+#include <vector>
 
 namespace lc_dsa {
 
@@ -36,14 +36,17 @@ namespace lc_dsa {
 
 class MovingAverageImpl {
  public:
-  explicit MovingAverageImpl(int size);
+  explicit MovingAverageImpl(size_t size);
 
   [[nodiscard]] auto next(int val) -> double;
 
  private:
-  int size_{0};
-  double current_sum_{0.0};
-  std::deque<int> window_;
+  size_t size_{0};
+  int32_t current_sum_{0};
+  std::vector<int32_t> buffer_;
+  size_t head_{0};
+  size_t count_{0};
+  double inv_size_;
 };
 
 // LeetCode Compatibility Wrapper
