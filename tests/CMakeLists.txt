@@ -66,3 +66,10 @@ add_project_test(
   lru_cache_test.cpp
   LIBS
   lc_dsa::lru_cache)
+
+add_project_test(
+  moving_average_from_data_stream_test
+  SOURCES
+  moving_average_from_data_stream_test.cpp
+  LIBS
+  lc_dsa::moving_average_from_data_stream)
