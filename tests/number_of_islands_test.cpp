@@ -50,7 +50,9 @@ TEST(NumberOfIslandsTest, MaxConstraintsGrid) {
   std::vector<std::vector<char>> grid(300, std::vector<char>(300, '0'));
   for (size_t i = 0; i < 300; ++i) {
     for (size_t j = 0; j < 300; ++j) {
-      if ((i + j) % 2 == 0) grid[i][j] = '1';
+      if ((i + j) % 2 == 0) {
+        grid[i][j] = '1';
+      }
     }
   }
 

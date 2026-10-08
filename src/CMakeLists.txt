@@ -141,3 +141,18 @@ target_link_libraries(
           project_warnings
           project_sanitizers
           project_architecture)
+
+add_library(design_hit_counter STATIC design_hit_counter.cpp)
+add_library(lc_dsa::design_hit_counter ALIAS design_hit_counter)
+
+target_include_directories(design_hit_counter PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+                                                     $<INSTALL_INTERFACE:include>)
+
+target_compile_features(design_hit_counter PUBLIC cxx_std_23)
+
+target_link_libraries(
+  design_hit_counter
+  PRIVATE project_options
+          project_warnings
+          project_sanitizers
+          project_architecture)

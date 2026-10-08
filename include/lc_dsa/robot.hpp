@@ -19,6 +19,13 @@ namespace lc_dsa {
 /// @brief Robot's public control interface.
 class Robot {
  public:
+  Robot() = default;
+
+  Robot(const Robot&) = delete;
+  Robot& operator=(const Robot&) = delete;
+  Robot(Robot&&) = delete;
+  Robot& operator=(Robot&&) = delete;
+
   virtual ~Robot() = default;
 
   /// Returns true if the cell in front is open and robot moves into the cell.
@@ -106,6 +113,11 @@ class DefaultRobot final : public Robot {
   using Grid = std::vector<std::vector<CellValue>>;
 
   ~DefaultRobot() override = default;
+
+  DefaultRobot(const DefaultRobot&) = delete;
+  DefaultRobot& operator=(const DefaultRobot&) = delete;
+  DefaultRobot(DefaultRobot&&) = delete;
+  DefaultRobot& operator=(DefaultRobot&&) = delete;
 
   /// @brief Constructor
   /// @param grid Assumed to be properly initialized and have a size >= 1x1
