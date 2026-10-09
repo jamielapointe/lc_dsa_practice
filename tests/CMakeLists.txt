@@ -80,3 +80,10 @@ add_project_test(
   design_hit_counter_test.cpp
   LIBS
   lc_dsa::design_hit_counter)
+
+add_project_test(
+  sliding_window_maximum_test
+  SOURCES
+  sliding_window_maximum_test.cpp
+  LIBS
+  lc_dsa::sliding_window_maximum)
