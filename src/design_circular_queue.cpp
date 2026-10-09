@@ -1,44 +1,58 @@
 #include "lc_dsa/design_circular_queue.hpp"
 
+#include <cstddef>
+
 namespace lc_dsa {
 
 // -----------------------------------------------------------------------------
 // Idiomatic Modern C++23 Implementation (TDD Stub)
 // -----------------------------------------------------------------------------
 
-CircularQueue::CircularQueue(int k) { static_cast<void>(k); }
+CircularQueue::CircularQueue(size_t k) : queue_(k, 0), capacity_(k) {}
 
-auto CircularQueue::en_queue(int value)
-    -> bool {  // NOLINT(readability-convert-member-functions-to-static)
-  static_cast<void>(value);
-  return false;
+auto CircularQueue::en_queue(int value) -> bool {
+  if (is_full()) {
+    return false;
+  }
+  queue_[tail_] = value;
+  tail_ = (tail_ + 1) % capacity_;
+  ++size_;
+  return true;
 }
 
 auto CircularQueue::de_queue() -> bool {
-  return false;
-}  // NOLINT(readability-convert-member-functions-to-static)
+  if (is_empty()) {
+    return false;
+  }
+  head_ = (head_ + 1) % capacity_;
+  --size_;
+  return true;
+}
 
 auto CircularQueue::front() const -> int {
-  return 0;
-}  // NOLINT(readability-convert-member-functions-to-static)
+  if (is_empty()) {
+    return -1;
+  }
+  return queue_[head_];
+}
 
 auto CircularQueue::rear() const -> int {
-  return 0;
-}  // NOLINT(readability-convert-member-functions-to-static)
+  if (is_empty()) {
+    return -1;
+  }
+  size_t rear_index = tail_ == 0 ? capacity_ - 1 : tail_ - 1;
+  return queue_[rear_index];
+}
 
-auto CircularQueue::is_empty() const -> bool {
-  return false;
-}  // NOLINT(readability-convert-member-functions-to-static)
+auto CircularQueue::is_empty() const -> bool { return size_ == 0; }
 
-auto CircularQueue::is_full() const -> bool {
-  return false;
-}  // NOLINT(readability-convert-member-functions-to-static)
+auto CircularQueue::is_full() const -> bool { return size_ == capacity_; }
 
 // -----------------------------------------------------------------------------
 // LeetCode Compatibility Wrapper
 // -----------------------------------------------------------------------------
 
-MyCircularQueue::MyCircularQueue(int k) : queue_(k) {}
+MyCircularQueue::MyCircularQueue(int k) : queue_(static_cast<size_t>(k)) {}
 
 bool MyCircularQueue::enQueue(int value) { return queue_.en_queue(value); }
 

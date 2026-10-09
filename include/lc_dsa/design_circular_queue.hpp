@@ -69,13 +69,20 @@ namespace lc_dsa {
 /// Idiomatic Modern C++23 Interface
 class CircularQueue {
  public:
-  explicit CircularQueue(int k);
+  explicit CircularQueue(size_t k);
   [[nodiscard]] auto en_queue(int value) -> bool;
   [[nodiscard]] auto de_queue() -> bool;
   [[nodiscard]] auto front() const -> int;
   [[nodiscard]] auto rear() const -> int;
   [[nodiscard]] auto is_empty() const -> bool;
   [[nodiscard]] auto is_full() const -> bool;
+
+ private:
+  std::vector<int> queue_;
+  size_t capacity_{};
+  size_t head_{0};
+  size_t tail_{0};
+  size_t size_{0};
 };
 
 /// LeetCode Compatibility Wrapper
