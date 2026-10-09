@@ -171,3 +171,18 @@ target_link_libraries(
           project_warnings
           project_sanitizers
           project_architecture)
+
+add_library(design_circular_queue STATIC design_circular_queue.cpp)
+add_library(lc_dsa::design_circular_queue ALIAS design_circular_queue)
+
+target_include_directories(design_circular_queue PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+                                                        $<INSTALL_INTERFACE:include>)
+
+target_compile_features(design_circular_queue PUBLIC cxx_std_23)
+
+target_link_libraries(
+  design_circular_queue
+  PRIVATE project_options
+          project_warnings
+          project_sanitizers
+          project_architecture)

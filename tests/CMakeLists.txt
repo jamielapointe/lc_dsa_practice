@@ -87,3 +87,10 @@ add_project_test(
   sliding_window_maximum_test.cpp
   LIBS
   lc_dsa::sliding_window_maximum)
+
+add_project_test(
+  design_circular_queue_test
+  SOURCES
+  design_circular_queue_test.cpp
+  LIBS
+  lc_dsa::design_circular_queue)
