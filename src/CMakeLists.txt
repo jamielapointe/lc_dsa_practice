@@ -156,3 +156,18 @@ target_link_libraries(
           project_warnings
           project_sanitizers
           project_architecture)
+
+add_library(sliding_window_maximum STATIC sliding_window_maximum.cpp)
+add_library(lc_dsa::sliding_window_maximum ALIAS sliding_window_maximum)
+
+target_include_directories(sliding_window_maximum PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+                                                         $<INSTALL_INTERFACE:include>)
+
+target_compile_features(sliding_window_maximum PUBLIC cxx_std_23)
+
+target_link_libraries(
+  sliding_window_maximum
+  PRIVATE project_options
+          project_warnings
+          project_sanitizers
+          project_architecture)
