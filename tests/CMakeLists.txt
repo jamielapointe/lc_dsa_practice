@@ -94,3 +94,10 @@ add_project_test(
   design_circular_queue_test.cpp
   LIBS
   lc_dsa::design_circular_queue)
+
+add_project_test(
+  course_schedule_ii_test
+  SOURCES
+  course_schedule_ii_test.cpp
+  LIBS
+  lc_dsa::course_schedule_ii)
