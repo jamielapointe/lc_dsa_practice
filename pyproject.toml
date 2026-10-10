@@ -2,7 +2,7 @@
 description = "Multi-language LeetCode / DSA practice: C++23 LeetCode, Python LeetCode, and low-level C++ systems code"
 name = "lc-dsa-practice"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.14, <3.15"
 version = "0.1.0"
 
 [[project.authors]]
@@ -222,7 +222,7 @@ pytest = ">=9.1.1"
 pytest-asyncio = ">=1.4.0"
 pytest-cov = ">=7.1.0"
 pytest-timeout = ">=2.4.0"
-python = "3.14.*"
+python = ">=3.14, <3.15"
 ruff = ">=0.17.0"
 zizmor = ">=1.30.1"
 
