@@ -46,7 +46,8 @@ auto number_of_islands(std::span<std::vector<char>> grid) -> int {
 
   auto is_valid = [&](int row, int col) -> bool {
     return row >= 0 && row < num_rows && col >= 0 && col < num_cols &&
-           grid[static_cast<size_t>(row)][static_cast<size_t>(col)] == '1' &&
+           grid[static_cast<std::size_t>(row)][static_cast<std::size_t>(col)] ==
+               '1' &&
            !visited.contains({row, col});
   };
 

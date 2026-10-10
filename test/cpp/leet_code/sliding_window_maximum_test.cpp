@@ -86,7 +86,7 @@ TEST(SlidingWindowMaximumTest, StressTestMaxConstraints) {
 
   std::vector<int> nums(kNumElements);
   // Fill with alternating values to prevent trivial branch prediction
-  for (size_t i = 0; i < nums.size(); ++i) {
+  for (std::size_t i = 0; i < nums.size(); ++i) {
     nums[i] = (i % 2 == 0) ? static_cast<int>(i) : -static_cast<int>(i);
   }
 

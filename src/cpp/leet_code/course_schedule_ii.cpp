@@ -5,7 +5,7 @@
 
 namespace leet_code {
 
-auto course_schedule_ii(size_t num_courses,
+auto course_schedule_ii(std::size_t num_courses,
                         const std::vector<std::vector<int>>& prerequisites)
     -> std::vector<int> {
   std::vector<std::vector<int>> graph(num_courses);
@@ -13,19 +13,19 @@ auto course_schedule_ii(size_t num_courses,
   std::vector<int> course_order;
   course_order.reserve(num_courses);
   for (const auto& prereq : prerequisites) {
-    graph[static_cast<size_t>(prereq[1])].push_back(prereq[0]);
-    in_degree[static_cast<size_t>(prereq[0])]++;
+    graph[static_cast<std::size_t>(prereq[1])].push_back(prereq[0]);
+    in_degree[static_cast<std::size_t>(prereq[0])]++;
   }
-  for (size_t i = 0; i < num_courses; i++) {
+  for (std::size_t i = 0; i < num_courses; i++) {
     if (in_degree[i] == 0) {
       course_order.push_back(static_cast<int>(i));
     }
   }
 
-  for (size_t i = 0; i < course_order.size(); ++i) {
+  for (std::size_t i = 0; i < course_order.size(); ++i) {
     auto course = course_order[i];
-    for (const auto& neighbor : graph[static_cast<size_t>(course)]) {
-      if (--in_degree[static_cast<size_t>(neighbor)] == 0) {
+    for (const auto& neighbor : graph[static_cast<std::size_t>(course)]) {
+      if (--in_degree[static_cast<std::size_t>(neighbor)] == 0) {
         course_order.push_back(neighbor);
       }
     }
@@ -41,7 +41,8 @@ auto course_schedule_ii(size_t num_courses,
 auto Solution::findOrder(int numCourses,
                          std::vector<std::vector<int>>& prerequisites)
     -> std::vector<int> {
-  return course_schedule_ii(static_cast<size_t>(numCourses), prerequisites);
+  return course_schedule_ii(static_cast<std::size_t>(numCourses),
+                            prerequisites);
 }
 
 }  // namespace leet_code

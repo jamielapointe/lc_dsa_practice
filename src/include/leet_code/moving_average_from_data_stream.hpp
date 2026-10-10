@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <vector>
 
 namespace leet_code {
@@ -36,16 +37,16 @@ namespace leet_code {
 
 class MovingAverageImpl {
  public:
-  explicit MovingAverageImpl(size_t size);
+  explicit MovingAverageImpl(std::size_t size);
 
   [[nodiscard]] auto next(int val) -> double;
 
  private:
-  size_t size_{0};
-  int32_t current_sum_{0};
-  std::vector<int32_t> buffer_;
-  size_t head_{0};
-  size_t count_{0};
+  std::size_t size_{0};
+  std::int32_t current_sum_{0};
+  std::vector<std::int32_t> buffer_;
+  std::size_t head_{0};
+  std::size_t count_{0};
   double inv_size_;
 };
 

@@ -8,7 +8,7 @@ namespace leet_code {
 // Idiomatic Modern C++23 Implementation (TDD Stub)
 // -----------------------------------------------------------------------------
 
-CircularQueue::CircularQueue(size_t k) : queue_(k, 0), capacity_(k) {}
+CircularQueue::CircularQueue(std::size_t k) : queue_(k, 0), capacity_(k) {}
 
 auto CircularQueue::en_queue(int value) -> bool {
   if (is_full()) {
@@ -40,7 +40,7 @@ auto CircularQueue::rear() const -> int {
   if (is_empty()) {
     return -1;
   }
-  size_t rear_index = tail_ == 0 ? capacity_ - 1 : tail_ - 1;
+  std::size_t rear_index = tail_ == 0 ? capacity_ - 1 : tail_ - 1;
   return queue_[rear_index];
 }
 
@@ -52,7 +52,7 @@ auto CircularQueue::is_full() const -> bool { return size_ == capacity_; }
 // LeetCode Compatibility Wrapper
 // -----------------------------------------------------------------------------
 
-MyCircularQueue::MyCircularQueue(int k) : queue_(static_cast<size_t>(k)) {}
+MyCircularQueue::MyCircularQueue(int k) : queue_(static_cast<std::size_t>(k)) {}
 
 bool MyCircularQueue::enQueue(int value) { return queue_.en_queue(value); }
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -160,7 +161,7 @@ class DefaultRobot final : public Robot {
 
   [[nodiscard]] auto cell_value(Point cell) -> CellValue& {
     auto const [row, col] = cell;
-    return grid_[static_cast<size_t>(row)][static_cast<size_t>(col)];
+    return grid_[static_cast<std::size_t>(row)][static_cast<std::size_t>(col)];
   }
 
   [[nodiscard]] auto cell_value(Point cell) const -> CellValue {
@@ -168,7 +169,7 @@ class DefaultRobot final : public Robot {
     if (row < 0 || col < 0 || row >= height_ || col >= width_) {
       return CellValue::Wall;
     }
-    return grid_[static_cast<size_t>(row)][static_cast<size_t>(col)];
+    return grid_[static_cast<std::size_t>(row)][static_cast<std::size_t>(col)];
   }
 };
 

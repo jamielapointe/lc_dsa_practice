@@ -47,7 +47,7 @@ inline bool is_valid(const Grid& grid, const Visited& visited, int row,
   if (row < 0 || col < 0 || row >= length || col >= length) {
     return false;
   }
-  if (grid[static_cast<size_t>(row)][static_cast<size_t>(col)] != 0) {
+  if (grid[static_cast<std::size_t>(row)][static_cast<std::size_t>(col)] != 0) {
     return false;
   }
   if (visited.contains(Node(row, col))) {

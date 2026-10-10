@@ -48,8 +48,8 @@ TEST(NumberOfIslandsTest, EmptyGridRow) {
 TEST(NumberOfIslandsTest, MaxConstraintsGrid) {
   // 300x300 grid filled with '1's and '0's in checkerboard
   std::vector<std::vector<char>> grid(300, std::vector<char>(300, '0'));
-  for (size_t i = 0; i < 300; ++i) {
-    for (size_t j = 0; j < 300; ++j) {
+  for (std::size_t i = 0; i < 300; ++i) {
+    for (std::size_t j = 0; j < 300; ++j) {
       if ((i + j) % 2 == 0) {
         grid[i][j] = '1';
       }

@@ -4,7 +4,7 @@
 
 namespace leet_code {
 
-MovingAverageImpl::MovingAverageImpl(size_t size)
+MovingAverageImpl::MovingAverageImpl(std::size_t size)
     : size_(size),
       buffer_(size, 0),
       inv_size_(1.0 / static_cast<double>(size)) {}
@@ -21,7 +21,8 @@ auto MovingAverageImpl::next(int val) -> double {
   return static_cast<double>(current_sum_) * inv_size_;
 }
 
-MovingAverage::MovingAverage(int size) : impl_(static_cast<size_t>(size)) {}
+MovingAverage::MovingAverage(int size)
+    : impl_(static_cast<std::size_t>(size)) {}
 
 auto MovingAverage::next(int val) -> double { return impl_.next(val); }
 

@@ -5,7 +5,8 @@
 
 namespace leet_code {
 
-LruCache::LruCache(int capacity) : capacity_(static_cast<size_t>(capacity)) {
+LruCache::LruCache(int capacity)
+    : capacity_(static_cast<std::size_t>(capacity)) {
   // a check to ensure capacity > 0 with appropriate error handling
   if (capacity <= 0) {
     throw std::invalid_argument("Capacity must be positive");

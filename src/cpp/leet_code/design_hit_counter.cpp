@@ -36,7 +36,7 @@ auto HitCounter::getHits(int timestamp) -> int {
   // Now tail_ is guaranteed to not equal head_
   // Recall timestamp shall be monitonic (or equal).
   int hits = 0;
-  size_t current_head = head_;
+  std::size_t current_head = head_;
   if ((timestamp - buckets_[current_head].first) <
       static_cast<int>(kBucketSize)) {
     hits += buckets_[current_head].second;

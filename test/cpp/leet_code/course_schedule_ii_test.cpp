@@ -63,8 +63,8 @@ TEST(CourseScheduleIiTest, MaxConstraints) {
   }
 
   auto start = std::chrono::high_resolution_clock::now();
-  auto result = leet_code::course_schedule_ii(static_cast<size_t>(num_courses),
-                                              prerequisites);
+  auto result = leet_code::course_schedule_ii(
+      static_cast<std::size_t>(num_courses), prerequisites);
   auto end = std::chrono::high_resolution_clock::now();
 
   EXPECT_EQ(result.size(), num_courses);  // Dummy returns {} so will fail

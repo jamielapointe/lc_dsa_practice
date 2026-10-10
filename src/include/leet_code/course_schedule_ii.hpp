@@ -57,7 +57,7 @@ namespace leet_code {
 /// Space: $O(V + E)$
 
 [[nodiscard]] auto course_schedule_ii(
-    size_t num_courses, const std::vector<std::vector<int>>& prerequisites)
+    std::size_t num_courses, const std::vector<std::vector<int>>& prerequisites)
     -> std::vector<int>;
 
 class Solution {

@@ -10,16 +10,16 @@ namespace leet_code {
 auto sliding_window_maximum(std::span<const int> nums, int k)
     -> std::vector<int> {
   std::vector<int> result{};
-  if (nums.empty() || k <= 0 || nums.size() < static_cast<size_t>(k)) {
+  if (nums.empty() || k <= 0 || nums.size() < static_cast<std::size_t>(k)) {
     return result;
   }
 
-  result.reserve(nums.size() - static_cast<size_t>(k) + 1U);
-  std::deque<size_t> dq{};
+  result.reserve(nums.size() - static_cast<std::size_t>(k) + 1U);
+  std::deque<std::size_t> dq{};
 
-  for (size_t i = 0; i < nums.size(); ++i) {
+  for (std::size_t i = 0; i < nums.size(); ++i) {
     // Remove indices that have fallen out of the current window
-    if (!dq.empty() && dq.front() + static_cast<size_t>(k) <= i) {
+    if (!dq.empty() && dq.front() + static_cast<std::size_t>(k) <= i) {
       dq.pop_front();
     }
 
@@ -33,7 +33,7 @@ auto sliding_window_maximum(std::span<const int> nums, int k)
     dq.push_back(i);
 
     // The window is fully formed at i >= k - 1
-    if (i + 1 >= static_cast<size_t>(k)) {
+    if (i + 1 >= static_cast<std::size_t>(k)) {
       result.push_back(nums[dq.front()]);
     }
   }
