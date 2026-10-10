@@ -114,6 +114,13 @@ repos:
         language: system
         pass_filenames: false
 
+      - id: systems-traceability
+        name: Systems requirement <-> test traceability
+        entry: pixi run check-traceability
+        files: ^(docs/systems/.*\.md|test/cpp/systems/.*_test\.cpp|scripts/ci/check_systems_traceability\.py)$
+        language: system
+        pass_filenames: false
+
       - id: actionlint
         name: Lint GitHub Actions workflows (actionlint)
         entry: pixi run actionlint

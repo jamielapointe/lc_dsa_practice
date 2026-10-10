@@ -21,7 +21,7 @@ description: Sets up LeetCode DSA practice problems in either modern C++23 (CMak
 ## Do not use this skill when
 
 - Implementing the actual algorithm (this skill produces stubs that return dummy values to establish the TDD red state).
-- Working on low-level / systems C++ (`src/cpp/systems`), the plugin itself, or general project configuration.
+- Working on low-level / systems C++ (`src/cpp/systems`; use `systems-setup` to scaffold those), the plugin itself, or general project configuration.
 
 ---
 

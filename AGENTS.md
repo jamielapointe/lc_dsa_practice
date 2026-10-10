@@ -29,8 +29,10 @@ the style reference for new ones.
 ├── test/
 │   ├── cpp/{leet_code,systems}/                   # GoogleTest, one <name>_test.cpp per target
 │   └── python/{leet_code,scripts}/                # pytest, test_<name>.py
-├── scripts/ci/                                    # cpp_coverage.py (coverage gate), reorder_pyproject.py
+├── docs/systems/                                  # requirements specs for systems problems (<name>.md)
+├── scripts/ci/                                    # cpp_coverage.py, reorder_pyproject.py, check_systems_traceability.py
 ├── .agents/plugins/leetcode/                      # MCP server (leetcode_mcp) + leetcode-setup skill
+├── .agents/plugins/systems/                       # systems-setup skill (prompt-driven, no MCP server)
 └── .github/workflows/                             # ci.yml, pixi-update.yml, scorecard.yml
 ```
 
@@ -113,9 +115,27 @@ Intent: portable building blocks that could move to a small target without redes
     behavior in Doxygen.
   - Provide try/blocking/timed variants for blocking APIs and a `close()` path that wakes every waiter.
   - Bit-twiddling or register-style code should use fixed-width integers and `std::bit_cast`/`<bit>`, never type punning.
-- Every systems component needs a four-tier test suite, including a multi-threaded stress test. Run `pixi run cpp-tsan`
-  in addition to `test-cpp` before finishing.
+  - Public operations are `noexcept` and report errors via `std::expected<T, <Name>Error>`; no exceptions or RTTI in runtime
+    paths. Heap is allowed only in an explicit init phase (`create()`/`open()`), never in steady-state operations.
+  - OS calls (`shm_open`, `mmap`, `pthread_*attr*`, ...) live only in an adapter TU (`<name>_posix.cpp`); branch on
+    `systems/platform.hpp` capabilities (`kHasRobustMutex`, ...), not raw `#ifdef`s. Targets: Linux, QNX; macOS is a dev host.
+- Every systems component needs a test suite with functional, boundary, resource (no heap after init), and multi-threaded
+  stress tiers, plus multi-process and SIGKILL fault-injection tiers when it crosses processes. Reuse
+  `systems::test_support` (`test/cpp/systems/support/systems_test/`: `ChildProcess`, `SharedRegion`, `unique_shm_name`,
+  `AllocationScope`); never copy it. Its self-test `test_support_test` must stay green. Run `pixi run cpp-tsan` in addition
+  to `test-cpp` before finishing.
 - Deliberate NOLINTs (for example a C array backing the FIFO) must carry a one-line justification.
+- Avoid `std::chrono` literals (`10ms`); `misc-include-cleaner` cannot attribute them. Include public POSIX headers.
+
+## Systems plugin (`.agents/plugins/systems`)
+
+- No MCP server: the user's prompt is the problem statement. The `systems-setup` skill asks only about choices that change
+  the API or the test oracle, records other decisions as assumptions, and generates `docs/systems/<name>.md` (requirements
+  `### <PREFIX>-REQ-NNN: Title` with a `- **Verification:**` line), an outline header, stubs, CMake registration, and red tests.
+- Each test starts with `RecordProperty("requirements", "<IDs>")`; `pixi run check-traceability` (also a pre-commit hook)
+  enforces requirement <-> test traceability in both directions.
+- References: `skills/systems-setup/references/{spec,safety,cpp,testing}.md`. Layout changes must be mirrored there, in the
+  plugin README, and in `PROJECT.md`.
 
 ## LeetCode plugin (`.agents/plugins/leetcode`)
 

@@ -232,6 +232,7 @@ rumdl = ">=0.2.79"
 
 [tool.pixi.tasks]
 check-pyproject = "python scripts/ci/reorder_pyproject.py --check pyproject.toml"
+check-traceability = "python scripts/ci/check_systems_traceability.py"
 cov-cpp = "cmake --workflow --preset coverage && python scripts/ci/cpp_coverage.py --build-dir build/coverage --fail-under 85"
 cov-python = "pytest --cov --cov-report=term-missing --cov-report=xml"
 cpp-asan = "cmake --workflow --preset asan"

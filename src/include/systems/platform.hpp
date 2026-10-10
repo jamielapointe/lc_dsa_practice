@@ -1,0 +1,88 @@
+#pragma once
+
+/// @file platform.hpp
+/// @brief Compile-time operating-system capability flags for the systems
+/// track.
+///
+/// Systems components target POSIX (Linux, embedded Linux, and QNX Neutrino).
+/// macOS is a development host only: it provides POSIX shared memory and
+/// process-shared mutexes / condition variables, but no robust mutexes
+/// (`PTHREAD_MUTEX_ROBUST`), and it limits shared-memory names to 31
+/// characters.
+///
+/// Use these flags instead of scattering `#ifdef __linux__` through component
+/// code:
+///   - in OS adapters, to choose an implementation strategy with
+///     `if constexpr` (or a narrowly scoped `#if` when a symbol does not exist
+///     on a platform, for example `pthread_mutexattr_setrobust`);
+///   - in tests, to `GTEST_SKIP()` requirements that the host cannot satisfy,
+///     with a reason that names the missing capability.
+///
+/// Every flag is a `constexpr bool` or `constexpr std::size_t`, so the header
+/// has no runtime cost and no link dependency.
+
+#include <cstddef>
+#include <cstdint>
+#include <new>
+
+namespace systems::platform {
+
+/// @brief Host operating-system family.
+enum class OsFamily : std::uint8_t {
+  kLinux,  ///< Linux, including embedded Linux distributions.
+  kQnx,    ///< QNX Neutrino / QNX OS for Safety.
+  kMacos,  ///< macOS (development host only).
+  kOther,  ///< Anything else; capabilities are reported conservatively.
+};
+
+#if defined(__QNX__) || defined(__QNXNTO__)
+inline constexpr OsFamily kOsFamily = OsFamily::kQnx;
+#elif defined(__linux__)
+inline constexpr OsFamily kOsFamily = OsFamily::kLinux;
+#elif defined(__APPLE__)
+inline constexpr OsFamily kOsFamily = OsFamily::kMacos;
+#else
+inline constexpr OsFamily kOsFamily = OsFamily::kOther;
+#endif
+
+/// @brief True on Linux (desktop or embedded).
+inline constexpr bool kIsLinux = kOsFamily == OsFamily::kLinux;
+/// @brief True on QNX Neutrino.
+inline constexpr bool kIsQnx = kOsFamily == OsFamily::kQnx;
+/// @brief True on macOS (development host).
+inline constexpr bool kIsMacos = kOsFamily == OsFamily::kMacos;
+/// @brief True on a production target OS (Linux or QNX).
+inline constexpr bool kIsProductionTarget = kIsLinux || kIsQnx;
+
+/// @brief `shm_open` / `shm_unlink` / `mmap(MAP_SHARED)` are available.
+inline constexpr bool kHasPosixSharedMemory = kIsLinux || kIsQnx || kIsMacos;
+
+/// @brief `pthread_mutexattr_setpshared(PTHREAD_PROCESS_SHARED)` works.
+inline constexpr bool kHasProcessSharedMutex = kIsLinux || kIsQnx || kIsMacos;
+
+/// @brief `pthread_condattr_setpshared(PTHREAD_PROCESS_SHARED)` works.
+inline constexpr bool kHasProcessSharedCondvar = kIsLinux || kIsQnx || kIsMacos;
+
+/// @brief Robust mutexes are available: a lock held by a process that dies is
+/// reported to the next locker as `EOWNERDEAD` and can be recovered with
+/// `pthread_mutex_consistent`. Absent on macOS.
+inline constexpr bool kHasRobustMutex = kIsLinux || kIsQnx;
+
+/// @brief Longest portable POSIX shared-memory object name, including the
+/// leading `/`. macOS allows 31 characters; 30 leaves headroom and is accepted
+/// by Linux (`NAME_MAX`) and QNX.
+inline constexpr std::size_t kMaxShmNameLength = 30;
+
+/// @brief Cache-line size used to separate data written by different cores or
+/// processes (false-sharing avoidance) in shared layouts.
+#if defined(__cpp_lib_hardware_interference_size)
+inline constexpr std::size_t kCacheLineSize =
+    std::hardware_destructive_interference_size;
+#else
+inline constexpr std::size_t kCacheLineSize = 64;
+#endif
+
+static_assert(kCacheLineSize >= alignof(std::max_align_t),
+              "cache line must be at least max_align_t");
+
+}  // namespace systems::platform

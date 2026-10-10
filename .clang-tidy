@@ -271,3 +271,8 @@ CheckOptions:
     value: 'absl/strings/match.h'
   - key: 'abseil-string-find-str-contains.StringLikeClasses'
     value: '::std::basic_string_view;::absl::string_view;::basic_string;::std::basic_string;'
+  # POSIX symbols are declared in platform-private sub-headers that differ per OS (macOS
+  # sys/_types/*, sys/signal.h, sys/fcntl.h; glibc bits/*; QNX sys/*). Ignore those so systems code
+  # includes the portable public POSIX header (<signal.h>, <fcntl.h>, <sys/mman.h>, ...).
+  - key: 'misc-include-cleaner.IgnoreHeaders'
+    value: 'sys/_types/.*;_types/.*;sys/_pthread/.*;sys/_select\.h;signal\.h;sys/fcntl\.h;sys/types\.h;sys/wait\.h;bits/.*;asm-generic/.*;asm/.*;linux/.*'
