@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <vector>
 
 namespace lc_dsa {
@@ -56,7 +57,7 @@ namespace lc_dsa {
 /// Space: $O(V + E)$
 
 [[nodiscard]] auto course_schedule_ii(
-    int num_courses, const std::vector<std::vector<int>>& prerequisites)
+    size_t num_courses, const std::vector<std::vector<int>>& prerequisites)
     -> std::vector<int>;
 
 class Solution {

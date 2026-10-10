@@ -191,7 +191,7 @@ add_library(course_schedule_ii STATIC course_schedule_ii.cpp)
 add_library(lc_dsa::course_schedule_ii ALIAS course_schedule_ii)
 
 target_include_directories(course_schedule_ii PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-                                                         $<INSTALL_INTERFACE:include>)
+                                                     $<INSTALL_INTERFACE:include>)
 
 target_compile_features(course_schedule_ii PUBLIC cxx_std_23)
 

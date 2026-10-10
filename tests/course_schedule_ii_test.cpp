@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include <chrono>
+#include <cstddef>
 #include <vector>
 
 namespace {
@@ -62,7 +63,8 @@ TEST(CourseScheduleIiTest, MaxConstraints) {
   }
 
   auto start = std::chrono::high_resolution_clock::now();
-  auto result = lc_dsa::course_schedule_ii(num_courses, prerequisites);
+  auto result = lc_dsa::course_schedule_ii(static_cast<size_t>(num_courses),
+                                           prerequisites);
   auto end = std::chrono::high_resolution_clock::now();
 
   EXPECT_EQ(result.size(), num_courses);  // Dummy returns {} so will fail
