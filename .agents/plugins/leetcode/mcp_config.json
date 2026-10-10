@@ -1,26 +1,8 @@
 {
   "mcpServers": {
-    "leetcode-mcp": {
-      "command": "uv",
-      "args": [
-        "run",
-        "--project",
-        ".agents/plugins/leetcode",
-        "python",
-        "-m",
-        "leetcode_mcp"
-      ]
-    },
     "leetcode": {
-      "command": "uv",
-      "args": [
-        "run",
-        "--project",
-        ".agents/plugins/leetcode",
-        "python",
-        "-m",
-        "leetcode_mcp"
-      ]
+      "command": "pixi",
+      "args": ["run", "--quiet", "leetcode-mcp"]
     }
   }
 }

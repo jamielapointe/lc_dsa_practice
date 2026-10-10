@@ -1,12 +1,13 @@
 {
   "name": "leetcode",
-  "displayName": "LeetCode C++23 Practice",
-  "version": "0.1.0",
-  "description": "Automates setting up LeetCode DSA practice problems with modern C++23, Google Test, and CMake integration.",
+  "displayName": "LeetCode Practice (C++23 & Python)",
+  "version": "0.2.0",
+  "description": "Automates setting up LeetCode DSA practice problems in modern C++23 (CMake + Google Test) or Python 3.14 (pytest). The language must be specified by the user.",
   "suggestedPrompts": [
-    "Set up LeetCode #2",
-    "Set up LeetCode problem add-two-numbers",
-    "Fetch LeetCode #1 and generate C++23 solution skeleton"
+    "Set up LeetCode #2 in C++",
+    "Set up LeetCode #1 in Python",
+    "Scaffold LeetCode add-two-numbers in C++23",
+    "Scaffold LeetCode lru-cache in Python"
   ],
   "logo": "assets/logo.svg"
 }

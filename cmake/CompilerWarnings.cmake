@@ -18,7 +18,8 @@ set(CLANG_GCC_WARNINGS
     -Wnull-dereference
     -Wdouble-promotion
     -Wformat=2
-    -Wimplicit-fallthrough)
+    -Wimplicit-fallthrough
+)
 
 set(MSVC_WARNINGS
     /W4
@@ -41,18 +42,21 @@ set(MSVC_WARNINGS
     /w14905
     /w14906
     /w14928
-    /permissive-)
+    /permissive-
+)
 
 option(WARNINGS_AS_ERRORS "Treat compiler warnings as fatal errors" ON)
 if(WARNINGS_AS_ERRORS)
-  list(APPEND CLANG_GCC_WARNINGS -Werror)
-  list(APPEND MSVC_WARNINGS /WX)
+    list(APPEND CLANG_GCC_WARNINGS -Werror)
+    list(APPEND MSVC_WARNINGS /WX)
 endif()
 
-if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang"
-   OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"
-   OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  target_compile_options(project_warnings INTERFACE ${CLANG_GCC_WARNINGS})
+if(
+    CMAKE_CXX_COMPILER_ID MATCHES ".*Clang"
+    OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"
+    OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
+)
+    target_compile_options(project_warnings INTERFACE ${CLANG_GCC_WARNINGS})
 elseif(MSVC)
-  target_compile_options(project_warnings INTERFACE ${MSVC_WARNINGS})
+    target_compile_options(project_warnings INTERFACE ${MSVC_WARNINGS})
 endif()
