@@ -67,6 +67,7 @@ std::latch start{kThreads + 1};
 std::atomic<std::uint64_t> published{0};
 {
   std::vector<std::jthread> workers;  // tests may allocate; the component may not
+  workers.reserve(kThreads);          // clang-tidy: performance-inefficient-vector-operation
   for (int t = 0; t < kThreads; ++t) {
     workers.emplace_back([&, t] {
       start.arrive_and_wait();
@@ -148,7 +149,8 @@ In the red state this test may pass trivially (stubs allocate nothing); pair it 
 ### Compile-time invariants
 
 Put `static_assert`s for API properties at namespace scope in the test file (`std::is_nothrow_move_constructible_v`, `!std::is_copy_constructible_v`, that each
-operation is `noexcept` via `noexcept(expr)`). These hold for stubs too, which is fine: they pin the contract.
+operation is `noexcept` via `noexcept(expr)`). These hold for stubs too, which is fine: they pin the contract. Build the arguments of a `noexcept(expr)` check
+from non-throwing expressions: `std::string_view{}` rather than a string literal (the `const char*` constructor is not `noexcept`).
 
 ## Sanitizer and preset matrix
 
