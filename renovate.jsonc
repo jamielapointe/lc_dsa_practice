@@ -1,0 +1,72 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Renovate configuration for lc_dsa_practice (Pixi toolchain)",
+
+  // ===========================================================================
+  // Org-wide policies
+  // ===========================================================================
+  "extends": [
+    "config:best-practices",
+    "helpers:pinGitHubActionDigestsToSemver"
+  ],
+  "timezone": "America/Los_Angeles",
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "minimumReleaseAge": "3 days",
+  "dependencyDashboard": true,
+  "labels": [
+    "dependencies"
+  ],
+  "pre-commit": {
+    "enabled": true
+  },
+
+  // ===========================================================================
+  // Repository-specific policies
+  // ===========================================================================
+  "pixi": {
+    "enabled": true
+  },
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": [
+      "before 6am on monday"
+    ]
+  },
+
+  // ===========================================================================
+  // Package grouping
+  // ===========================================================================
+  "packageRules": [
+    {
+      "description": "Group all GitHub Actions updates into a single weekly pull request",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "groupName": "github-actions",
+      "groupSlug": "github-actions"
+    },
+    {
+      "description": "Group all pre-commit hook updates into a single weekly pull request",
+      "matchManagers": [
+        "pre-commit"
+      ],
+      "groupName": "pre-commit hooks",
+      "groupSlug": "pre-commit-hooks"
+    },
+    {
+      "description": "Group Pixi conda and PyPI minor and patch dependency updates into a single weekly pull request",
+      "matchManagers": [
+        "pixi",
+        "pep621"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "pixi and pypi dependencies",
+      "groupSlug": "pixi-dependencies"
+    }
+  ]
+}

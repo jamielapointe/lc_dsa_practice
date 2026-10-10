@@ -56,7 +56,8 @@ _deps/
 *.orig
 *.rej
 
-# Python & uv Environment
+# Python & Pixi Environment
+.pixi/
 .venv/
 __pycache__/
 *.py[cod]
@@ -64,6 +65,11 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+.rumdl_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
 
 # Teamwork Agent Working Directory
 .agents/teamwork/**

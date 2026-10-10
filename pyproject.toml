@@ -1,36 +1,30 @@
 [project]
-dependencies = [
-    "pre-commit>=4.0.0",
-]
-description = "C++23 LeetCode DSA practice project featuring modular CMake, Google Test, and pre-commit checks"
+description = "Multi-language LeetCode / DSA practice: C++23 LeetCode, Python LeetCode, and low-level C++ systems code"
 name = "lc-dsa-practice"
+readme = "README.md"
 requires-python = ">=3.14"
 version = "0.1.0"
 
-[dependency-groups]
-dev = [
-    "httpx>=0.28.1",
-    "markdownify>=1.2.3",
-    "mcp>=2.2.0",
-    "mypy>=2.3.1",
-    "pre-commit>=4.0.0",
-    "pydantic>=2.13.5",
-    "pytest-asyncio>=1.4.0",
-    "pytest>=9.1.1",
-    "ruff>=0.16.9",
-]
-
-[tool.uv]
-managed = true
+[[project.authors]]
+email = "jamielapointe@google.com"
+name = "Jamie LaPointe"
 
 [tool.ruff]
 exclude = [
+    ".agents/teamwork",
+    ".git",
+    ".pixi",
     ".venv",
     "build",
-    "src",
+    "dist",
 ]
 line-length = 120
 preview = true
+src = [
+    ".",
+    ".agents/plugins/leetcode/src",
+    "src/python",
+]
 target-version = "py314"
 
 [tool.ruff.format]
@@ -81,8 +75,31 @@ force-single-line = true
 lines-after-imports = 2
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = [
-    "S101",
+".agents/plugins/leetcode/src/leetcode_mcp/client.py" = [
+    "docstring-extraneous-exception",
+    "suspicious-non-cryptographic-random-usage",
+]
+".agents/plugins/leetcode/src/leetcode_mcp/server.py" = [
+    "typing-only-first-party-import",
+]
+".agents/plugins/leetcode/tests/**" = [
+    "assert",
+    "docstring-missing-returns",
+    "docstring-missing-yields",
+    "suspicious-non-cryptographic-random-usage",
+    "typing-only-first-party-import",
+    "undocumented-public-method",
+    "unused-function-argument",
+]
+"scripts/**" = [
+    "print",
+    "start-process-with-partial-path",
+    "subprocess-without-shell-equals-true",
+    "suspicious-subprocess-import",
+]
+"test/**" = [
+    "assert",
+    "suspicious-non-cryptographic-random-usage",
 ]
 
 [tool.ruff.lint.pycodestyle]
@@ -100,14 +117,20 @@ disallow_untyped_defs = true
 enable_error_code = [
     "ignore-without-code",
 ]
+explicit_package_bases = true
 files = [
+    ".agents/plugins/leetcode/src",
+    ".agents/plugins/leetcode/tests",
     "scripts",
-    "tests/python",
+    "src/python",
+    "test/python",
 ]
 follow_imports = "normal"
 ignore_missing_imports = false
 mypy_path = [
     ".",
+    ".agents/plugins/leetcode/src",
+    "src/python",
 ]
 no_implicit_optional = true
 plugins = [
@@ -125,18 +148,134 @@ warn_unreachable = true
 warn_unused_ignores = true
 
 [tool.pytest.ini_options]
-addopts = "-ra --strict-markers --strict-config"
+addopts = "--import-mode=importlib --strict-config --strict-markers -ra -m 'not live'"
+asyncio_default_fixture_loop_scope = "function"
+asyncio_mode = "auto"
+filterwarnings = [
+    "error",
+]
+markers = [
+    "benchmark: performance tests",
+    "integration: multi-component integration tests",
+    "live: tests that make live network calls to the LeetCode GraphQL API (deselected by default)",
+    "stress: stress and time-limit workloads",
+    "unit: fast isolated unit tests",
+]
+minversion = "9.1.1"
 pythonpath = [
     ".",
+    ".agents/plugins/leetcode/src",
+    "src/python",
 ]
 testpaths = [
-    "tests/python",
+    ".agents/plugins/leetcode/tests",
+    "test/python",
+]
+timeout = 300
+xfail_strict = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "def __repr__",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+]
+fail_under = 85
+show_missing = true
+
+[tool.coverage.run]
+branch = true
+omit = [
+    "*/.agents/*",
+    "*/test/*",
+]
+source = [
+    "src/python/leet_code",
+]
+
+[tool.pixi.activation.env]
+CC = "$CONDA_PREFIX/bin/clang"
+CCACHE_DIR = "$PIXI_PROJECT_ROOT/build/.ccache"
+CXX = "$CONDA_PREFIX/bin/clang++"
+PYTHONPATH = "$PIXI_PROJECT_ROOT/src/python:$PIXI_PROJECT_ROOT/.agents/plugins/leetcode/src:$PIXI_PROJECT_ROOT"
+
+[tool.pixi.dependencies]
+actionlint = ">=1.7.12"
+ccache = ">=4.14.1,<5"
+clang = ">=23.1,<24"
+clang-tools = ">=23.1,<24"
+clangxx = ">=23.1,<24"
+cmake = ">=4.4.3"
+compiler-rt = ">=23.1,<24"
+gtest = ">=1.18"
+httpx = ">=0.28.1"
+lld = ">=23.1,<24"
+llvm-tools = ">=23.1,<24"
+markdownify = ">=1.2.3"
+mcp = ">=2.3"
+mypy = ">=2.4"
+ninja = ">=1.13"
+pre-commit = ">=4.6"
+pydantic = ">=2.14"
+pytest = ">=9.1.1"
+pytest-asyncio = ">=1.4"
+pytest-cov = ">=7.1"
+pytest-timeout = ">=2.4"
+python = "3.14.*"
+ruff = ">=0.17"
+zizmor = ">=1.30.1"
+
+[tool.pixi.pypi-dependencies]
+gersemi = ">=0.29.2,<0.30"
+rumdl = ">=0.2.79,<0.3"
+
+[tool.pixi.tasks]
+check-pyproject = "python scripts/ci/reorder_pyproject.py --check pyproject.toml"
+cov-cpp = "cmake --workflow --preset coverage && python scripts/ci/cpp_coverage.py --build-dir build/coverage --fail-under 85"
+cov-python = "pytest --cov --cov-report=term-missing --cov-report=xml"
+cpp-asan = "cmake --workflow --preset asan"
+cpp-debug = "cmake --workflow --preset dev-debug"
+cpp-release = "cmake --workflow --preset dev-release"
+cpp-tsan = "cmake --workflow --preset tsan"
+cpp-ubsan = "cmake --workflow --preset ubsan"
+format = "ruff format"
+format-check = "ruff format --check"
+format-cmake = "gersemi -i CMakeLists.txt cmake src/cpp test/cpp"
+format-cmake-check = "gersemi --check CMakeLists.txt cmake src/cpp test/cpp"
+format-cpp = "cmake --build --preset dev-debug --target format"
+format-cpp-check = "cmake --build --preset dev-debug --target format-check"
+leetcode-mcp = "python -m leetcode_mcp"
+lint = "ruff check"
+lint-fix = "ruff check --fix --exit-non-zero-on-fix"
+lint-md = "rumdl check ."
+pre-commit = "pre-commit run --all-files"
+reorder-pyproject = "python scripts/ci/reorder_pyproject.py pyproject.toml"
+test-cpp = "cmake --workflow --preset dev-debug"
+test-python = "pytest"
+typecheck = "mypy"
+
+[tool.pixi.tasks.test]
+depends-on = [
+    "test-cpp",
+    "test-python",
+]
+
+[tool.pixi.workspace]
+channels = [
+    "conda-forge",
+]
+platforms = [
+    "linux-64",
+    "linux-aarch64",
+    "osx-arm64",
 ]
 
 [tool.rumdl]
 exclude = [
-    ".agents",
+    ".agents/teamwork",
     ".git",
+    ".pixi",
     ".venv",
     "build",
     "dist",
@@ -150,6 +289,7 @@ code-blocks = false
 headings = false
 line-length = 160
 math-blocks = false
+reflow = true
 tables = false
 
 [tool.rumdl.MD033]
