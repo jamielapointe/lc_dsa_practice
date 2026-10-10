@@ -63,10 +63,10 @@ repos:
       - id: rumdl-fmt
 
   # ---------------------------------------------------------------------------
-  # 5. Renovate Config Validation (renovatebot 44.140.0)
+  # 5. Renovate Config Validation (renovatebot 44.144.1)
   # ---------------------------------------------------------------------------
   - repo: https://github.com/renovatebot/pre-commit-hooks
-    rev: fe4cf9af7f73a6386a2c4d23a5ef8bac33fb7abc # frozen: 44.140.0
+    rev: b45a2546e2153b8a2f9730f0c54a42515e364ea8 # frozen: 44.144.1
     hooks:
       - id: renovate-config-validator
         files: '^renovate\.jsonc?$'
