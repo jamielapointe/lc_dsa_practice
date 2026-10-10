@@ -1,58 +1,42 @@
-# LeetCode C++23 Practice Antigravity Plugin & MCP Server
+# LeetCode Practice Antigravity Plugin (C++23 & Python) and MCP Server
 
-Automates setting up LeetCode DSA practice problems with modern C++23, Google Test, and CMake integration.
+Automates setting up LeetCode DSA practice problems in modern **C++23** (CMake + Google Test) or **Python 3.14** (pytest). The user must tell the skill which
+language to use (`cpp` or `python`).
 
 ## Architecture
 
-This plugin bundles a custom Python MCP server (`leetcode-mcp`) and skills to scaffold and manage LeetCode practice problems in C++23.
+The plugin bundles a custom Python MCP server (`leetcode-mcp`) and the `leetcode-setup` skill.
 
 ```text
 .agents/plugins/leetcode/
-├── plugin.json         # Antigravity plugin manifest
-├── mcp_config.json     # MCP server declaration
-├── pyproject.toml      # Isolated Python environment & packaging
-├── README.md           # Documentation
-├── assets/
-│   └── logo.svg        # Plugin logo
-├── src/
-│   └── leetcode_mcp/
-│       ├── __init__.py # Package exports & version
-│       ├── __main__.py # Module CLI runner
-│       ├── client.py   # Resilient async GraphQL client
-│       ├── exceptions.py# Custom domain exceptions
-│       ├── models.py   # Pydantic models & file path helpers
-│       └── server.py   # Modern MCPServer with get_problem tool
-└── tests/
-    ├── conftest.py     # Centralized fixtures & mock transports
-    ├── test_client.py  # Query normalization, retries & parsing tests
-    ├── test_models.py  # Model validation & immutability tests
-    └── test_server.py  # Tool registration, schema & invocation tests
+├── plugin.json            # Antigravity plugin manifest
+├── mcp_config.json        # MCP server declaration (launched via `pixi run leetcode-mcp`)
+├── README.md
+├── assets/logo.svg
+├── skills/leetcode-setup/
+│   ├── SKILL.md           # Language selection + shared workflow
+│   └── references/
+│       ├── cpp.md         # C++23 / CMake / Google Test templates
+│       └── python.md      # Python / pytest templates
+├── src/leetcode_mcp/      # MCP server (client.py, models.py, server.py, exceptions.py)
+└── tests/                 # Unit tests (mocked) + opt-in live tests (-m live)
 ```
 
-## Features
+There is no plugin-local environment: the server, its dependencies, and its tests are part of the repository's root Pixi workspace (`pyproject.toml`).
+`PYTHONPATH` is configured by Pixi activation.
 
-- **LeetCode GraphQL Integration**: Connects to `https://leetcode.com/graphql` to resolve problem IDs, titles, slugs, and URLs.
-- **Cloudflare Resilience**: Connection pooling with `httpx.AsyncClient`, realistic browser headers, and exponential backoff retry on HTTP 429 and network errors.
-- **Mathematical Exponent Preservation**: Converts `<sup>` tags to `^` notation (e.g. `10^4`) to avoid numeric distortion in constraints.
-- **HTML to Clean Markdown**: Clean conversion of HTML problem statements using `markdownify`.
-- **Modern MCP SDK (v2.2.0+)**: Uses `mcp.server.mcpserver.MCPServer` with strongly-typed tools and automated Pydantic serialization.
-- **Strict Stdio Protocol Compliance**: Directs all application and diagnostic logs to `sys.stderr`, preventing corruption of JSON-RPC communication over stdout.
+## MCP tool: `get_problem`
 
-## MCP Tool: `get_problem`
+Input:
 
-### Input
 ```json
-{
-  "problem_query": "2"
-}
+{ "problem_query": "2" }
 ```
-Accepts:
-- Numeric ID: `2`, `"2"`, `"#2"`, `"LeetCode #2"`, `"leetcode 2"`, `"problem 2"`
-- Slug: `"add-two-numbers"`
-- Full URL: `"https://leetcode.com/problems/add-two-numbers/"`
-- Title: `"Add Two Numbers"`
 
-### Output Schema (`ProblemDetails`)
+Accepts a numeric ID (`2`, `"#2"`, `"LeetCode #2"`), slug (`"add-two-numbers"`), full URL, or title.
+
+Output (`ProblemDetails`):
+
 ```json
 {
   "frontend_id": 2,
@@ -65,33 +49,29 @@ Accepts:
   "hints": [],
   "description_markdown": "...",
   "cpp_snippet": "/** ... */ class Solution ...",
+  "python_snippet": "class Solution:\n    def addTwoNumbers(...) ...",
   "sample_test_case": "[2,4,3]\n[5,6,4]",
-  "example_test_cases": ["[2,4,3]\n[5,6,4]", "[0]\n[0]", "[9,9,9,9,9,9,9]\n[9,9,9,9]"],
-  "constraints": [
-    "The number of nodes in each linked list is in the range [1, 100].",
-    "0 <= Node.val <= 9",
-    "It is guaranteed that the list represents a number that does not have leading zeros."
-  ]
+  "example_test_cases": ["[2,4,3]\n[5,6,4]"],
+  "constraints": ["The number of nodes in each linked list is in the range [1, 100]."]
 }
 ```
 
-## Development & Verification
+## Features
 
-All operations use `uv` and isolate dependencies to the plugin environment:
+- LeetCode GraphQL integration with slug/ID/title/URL resolution.
+- Cloudflare-resilient client: pooled `httpx.AsyncClient`, browser headers, exponential backoff on HTTP 429/5xx and network errors.
+- Mathematical exponent preservation (`<sup>4</sup>` becomes `^4`) and clean HTML to Markdown conversion.
+- Both the C++ and Python 3 starter snippets are returned.
+- Strict stdio protocol compliance: all logs go to `stderr`.
+
+## Development and verification
+
+Everything runs through Pixi from the repository root:
 
 ```bash
-# Sync dependencies
-uv sync --project .agents/plugins/leetcode
-
-# Run unit tests (mocked, fast)
-uv run --project .agents/plugins/leetcode pytest -v -m "not live"
-
-# Code formatting & linting
-uv run --project .agents/plugins/leetcode ruff check src tests
-
-# Strict type checking
-uv run --project .agents/plugins/leetcode mypy --strict src
-
-# Live integration test against LeetCode GraphQL
-uv run --project .agents/plugins/leetcode pytest -v -m "live"
+pixi install
+pixi run pytest .agents/plugins/leetcode/tests          # mocked unit tests (live tests are deselected by default)
+pixi run pytest .agents/plugins/leetcode/tests -m live  # live GraphQL integration tests (network required)
+pixi run ruff check && pixi run mypy
+pixi run leetcode-mcp                                   # start the MCP server over stdio
 ```

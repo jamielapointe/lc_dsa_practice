@@ -1,0 +1,10 @@
+title = "lc_dsa_practice Gitleaks Configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allow lock files; there are no secret-bearing fixtures in this repository"
+paths = [
+    '''pixi\.lock''',
+]

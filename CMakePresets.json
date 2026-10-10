@@ -3,92 +3,77 @@
   "cmakeMinimumRequired": {
     "major": 4,
     "minor": 4,
-    "patch": 2
+    "patch": 3
   },
   "configurePresets": [
     {
       "name": "base",
       "hidden": true,
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build"
-    },
-    {
-      "name": "dev-debug",
-      "inherits": "base",
-      "displayName": "Developer Debug (ASan + UBSan)",
-      "description": "Local debug configuration with AddressSanitizer and UndefinedBehaviorSanitizer enabled",
+      "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "ENABLE_SANITIZER_ADDRESS": "ON",
-        "ENABLE_SANITIZER_UNDEFINED": "ON",
+        "CMAKE_C_COMPILER": "$env{CONDA_PREFIX}/bin/clang",
+        "CMAKE_CXX_COMPILER": "$env{CONDA_PREFIX}/bin/clang++",
+        "CMAKE_PREFIX_PATH": "$env{CONDA_PREFIX}",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "BUILD_TESTING": "ON",
         "WARNINGS_AS_ERRORS": "ON"
       }
     },
     {
+      "name": "dev-debug",
+      "inherits": "base",
+      "displayName": "Developer Debug (ASan + UBSan + clang-tidy)",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_SANITIZER_ADDRESS": "ON",
+        "ENABLE_SANITIZER_UNDEFINED": "ON",
+        "ENABLE_CLANG_TIDY": "ON"
+      }
+    },
+    {
       "name": "dev-release",
       "inherits": "base",
-      "displayName": "Developer Release (Optimized)",
-      "description": "Local release build with compiler optimizations enabled",
+      "displayName": "Developer Release (Optimized, LTO)",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "ENABLE_IPO": "ON",
-        "BUILD_TESTING": "ON"
+        "ENABLE_IPO": "ON"
       }
     },
     {
-      "name": "apple-clang-debug",
-      "inherits": "dev-debug",
-      "displayName": "Apple Clang Debug",
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Darwin"
-      },
+      "name": "asan",
+      "inherits": "base",
+      "displayName": "AddressSanitizer (ASan)",
       "cacheVariables": {
-        "CMAKE_C_COMPILER": "/usr/bin/clang",
-        "CMAKE_CXX_COMPILER": "/usr/bin/clang++"
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_SANITIZER_ADDRESS": "ON"
       }
     },
     {
-      "name": "apple-clang-release",
-      "inherits": "dev-release",
-      "displayName": "Apple Clang Release",
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Darwin"
-      },
+      "name": "ubsan",
+      "inherits": "base",
+      "displayName": "UndefinedBehaviorSanitizer (UBSan)",
       "cacheVariables": {
-        "CMAKE_C_COMPILER": "/usr/bin/clang",
-        "CMAKE_CXX_COMPILER": "/usr/bin/clang++"
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_SANITIZER_UNDEFINED": "ON"
       }
     },
     {
-      "name": "llvm-debug",
-      "inherits": "dev-debug",
-      "displayName": "LLVM Clang 23.1 Debug",
+      "name": "tsan",
+      "inherits": "base",
+      "displayName": "ThreadSanitizer (TSan)",
       "cacheVariables": {
-        "CMAKE_C_COMPILER": "/opt/homebrew/opt/llvm/bin/clang",
-        "CMAKE_CXX_COMPILER": "/opt/homebrew/opt/llvm/bin/clang++"
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_SANITIZER_THREAD": "ON"
       }
     },
     {
-      "name": "llvm-release",
-      "inherits": "dev-release",
-      "displayName": "LLVM Clang 23.1 Release",
+      "name": "coverage",
+      "inherits": "base",
+      "displayName": "LLVM Source-Based Coverage",
       "cacheVariables": {
-        "CMAKE_C_COMPILER": "/opt/homebrew/opt/llvm/bin/clang",
-        "CMAKE_CXX_COMPILER": "/opt/homebrew/opt/llvm/bin/clang++"
-      }
-    },
-    {
-      "name": "ci-debug",
-      "inherits": "dev-debug",
-      "displayName": "CI Strict Debug (Clang-Tidy + Sanitizers)",
-      "description": "Full strict validation preset with clang-tidy active during compilation",
-      "cacheVariables": {
-        "WARNINGS_AS_ERRORS": "ON"
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_COVERAGE": "ON"
       }
     }
   ],
@@ -96,44 +81,39 @@
     {
       "name": "dev-debug",
       "configurePreset": "dev-debug",
-      "displayName": "Build Developer Debug"
+      "displayName": "Build Developer Debug (ASan + UBSan + clang-tidy)"
     },
     {
       "name": "dev-release",
       "configurePreset": "dev-release",
-      "displayName": "Build Developer Release"
+      "displayName": "Build Developer Release (Optimized, LTO)"
     },
     {
-      "name": "apple-clang-debug",
-      "configurePreset": "apple-clang-debug",
-      "displayName": "Build Apple Clang Debug"
+      "name": "asan",
+      "configurePreset": "asan",
+      "displayName": "Build AddressSanitizer (ASan)"
     },
     {
-      "name": "apple-clang-release",
-      "configurePreset": "apple-clang-release",
-      "displayName": "Build Apple Clang Release"
+      "name": "ubsan",
+      "configurePreset": "ubsan",
+      "displayName": "Build UndefinedBehaviorSanitizer (UBSan)"
     },
     {
-      "name": "llvm-debug",
-      "configurePreset": "llvm-debug",
-      "displayName": "Build LLVM Debug"
+      "name": "tsan",
+      "configurePreset": "tsan",
+      "displayName": "Build ThreadSanitizer (TSan)"
     },
     {
-      "name": "llvm-release",
-      "configurePreset": "llvm-release",
-      "displayName": "Build LLVM Release"
-    },
-    {
-      "name": "ci-debug",
-      "configurePreset": "ci-debug",
-      "displayName": "Build CI Strict Debug"
+      "name": "coverage",
+      "configurePreset": "coverage",
+      "displayName": "Build LLVM Source-Based Coverage"
     }
   ],
   "testPresets": [
     {
       "name": "dev-debug",
       "configurePreset": "dev-debug",
-      "displayName": "Run Tests (Developer Debug)",
+      "displayName": "Run Tests (Developer Debug (ASan + UBSan + clang-tidy))",
       "output": {
         "outputOnFailure": true
       },
@@ -145,7 +125,7 @@
     {
       "name": "dev-release",
       "configurePreset": "dev-release",
-      "displayName": "Run Tests (Developer Release)",
+      "displayName": "Run Tests (Developer Release (Optimized, LTO))",
       "output": {
         "outputOnFailure": true
       },
@@ -155,9 +135,9 @@
       }
     },
     {
-      "name": "apple-clang-debug",
-      "configurePreset": "apple-clang-debug",
-      "displayName": "Run Tests (Apple Clang Debug)",
+      "name": "asan",
+      "configurePreset": "asan",
+      "displayName": "Run Tests (AddressSanitizer (ASan))",
       "output": {
         "outputOnFailure": true
       },
@@ -167,9 +147,9 @@
       }
     },
     {
-      "name": "apple-clang-release",
-      "configurePreset": "apple-clang-release",
-      "displayName": "Run Tests (Apple Clang Release)",
+      "name": "ubsan",
+      "configurePreset": "ubsan",
+      "displayName": "Run Tests (UndefinedBehaviorSanitizer (UBSan))",
       "output": {
         "outputOnFailure": true
       },
@@ -179,11 +159,16 @@
       }
     },
     {
-      "name": "llvm-debug",
-      "configurePreset": "llvm-debug",
-      "displayName": "Run Tests (LLVM Debug)",
+      "name": "tsan",
+      "configurePreset": "tsan",
+      "displayName": "Run Tests (ThreadSanitizer (TSan))",
       "output": {
         "outputOnFailure": true
+      },
+      "filter": {
+        "exclude": {
+          "name": "^(NumberOfIslandsTest\\.MaxConstraintsGrid|LruCacheTest\\.StressTest)$"
+        }
       },
       "execution": {
         "noTestsAction": "error",
@@ -191,34 +176,25 @@
       }
     },
     {
-      "name": "llvm-release",
-      "configurePreset": "llvm-release",
-      "displayName": "Run Tests (LLVM Release)",
+      "name": "coverage",
+      "configurePreset": "coverage",
+      "displayName": "Run Tests (LLVM Source-Based Coverage)",
       "output": {
         "outputOnFailure": true
       },
       "execution": {
         "noTestsAction": "error",
         "stopOnFailure": false
-      }
-    },
-    {
-      "name": "ci-debug",
-      "configurePreset": "ci-debug",
-      "displayName": "Run Tests (CI Debug)",
-      "output": {
-        "outputOnFailure": true
       },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
+      "environment": {
+        "LLVM_PROFILE_FILE": "${sourceDir}/build/coverage/profraw/%p-%m.profraw"
       }
     }
   ],
   "workflowPresets": [
     {
       "name": "dev-debug",
-      "displayName": "Full Developer Debug Pipeline",
+      "displayName": "Developer Debug (ASan + UBSan + clang-tidy) Workflow (Configure, Build, Test)",
       "steps": [
         {
           "type": "configure",
@@ -236,7 +212,7 @@
     },
     {
       "name": "dev-release",
-      "displayName": "Full Developer Release Pipeline",
+      "displayName": "Developer Release (Optimized, LTO) Workflow (Configure, Build, Test)",
       "steps": [
         {
           "type": "configure",
@@ -253,56 +229,74 @@
       ]
     },
     {
-      "name": "apple-clang-debug",
-      "displayName": "Full Apple Clang Debug Pipeline",
+      "name": "asan",
+      "displayName": "AddressSanitizer (ASan) Workflow (Configure, Build, Test)",
       "steps": [
         {
           "type": "configure",
-          "name": "apple-clang-debug"
+          "name": "asan"
         },
         {
           "type": "build",
-          "name": "apple-clang-debug"
+          "name": "asan"
         },
         {
           "type": "test",
-          "name": "apple-clang-debug"
+          "name": "asan"
         }
       ]
     },
     {
-      "name": "llvm-debug",
-      "displayName": "Full LLVM Clang Debug Pipeline",
+      "name": "ubsan",
+      "displayName": "UndefinedBehaviorSanitizer (UBSan) Workflow (Configure, Build, Test)",
       "steps": [
         {
           "type": "configure",
-          "name": "llvm-debug"
+          "name": "ubsan"
         },
         {
           "type": "build",
-          "name": "llvm-debug"
+          "name": "ubsan"
         },
         {
           "type": "test",
-          "name": "llvm-debug"
+          "name": "ubsan"
         }
       ]
     },
     {
-      "name": "ci-debug",
-      "displayName": "Full CI Validation Pipeline",
+      "name": "tsan",
+      "displayName": "ThreadSanitizer (TSan) Workflow (Configure, Build, Test)",
       "steps": [
         {
           "type": "configure",
-          "name": "ci-debug"
+          "name": "tsan"
         },
         {
           "type": "build",
-          "name": "ci-debug"
+          "name": "tsan"
         },
         {
           "type": "test",
-          "name": "ci-debug"
+          "name": "tsan"
+        }
+      ]
+    },
+    {
+      "name": "coverage",
+      "displayName": "LLVM Source-Based Coverage Workflow (Configure, Build, Test)",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "coverage"
+        },
+        {
+          "type": "build",
+          "name": "coverage"
+        },
+        {
+          "type": "test",
+          "name": "coverage"
         }
       ]
     }
