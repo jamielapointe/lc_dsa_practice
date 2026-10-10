@@ -1,5 +1,17 @@
 # lc_dsa_practice
 
+[![CI][ci-badge]][ci]
+[![OpenSSF Scorecard][scorecard-badge]][scorecard]
+[![C++23][cpp-badge]][cpp]
+[![Python 3.14][python-badge]][python]
+[![Pixi][pixi-badge]][pixi]
+[![Ruff][ruff-badge]][ruff]
+[![mypy: strict][mypy-badge]][mypy]
+[![Code style: clang-format (Google)][clang-format-badge]][clang-format]
+[![Coverage gate: 85%][coverage-badge]][ci]
+[![Platforms][platform-badge]][ci]
+[![pre-commit][pre-commit-badge]][pre-commit]
+
 LeetCode data-structure and algorithm practice in **C++23** and **Python 3.14**, plus a small **systems / embedded-style
 C++** tree for low-level components. Everything (toolchain, dependencies, tasks, CI) is managed with
 [Pixi](https://pixi.sh) and conda-forge.
@@ -91,3 +103,24 @@ verifies the build. See [`.agents/plugins/leetcode/README.md`](.agents/plugins/l
 - **Repo**: gersemi, rumdl, gitleaks, actionlint, zizmor, Renovate config validation.
 
 Contributor workflow and supply-chain rules are in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+[ci]: https://github.com/jamielapointe/lc_dsa_practice/actions/workflows/ci.yml
+[ci-badge]: https://github.com/jamielapointe/lc_dsa_practice/actions/workflows/ci.yml/badge.svg?branch=main
+[scorecard]: https://scorecard.dev/viewer/?uri=github.com/jamielapointe/lc_dsa_practice
+[scorecard-badge]: https://api.securityscorecards.dev/projects/github.com/jamielapointe/lc_dsa_practice/badge
+[cpp]: https://en.cppreference.com/w/cpp/23
+[cpp-badge]: https://img.shields.io/badge/C%2B%2B-23-00599C?logo=c%2B%2B&logoColor=white
+[python]: https://docs.python.org/3.14/
+[python-badge]: https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white
+[pixi]: https://pixi.sh
+[pixi-badge]: https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/prefix-dev/pixi/main/assets/badge/v0.json
+[ruff]: https://github.com/astral-sh/ruff
+[ruff-badge]: https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json
+[mypy]: https://mypy-lang.org
+[mypy-badge]: https://img.shields.io/badge/mypy-strict-2A6DB2?logo=python&logoColor=white
+[clang-format]: https://clang.llvm.org/docs/ClangFormat.html
+[clang-format-badge]: https://img.shields.io/badge/clang--format-Google-262D3A?logo=llvm&logoColor=white
+[coverage-badge]: https://img.shields.io/badge/coverage%20gate-%E2%89%A585%25-brightgreen
+[platform-badge]: https://img.shields.io/badge/platforms-linux--64%20%7C%20linux--aarch64%20%7C%20osx--arm64-lightgrey
+[pre-commit]: https://github.com/pre-commit/pre-commit
+[pre-commit-badge]: https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit
