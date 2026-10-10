@@ -61,3 +61,11 @@ endif()
 # Fixed-capacity, thread-safe MPMC FIFO. The class is a header-only template; the .cpp provides an
 # explicit instantiation so the template is always compiled and linted by the build.
 systems_add_library(bounded_fifo SOURCES bounded_fifo.cpp LIBS Threads::Threads)
+
+# Single-publisher / multi-subscriber channel over a shared-memory ring buffer, safe across threads
+# and processes (spec: docs/systems/shm_pubsub.md). OS calls live only in shm_pubsub_posix.cpp.
+systems_add_library(
+    shm_pubsub
+    SOURCES shm_pubsub.cpp shm_pubsub_posix.cpp
+    LIBS systems::platform Threads::Threads
+)

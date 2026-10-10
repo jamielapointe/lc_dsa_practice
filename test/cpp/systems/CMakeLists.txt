@@ -38,3 +38,10 @@ add_project_test(
 )
 
 add_project_test(bounded_fifo_test SOURCES bounded_fifo_test.cpp LIBS systems::bounded_fifo)
+
+add_project_test(
+    shm_pubsub_test
+    SOURCES shm_pubsub_test.cpp
+    LIBS systems::shm_pubsub systems::test_support
+    LABELS "systems;multiprocess;fault"
+)
