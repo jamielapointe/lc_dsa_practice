@@ -8,12 +8,24 @@
 /// reserved parameter names (`__sz`, `__p`), which
 /// `readability-inconsistent-declaration-parameter-name` reports against the
 /// library header and cannot be suppressed from here.
+///
+/// ASan and TSan own the global allocator (on Linux their static runtime
+/// already defines these operators, so a replacement in an archive is never
+/// linked). In those builds this file is empty and `allocation_counter.cpp`
+/// counts through the sanitizer allocator hooks instead.
 
 #include <cstddef>
 #include <new>
 
 #include "systems_test/allocation_counter.hpp"
 
+#if defined(__has_feature)
+#if __has_feature(address_sanitizer) || __has_feature(thread_sanitizer)
+#define SYSTEMS_TEST_SANITIZER_ALLOCATOR 1
+#endif
+#endif
+
+#if !defined(SYSTEMS_TEST_SANITIZER_ALLOCATOR)
 // NOLINTBEGIN(misc-new-delete-overloads,cert-dcl54-cpp,*-owning-memory)
 // Replacement global allocation functions ([new.delete]); all forward to
 // malloc/free so ASan still tracks every block.
@@ -88,3 +100,4 @@ void operator delete[](void* ptr, std::align_val_t /*align*/,
   systems_test::detail::release(ptr);
 }
 // NOLINTEND(misc-new-delete-overloads,cert-dcl54-cpp,*-owning-memory)
+#endif  // !SYSTEMS_TEST_SANITIZER_ALLOCATOR

@@ -25,7 +25,8 @@
 /// Limitations: C `malloc`/`calloc`/`realloc` calls are not counted (ban them
 /// in systems code instead), and gtest itself may allocate when an assertion
 /// fails inside the scope, so read the count before asserting on anything
-/// else.
+/// else. Under ASan/TSan the sanitizer owns the allocator, so counting uses
+/// its malloc hook and C `malloc` calls are counted as well.
 
 #include <cstddef>
 #include <new>

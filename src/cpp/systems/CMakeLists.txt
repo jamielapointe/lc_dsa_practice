@@ -49,6 +49,15 @@ target_include_directories(
 )
 target_compile_features(systems_platform INTERFACE cxx_std_23)
 
+# POSIX shared memory (shm_open/shm_unlink) lives in librt on older glibc, including the conda-forge
+# Linux sysroot; macOS and QNX provide it in libc. Link rt only where it exists and exports the
+# symbol so consumers of systems::platform never need a per-OS branch.
+include(CheckLibraryExists)
+check_library_exists(rt shm_open "" SYSTEMS_HAVE_LIBRT_SHM_OPEN)
+if(SYSTEMS_HAVE_LIBRT_SHM_OPEN)
+    target_link_libraries(systems_platform INTERFACE rt)
+endif()
+
 # Fixed-capacity, thread-safe MPMC FIFO. The class is a header-only template; the .cpp provides an
 # explicit instantiation so the template is always compiled and linted by the build.
 systems_add_library(bounded_fifo SOURCES bounded_fifo.cpp LIBS Threads::Threads)

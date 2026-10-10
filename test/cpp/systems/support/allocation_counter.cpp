@@ -2,7 +2,8 @@
 /// @brief `AllocationScope` plus replacement global `operator new/delete`.
 ///
 /// The replacement global operators live in `global_new_delete.cpp` and call
-/// the `detail` hooks defined here.
+/// the `detail` hooks defined here. Under ASan/TSan the sanitizer owns the
+/// allocator, so allocations are counted through its malloc hook instead.
 
 #include "systems_test/allocation_counter.hpp"
 
@@ -11,11 +12,39 @@
 #include <cstdlib>
 #include <new>
 
+#if defined(__has_feature)
+#if __has_feature(address_sanitizer) || __has_feature(thread_sanitizer)
+#include <sanitizer/allocator_interface.h>
+#endif
+#endif
+
 namespace systems_test {
 namespace {
 
 std::atomic<bool> g_armed{false};           // NOLINT(*-avoid-non-const-global*)
 std::atomic<std::size_t> g_allocations{0};  // NOLINT(*-avoid-non-const-global*)
+
+#if defined(__has_feature)
+#if __has_feature(address_sanitizer) || __has_feature(thread_sanitizer)
+// ASan/TSan own the allocator, so global_new_delete.cpp compiles to nothing.
+// Their allocator runs these hooks for every operator new and malloc call.
+void count_sanitizer_malloc(const volatile void* /*ptr*/,
+                            std::size_t /*bytes*/) {
+  detail::note_allocation();
+}
+void ignore_sanitizer_free(const volatile void* /*ptr*/) {}
+
+void install_counting_hooks() noexcept {
+  static const int kInstalled = __sanitizer_install_malloc_and_free_hooks(
+      &count_sanitizer_malloc, &ignore_sanitizer_free);
+  static_cast<void>(kInstalled);
+}
+#else
+void install_counting_hooks() noexcept {}
+#endif
+#else
+void install_counting_hooks() noexcept {}
+#endif
 
 }  // namespace
 
@@ -57,6 +86,7 @@ void release(void* ptr) noexcept {
 }  // namespace detail
 
 AllocationScope::AllocationScope() noexcept {
+  install_counting_hooks();
   bool expected = false;
   owner_ = g_armed.compare_exchange_strong(expected, true,
                                            std::memory_order_acq_rel);
