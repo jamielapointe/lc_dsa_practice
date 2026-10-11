@@ -1,0 +1,13 @@
+{
+  "name": "systems",
+  "displayName": "Systems C++ Practice (Safety-Oriented, Embedded-Style)",
+  "version": "0.1.0",
+  "description": "Scaffolds low-level / embedded-style C++23 practice components from a free-form problem statement: an ASPICE-style requirements spec, a documented header and stub implementation, and a GoogleTest suite (threads, processes, fault injection) that starts in the TDD red state. Constraints follow automotive / robotics practice (ISO 26262, MISRA C++:2023, AUTOSAR C++14 guidance), targeting POSIX (Linux, embedded Linux, QNX).",
+  "suggestedPrompts": [
+    "Set up a systems problem: a pub/sub interface over a shared-memory ring buffer, safe across processes and threads",
+    "Set up a systems problem: a lock-free single-producer/single-consumer queue for an ISR-to-task handoff",
+    "Set up a systems problem: a fixed-block memory pool allocated once at init, O(1) allocate/free, thread-safe",
+    "Set up a systems problem: a watchdog supervisor that detects missed heartbeats from worker processes"
+  ],
+  "logo": "assets/logo.svg"
+}

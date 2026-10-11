@@ -25,7 +25,9 @@ C++** tree for low-level components. Everything (toolchain, dependencies, tasks,
 | Systems C++ | `src/cpp/systems`, `src/include/systems` | `test/cpp/systems` | `systems` (`systems::<name>` CMake aliases) |
 
 The systems track holds low-level building blocks written in an embedded-friendly style (fixed capacity, no heap, no STL
-containers, explicit concurrency). It currently contains `systems::BoundedFifo`, a thread-safe bounded MPMC FIFO.
+containers, explicit concurrency). It currently contains `systems::BoundedFifo`, a thread-safe bounded MPMC FIFO, plus shared
+infrastructure for new problems: `systems/platform.hpp` (OS capability flags) and a GoogleTest support library for multi-thread,
+multi-process, and fault-injection tests.
 
 ## Quickstart
 
@@ -84,8 +86,10 @@ pixi run pre-commit           # all hooks over the whole tree
 ├── test/
 │   ├── cpp/{leet_code,systems}/       # GoogleTest suites
 │   └── python/{leet_code,scripts}/    # pytest suites
-├── scripts/ci/                    # coverage gate and pyproject sorter
+├── docs/systems/                  # requirements specs for systems problems
+├── scripts/ci/                    # coverage gate, pyproject sorter, systems traceability check
 ├── .agents/plugins/leetcode/      # LeetCode MCP server + `leetcode-setup` skill
+├── .agents/plugins/systems/       # `systems-setup` skill (prompt-driven, no lookup)
 └── .github/workflows/             # ci, pixi-update, scorecard
 ```
 
@@ -95,6 +99,15 @@ Use the `leetcode` agent plugin and **always name the language**, for example "S
 LeetCode #2 in C++". It fetches the problem, generates documented stubs and a 4-tier test suite that starts red, and
 verifies the build. See [`.agents/plugins/leetcode/README.md`](.agents/plugins/leetcode/README.md) and
 [`PROJECT.md`](PROJECT.md) for the file contracts.
+
+## Adding a systems problem
+
+Use the `systems` agent plugin and describe the problem in prose, for example "Set up a systems problem: a pub/sub interface
+over a shared-memory ring buffer, safe across processes and threads". There is no lookup: the agent asks about choices that
+change the API, then writes a requirements spec (`docs/systems/<name>.md`, traceable IDs), a documented header with an
+implementation outline, stubs, and a red GoogleTest suite (threads, processes, SIGKILL fault injection). Constraints follow
+automotive / robotics practice: no heap after initialization, no exceptions or RTTI, POSIX portability (Linux, QNX). See
+[`.agents/plugins/systems/README.md`](.agents/plugins/systems/README.md).
 
 ## Quality gates
 

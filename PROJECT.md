@@ -2,9 +2,10 @@
 
 ## Architecture
 
-The project delivers an Antigravity Plugin in `.agents/plugins/leetcode` that automates the setup of LeetCode DSA practice problems in modern C++23
-(CMake + GoogleTest) or Python 3.14 (pytest); the user must name the language. The repository also hosts a `systems` C++ tree for low-level,
-embedded-style components. The whole workspace (toolchain, dependencies, tasks, CI) is a single Pixi workspace defined in `pyproject.toml`.
+The project delivers an Antigravity Plugin in `.agents/plugins/leetcode` that automates the setup of LeetCode DSA practice problems in modern C++23 (CMake +
+GoogleTest) or Python 3.14 (pytest); the user must name the language. The repository also hosts a `systems` C++ tree for low-level, embedded-style components,
+with a second plugin in `.agents/plugins/systems` (skill only, no MCP server) that scaffolds safety-oriented systems problems from a free-form prompt. The whole
+workspace (toolchain, dependencies, tasks, CI) is a single Pixi workspace defined in `pyproject.toml`.
 
 ```text
                       +------------------------------------------+
@@ -56,6 +57,7 @@ embedded-style components. The whole workspace (toolchain, dependencies, tasks, 
 | 17 | Opaque-Box E2E Test Suite | 4-Tier requirement-driven E2E test suite published with `TEST_READY.md` | E2E | Dual Track |
 | 18 | Python LeetCode Track | `src/python/leet_code` with idiomatic API + `Solution` wrapper, 4-tier pytest suites (reference: `two_sum`, `lru_cache`) | M5 | Refactor |
 | 19 | Systems C++ Track | `src/cpp/systems` + `src/include/systems`: header-only `BoundedFifo` (no heap, no STL containers) with GoogleTest and TSan | M5 | Refactor |
+| 21 | Systems Setup Plugin | `.agents/plugins/systems`: prompt-driven `systems-setup` skill (spec, outline header, stubs, 6-tier red tests), `systems/platform.hpp`, `systems::test_support` (fork harness, shared regions, shm names, allocation counter), traceability checker | M6 | #28 |
 | 20 | Pixi Infrastructure & CI | Pixi tasks, CMake presets (debug/release/ASan/UBSan/TSan/coverage), pre-commit, GitHub Actions, Renovate, Scorecard, coverage gates | M5 | Refactor |
 
 ## Milestones
@@ -67,6 +69,7 @@ embedded-style components. The whole workspace (toolchain, dependencies, tasks, 
 | M2 | Python LeetCode MCP Server & Plugin | Create `.agents/plugins/leetcode/` with manifest, packaging, GraphQL client, MCP server, and tests | None | DONE |
 | M3 | LeetCode Setup Skill | Create `.agents/plugins/leetcode/skills/leetcode-setup/SKILL.md` adhering to `cpp-pro` and `cmake-pro` | M1, M2 | DONE |
 | M4 | Final Milestone: LeetCode #2 & E2E Pass | Scaffold LeetCode #2, update CMake, build, verify GTest clean failure; pass 100% E2E tests + Tier 5 | E2E, M3 | DONE |
+| M6 | Systems Setup Plugin | Systems plugin + skill, platform header, test-support library, traceability check | M5 | IN PROGRESS |
 | M5 | Multi-Language & Pixi Refactor | `src/`+`test/` split by language, Python and systems tracks, Pixi workspace, CI, plugin supports C++ and Python | M4 | DONE |
 
 ## Interface Contracts
@@ -146,6 +149,18 @@ embedded-style components. The whole workspace (toolchain, dependencies, tasks, 
   add_project_test(<slug_snake>_test SOURCES <slug_snake>_test.cpp LIBS leet_code::<slug_snake>)
   ```
 
+### 6. Systems Problem Files Contract (`systems-setup`)
+
+- Spec: `docs/systems/<name>.md` with headings `### <PREFIX>-REQ-NNN: Title` and a `- **Verification:** Test|Analysis|Review` line per requirement
+- Header: `src/include/systems/<name>.hpp` (`#pragma once`, `namespace systems`, Doxygen file block with implementation outline, `enum class <Name>Error`
+  including `kNotImplemented`, `noexcept` + `[[nodiscard]]` API returning `std::expected`, factories for fallible init)
+- Stubs: `src/cpp/systems/<name>.cpp` (portable logic) and optional `<name>_posix.cpp` (the only TU allowed to include POSIX headers); stubs never block,
+  allocate, or crash and return `kNotImplemented`
+- Tests: `test/cpp/systems/<name>_test.cpp`, tiers functional / boundary / resource / multi-thread / multi-process / fault injection, each test starting with
+  `RecordProperty("requirements", "<IDs>")`, linking `systems::test_support`
+- CMake: `systems_add_library(<name> SOURCES ... LIBS systems::platform ...)` and `add_project_test(<name>_test ... LABELS "systems[;multiprocess][;fault]")`
+- Check: `pixi run check-traceability`
+
 ### 5. Python Problem Files Contract
 
 - Module: `src/python/leet_code/<slug_snake>.py` (module docstring, typed idiomatic function or class, plus `class Solution` wrapper with
@@ -158,7 +173,8 @@ embedded-style components. The whole workspace (toolchain, dependencies, tasks, 
 - C++ LeetCode: `src/include/leet_code/`, `src/cpp/leet_code/`, `test/cpp/leet_code/`
 - Systems C++: `src/include/systems/`, `src/cpp/systems/`, `test/cpp/systems/`
 - Python LeetCode: `src/python/leet_code/`, `test/python/leet_code/`
-- Repo scripts: `scripts/ci/` (C++ coverage gate, pyproject sorter), tested in `test/python/scripts/`
+- Systems specs: `docs/systems/`; systems test support: `test/cpp/systems/support/`
+- Repo scripts: `scripts/ci/` (C++ coverage gate, pyproject sorter, systems traceability check), tested in `test/python/scripts/`
 - Plugin & MCP Server:
   - `.agents/plugins/leetcode/plugin.json`
   - `.agents/plugins/leetcode/mcp_config.json`
@@ -166,6 +182,7 @@ embedded-style components. The whole workspace (toolchain, dependencies, tasks, 
   - `.agents/plugins/leetcode/src/leetcode_mcp/`
   - `.agents/plugins/leetcode/tests/`
   - `.agents/plugins/leetcode/skills/leetcode-setup/SKILL.md` (plus `references/cpp.md`, `references/python.md`)
+- Systems plugin: `.agents/plugins/systems/` (`plugin.json`, `README.md`, `skills/systems-setup/SKILL.md` plus `references/{spec,safety,cpp,testing}.md`)
 - Infrastructure: `pyproject.toml` (Pixi), `CMakePresets.json`, `cmake/`, `.pre-commit-config.yaml`, `.github/workflows/`, `renovate.jsonc`
 - Multi-Agent Metadata:
   - `.agents/teamwork/`
