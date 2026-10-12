@@ -68,6 +68,17 @@ inline constexpr bool kHasProcessSharedCondvar = kIsLinux || kIsQnx || kIsMacos;
 /// `pthread_mutex_consistent`. Absent on macOS.
 inline constexpr bool kHasRobustMutex = kIsLinux || kIsQnx;
 
+/// @brief `mmap(..., MAP_POPULATE, ...)` pre-faults a mapping's page-table
+/// entries during the call (Linux only). Elsewhere, pages are faulted in by
+/// an explicit touch loop.
+inline constexpr bool kHasMapPopulate = kIsLinux;
+
+/// @brief `shm_ctl(fd, SHMCTL_ANON | SHMCTL_PHYS, ...)` allocates physically
+/// contiguous, non-pageable shared memory at once (QNX only). Reserved for a
+/// QNX port of the shared-memory components; Linux instead pre-faults and
+/// `mlock`s.
+inline constexpr bool kHasPhysicalShmCtl = kIsQnx;
+
 /// @brief Longest portable POSIX shared-memory object name, including the
 /// leading `/`. macOS allows 31 characters; 30 leaves headroom and is accepted
 /// by Linux (`NAME_MAX`) and QNX.
