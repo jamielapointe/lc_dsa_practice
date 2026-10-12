@@ -153,12 +153,49 @@ TEST(ChildProcessTest, MoveTransfersOwnership) {
   EXPECT_EQ(result.code, 3) << result;
 }
 
+TEST(ChildProcessTest, SendSignalStopsAndResumesWithoutReaping) {
+  systems_test::SharedRegion<std::atomic<std::uint64_t>> beats;
+  ASSERT_TRUE(beats.valid());
+  auto child = ChildProcess::spawn([&beats] {
+    const auto deadline =
+        std::chrono::steady_clock::now() + std::chrono::seconds{30};
+    while (std::chrono::steady_clock::now() < deadline) {
+      beats->fetch_add(1, std::memory_order_relaxed);
+      std::this_thread::sleep_for(std::chrono::milliseconds{1});
+    }
+    return 0;
+  });
+  const auto is_beating = [&beats] {
+    const std::uint64_t start = beats->load(std::memory_order_relaxed);
+    return systems_test::wait_until(
+        [&beats, start] {
+          return beats->load(std::memory_order_relaxed) > start;
+        },
+        kWait);
+  };
+  ASSERT_TRUE(is_beating());
+
+  ASSERT_TRUE(child.send_signal(SIGSTOP));
+  // Delivery is asynchronous: give the stop a moment to land, then check
+  // that a frozen child makes no progress.
+  std::this_thread::sleep_for(std::chrono::milliseconds{50});
+  const std::uint64_t frozen = beats->load(std::memory_order_relaxed);
+  std::this_thread::sleep_for(std::chrono::milliseconds{50});
+  EXPECT_EQ(beats->load(std::memory_order_relaxed), frozen);
+  EXPECT_TRUE(child.valid());  // stopped, not reaped
+
+  ASSERT_TRUE(child.send_signal(SIGCONT));
+  EXPECT_TRUE(is_beating());
+  EXPECT_TRUE(child.kill().killed_by(SIGKILL));
+}
+
 TEST(ChildProcessTest, InvalidHandleReportsNotStarted) {
   ChildProcess child;
   EXPECT_FALSE(child.valid());
   EXPECT_EQ(child.wait_for(std::chrono::milliseconds{1}).status,
             ChildStatus::kNotStarted);
   EXPECT_EQ(child.kill().status, ChildStatus::kNotStarted);
+  EXPECT_FALSE(child.send_signal(SIGCONT));
 }
 
 TEST(ChildProcessTest, ResultsPrintReadably) {

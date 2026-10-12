@@ -1,6 +1,5 @@
 #include "leet_code/robot.hpp"
 
-#include <cstddef>
 #include <utility>
 
 namespace leet_code {
