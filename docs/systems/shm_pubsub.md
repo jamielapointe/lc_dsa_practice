@@ -37,7 +37,7 @@ heap, take no locks on the writer path, and survive the publisher being killed a
 | A-10 | Each subscriber picks a read mode at attach: `kInOrder` (default; continuity) or `kLatest` (freshness) | One fixed policy for all consumers |
 | A-11 | `create()` / `open()` are boot-phase calls: they fault every page in and `mlock` it; a lock failure is fatal (`kMemoryLockFailed`) | Best-effort locking (rejected: an unwired real-time buffer is a latent timing fault) |
 | A-12 | `mlock` is retried only on `EAGAIN`, three times (1, 2, 4 ms back-off); `EPERM` / `ENOMEM` fail at once | No retry; unbounded retry |
-| A-13 | Every process that shares a channel runs in the **same PID namespace**; publisher liveness is judged from the pid stored in the header | Store a namespace-independent identity, e.g. the pid plus the process start time or a `pidfd` (out of scope); a holder in another namespace usually looks dead (`ESRCH`) and is taken over while still alive (see section 15.4) |
+| A-13 | Every process that shares a channel runs in the **same PID namespace**; publisher liveness is judged from the pid stored in the header | Store a namespace-independent identity, e.g. the pid plus the process start time or a `pidfd` (out of scope); a holder's pid from another namespace means nothing here, so a live holder can be taken over wrongfully or a dead one never detected (see section 15.4) |
 
 ## 4. Glossary
 
@@ -292,7 +292,8 @@ Everything placed in shared memory shall be trivially copyable data or `std::ato
 | Publisher dies mid-write | Slot left half-written; role never released | Slot stays odd ("being written") forever, so readers never accept it; liveness check (`getpgid(pid)` + zombie check) on publisher takeover; the new publisher resumes after the highest sequence found in the header or any slot | SHMPS-REQ-020, SHMPS-REQ-007 |
 | Second publisher starts | Concurrent writers corrupt slots | Publisher role claimed with a CAS on the pid in the header | SHMPS-REQ-007 |
 | Dead holder's pid recycled for an unrelated live process (same PID namespace) | Takeover delayed until that process exits; no corruption | None in the implementation: the probe cannot tell the processes apart; accepted limit (section 15.4) | SHMPS-REQ-020 |
-| Live holder in another PID namespace | Its pid usually does not exist in ours, so the probe returns `ESRCH`; the role is taken over wrongfully and two live publishers corrupt the ring | None in the implementation: excluded by assumption A-13 (all processes on a channel share one PID namespace); deployment must enforce it | SHMPS-REQ-007 |
+| Live holder in another PID namespace, its pid unused in ours (e.g. a host publisher seen from a container) | The probe returns `ESRCH`; the role is taken over wrongfully and two live publishers corrupt the ring | None in the implementation: excluded by assumption A-13 (all processes on a channel share one PID namespace); deployment must enforce it | SHMPS-REQ-007 |
+| Dead holder in another PID namespace, its pid used by an unrelated process in ours (e.g. a container's pid 1 seen from the host) | The holder is never detected as dead; takeover stays blocked while that process lives (forever for pid 1) | None in the implementation: excluded by assumption A-13; deployment must enforce it | SHMPS-REQ-020 |
 | Stale or foreign segment | Garbage interpreted as samples | Magic, version, configuration check on open | SHMPS-REQ-005 |
 | Shutdown while blocked | Threads hang forever | `closed` flag in shared header; pollers re-check it at least every 1 ms | SHMPS-REQ-014 |
 | First touch of a page inside `publish` | Microsecond stall of the real-time thread | Pre-fault + `mlock` in `create` / `open` | SHMPS-REQ-023 |
@@ -375,9 +376,11 @@ The liveness check trusts the pid alone, which has two limits that behave differ
 
 - **Recycled pid (same PID namespace):** if the kernel reuses a dead holder's pid for an unrelated live process, the probe reports the holder alive and the
   takeover is only *delayed* until that process exits. The ring is not harmed.
-- **Holder in another PID namespace:** the stored pid belongs to the holder's namespace, not ours. It usually does not exist here, so `getpgid` fails with
-  `ESRCH` and a *live* publisher is taken over wrongfully; two publishers then write the same ring and corrupt it. Assumption A-13 (every process sharing a
-  channel runs in the same PID namespace) excludes this case; containers that share a channel must also share a PID namespace.
+- **Holder in another PID namespace:** the stored pid belongs to the holder's namespace, not ours, so the probe answers for whatever process has that number
+  here. If none has it (typical for a host publisher seen from a container), `getpgid` fails with `ESRCH` and a *live* publisher is taken over wrongfully;
+  two publishers then write the same ring and corrupt it. If an unrelated process has it (a container's small pids, above all pid 1, which on the host is
+  `init`), a *dead* publisher is never detected and takeover stays blocked while that process lives. Assumption A-13 (every process sharing a channel runs in
+  the same PID namespace) excludes both outcomes; containers that share a channel must also share a PID namespace.
 
 ## 16. QNX differences (not built or tested)
 

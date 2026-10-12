@@ -138,9 +138,12 @@
 ///     same PID namespace (A-13). Within one namespace, a dead holder's pid
 ///     that the kernel recycled for an unrelated live process only delays a
 ///     takeover until that process exits. A holder in another PID namespace
-///     breaks the assumption: its pid usually does not exist in ours, so the
-///     probe returns `ESRCH` and a live publisher is taken over wrongfully.
-///     Two live publishers then write the same ring and corrupt it.
+///     breaks the assumption, because its pid means nothing in ours. If no
+///     process here has that number, the probe returns `ESRCH` and a live
+///     publisher is taken over wrongfully: two live publishers then write
+///     the same ring and corrupt it. If an unrelated process here has it (a
+///     container's pid 1 is the host's init), a dead holder is never
+///     detected and takeover stays blocked while that process lives.
 
 #include <chrono>
 #include <cstddef>
