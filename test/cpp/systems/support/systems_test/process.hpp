@@ -135,6 +135,15 @@ class ChildProcess {
   /// signal is SIGKILLed after one second.
   auto kill(int signal = SIGKILL) -> ChildResult;
 
+  /// @brief Sends `signal` to the child without waiting for or reaping it.
+  ///
+  /// For signals that do not end the process, such as `SIGSTOP` / `SIGCONT`
+  /// to freeze a child (as if preempted forever) and resume it later. Use
+  /// `kill()` to end a child. The handle stays `valid()`.
+  /// @return True if the signal was sent; false for an invalid handle or
+  /// when `kill(2)` fails.
+  [[nodiscard]] auto send_signal(int signal) const noexcept -> bool;
+
  private:
   static constexpr ::pid_t kNoPid = -1;
 

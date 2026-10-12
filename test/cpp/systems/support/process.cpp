@@ -4,50 +4,27 @@
 #include "systems_test/process.hpp"
 
 #include <sys/types.h>
-#include <sys/wait.h>
 
-#include <cerrno>
 #include <chrono>
-#include <csignal>
 #include <ostream>
 #include <thread>
 #include <utility>
+
+#include "systems_test/reap.hpp"
 
 namespace systems_test {
 namespace {
 
 /// Converts a `waitpid` status word into a `ChildResult`.
 auto decode_status(int status) noexcept -> ChildResult {
-  if (WIFEXITED(status)) {
-    return {.status = ChildStatus::kExited, .code = WEXITSTATUS(status)};
-  }
-  if (WIFSIGNALED(status)) {
-    return {.status = ChildStatus::kSignaled, .code = WTERMSIG(status)};
-  }
-  return {.status = ChildStatus::kExited, .code = status};
+  const detail::WaitStatus decoded = detail::decode_wait_status(status);
+  return {.status =
+              decoded.signaled ? ChildStatus::kSignaled : ChildStatus::kExited,
+          .code = decoded.code};
 }
 
-/// Non-blocking reap. Returns true and fills `status` once the child ended.
-auto try_reap(::pid_t pid, int& status) noexcept -> bool {
-  while (true) {
-    const ::pid_t result = ::waitpid(pid, &status, WNOHANG);
-    if (result == pid) {
-      return true;
-    }
-    if (result == -1 && errno == EINTR) {
-      continue;
-    }
-    return false;
-  }
-}
-
-/// Blocking reap that retries on EINTR.
-auto reap(::pid_t pid) noexcept -> int {
-  int status = 0;
-  while (::waitpid(pid, &status, 0) == -1 && errno == EINTR) {
-  }
-  return status;
-}
+using detail::reap;
+using detail::try_reap;
 
 }  // namespace
 
@@ -118,6 +95,10 @@ auto ChildProcess::kill(int signal) -> ChildResult {
     return {.status = ChildStatus::kSignaled, .code = SIGKILL};
   }
   return result;
+}
+
+auto ChildProcess::send_signal(int signal) const noexcept -> bool {
+  return valid() && ::kill(pid_, signal) == 0;
 }
 
 }  // namespace systems_test

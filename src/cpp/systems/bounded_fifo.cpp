@@ -6,7 +6,6 @@
 
 #include "systems/bounded_fifo.hpp"
 
-#include <cstddef>
 #include <cstdint>
 
 namespace systems {

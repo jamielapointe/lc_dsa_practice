@@ -12,6 +12,7 @@ add_library(
     support/allocation_counter.cpp
     support/global_new_delete.cpp
     support/process.cpp
+    support/reap.cpp
     support/shared_region.cpp
     support/shm_name.cpp
 )

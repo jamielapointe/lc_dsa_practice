@@ -1,7 +1,6 @@
 #include "leet_code/robot_room_cleaner.hpp"
 
 #include <array>
-#include <cstddef>
 #include <optional>
 #include <stack>
 #include <unordered_set>

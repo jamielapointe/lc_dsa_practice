@@ -48,7 +48,7 @@ Stubs return `kNotImplemented`. Tests must turn that into clean assertion failur
 
 | Header | API | Use |
 | --- | --- | --- |
-| `process.hpp` | `ChildProcess::spawn(body)`, `wait_for(timeout)`, `kill(sig)`, `ChildResult{status, code}`, `succeeded()`, `killed_by(sig)`, `kChildOk`, `wait_until(pred, timeout)` | Multi-process and fault-injection tiers. The child returns an exit code (0 = pass, distinct small integers per failed check). RAII kills + reaps on scope exit. |
+| `process.hpp` | `ChildProcess::spawn(body)`, `wait_for(timeout)`, `kill(sig)`, `send_signal(sig)` (no reap; `SIGSTOP` / `SIGCONT`), `ChildResult{status, code}`, `succeeded()`, `killed_by(sig)`, `kChildOk`, `wait_until(pred, timeout)` | Multi-process and fault-injection tiers. The child returns an exit code (0 = pass, distinct small integers per failed check). RAII kills + reaps on scope exit. |
 | `shared_region.hpp` | `SharedRegion<T>` (anonymous `MAP_SHARED`, inherited by children) | Rendezvous flags, counters, and result tallies between parent and children. `T` must be trivially destructible; atomics must be always lock-free. |
 | `shm_name.hpp` | `unique_shm_name(prefix)`, `ScopedShmUnlink`, `shm_exists(name)` | Parallel-safe, portable (<= 30 chars) names; cleanup even when assertions fail; verifying unlink / leak requirements. |
 | `allocation_counter.hpp` | `AllocationScope`, `allocations()` | "No heap after init" requirements; counts `operator new` from all threads while alive. |
