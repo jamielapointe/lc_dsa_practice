@@ -37,6 +37,7 @@ heap, take no locks on the writer path, and survive the publisher being killed a
 | A-10 | Each subscriber picks a read mode at attach: `kInOrder` (default; continuity) or `kLatest` (freshness) | One fixed policy for all consumers |
 | A-11 | `create()` / `open()` are boot-phase calls: they fault every page in and `mlock` it; a lock failure is fatal (`kMemoryLockFailed`) | Best-effort locking (rejected: an unwired real-time buffer is a latent timing fault) |
 | A-12 | `mlock` is retried only on `EAGAIN`, three times (1, 2, 4 ms back-off); `EPERM` / `ENOMEM` fail at once | No retry; unbounded retry |
+| A-13 | Every process that shares a channel runs in the **same PID namespace**; publisher liveness is judged from the pid stored in the header | Store a namespace-independent identity, e.g. the pid plus the process start time or a `pidfd` (out of scope); a holder in another namespace usually looks dead (`ESRCH`) and is taken over while still alive (see section 15.4) |
 
 ## 4. Glossary
 
@@ -290,6 +291,8 @@ Everything placed in shared memory shall be trivially copyable data or `std::ato
 | Subscriber far behind | Reads overwritten data as if contiguous | Sequence gap detection, jump to newest, `missed` count | SHMPS-REQ-011 |
 | Publisher dies mid-write | Slot left half-written; role never released | Slot stays odd ("being written") forever, so readers never accept it; liveness check (`getpgid(pid)` + zombie check) on publisher takeover; the new publisher resumes after the highest sequence found in the header or any slot | SHMPS-REQ-020, SHMPS-REQ-007 |
 | Second publisher starts | Concurrent writers corrupt slots | Publisher role claimed with a CAS on the pid in the header | SHMPS-REQ-007 |
+| Dead holder's pid recycled for an unrelated live process (same PID namespace) | Takeover delayed until that process exits; no corruption | None in the implementation: the probe cannot tell the processes apart; accepted limit (section 15.4) | SHMPS-REQ-020 |
+| Live holder in another PID namespace | Its pid usually does not exist in ours, so the probe returns `ESRCH`; the role is taken over wrongfully and two live publishers corrupt the ring | None in the implementation: excluded by assumption A-13 (all processes on a channel share one PID namespace); deployment must enforce it | SHMPS-REQ-007 |
 | Stale or foreign segment | Garbage interpreted as samples | Magic, version, configuration check on open | SHMPS-REQ-005 |
 | Shutdown while blocked | Threads hang forever | `closed` flag in shared header; pollers re-check it at least every 1 ms | SHMPS-REQ-014 |
 | First touch of a page inside `publish` | Microsecond stall of the real-time thread | Pre-fault + `mlock` in `create` / `open` | SHMPS-REQ-023 |
@@ -367,6 +370,14 @@ AArch64 needs the barriers shown, which is why every ordering is stated in the C
 `attach` claims the role with a CAS on `publisher_pid`. If the holder is dead (`getpgid(pid)` fails with `ESRCH`, or `/proc/<pid>/stat` shows a zombie),
 a second CAS takes the role over. The new publisher resumes at `max(published, max over slots of seq / 2) + 1`, which is greater than any sequence the dead
 publisher committed or started (SHMPS-REQ-020). Release is fork-safe: a handle releases the role only in the process that claimed it.
+
+The liveness check trusts the pid alone, which has two limits that behave differently:
+
+- **Recycled pid (same PID namespace):** if the kernel reuses a dead holder's pid for an unrelated live process, the probe reports the holder alive and the
+  takeover is only *delayed* until that process exits. The ring is not harmed.
+- **Holder in another PID namespace:** the stored pid belongs to the holder's namespace, not ours. It usually does not exist here, so `getpgid` fails with
+  `ESRCH` and a *live* publisher is taken over wrongfully; two publishers then write the same ring and corrupt it. Assumption A-13 (every process sharing a
+  channel runs in the same PID namespace) excludes this case; containers that share a channel must also share a PID namespace.
 
 ## 16. QNX differences (not built or tested)
 

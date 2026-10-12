@@ -133,8 +133,14 @@
 /// Known limits
 /// ------------
 ///   - Sequences are 64-bit; wrap-around would take 2^63 publishes.
-///   - Publisher takeover trusts process ids (`getpgid(pid)`); a recycled pid
-///     or a pid from another PID namespace can delay a takeover.
+///   - Publisher takeover trusts process ids (`getpgid(pid)` plus a zombie
+///     check). It assumes every process that shares a channel runs in the
+///     same PID namespace (A-13). Within one namespace, a dead holder's pid
+///     that the kernel recycled for an unrelated live process only delays a
+///     takeover until that process exits. A holder in another PID namespace
+///     breaks the assumption: its pid usually does not exist in ours, so the
+///     probe returns `ESRCH` and a live publisher is taken over wrongfully.
+///     Two live publishers then write the same ring and corrupt it.
 
 #include <chrono>
 #include <cstddef>
