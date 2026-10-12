@@ -4,7 +4,7 @@
 | --- | --- |
 | Component | `systems::ShmChannel`, `systems::ShmPublisher`, `systems::ShmSubscriber` (`src/include/systems/shm_pubsub.hpp`) |
 | Requirement prefix | `SHMPS` |
-| Status | Draft (TDD red; implementation pending) |
+| Status | Implemented (Linux reference implementation; QNX differences documented in section 15, not built) |
 | Integrity context | Practice component written with ISO 26262 (ASIL-B-style) rigor; not a certified work product |
 | Target platforms | Linux, embedded Linux, QNX (production); macOS (development host, see Portability) |
 
@@ -25,14 +25,18 @@ heap, take no locks on the writer path, and survive the publisher being killed a
 
 | ID | Assumption / decision | Alternatives considered |
 | --- | --- | --- |
-| A-1 | Overflow policy is **overwrite oldest**; the publisher never blocks | Back-pressure from the slowest subscriber (rejected: one stuck consumer would stall a real-time producer) |
+| A-1 | Overflow policy is **overwrite oldest**; the publisher is hard real-time and **wait-free**: it never reads subscriber state | Back-pressure from the slowest subscriber (rejected: one stuck consumer would stall a real-time producer) |
 | A-2 | Exactly **one publisher** per channel at a time (threads or processes); any number of subscribers | Multiple serialized publishers (out of scope) |
 | A-3 | Slot count and slot size are fixed at creation; slot count is a power of two | Compile-time template sizes (rejected: separate processes must agree at run time; `open()` reads the configuration) |
 | A-4 | Each subscriber keeps its own cursor in its own process memory; subscribers do not affect each other or the publisher | Shared consumer cursors (queue semantics) |
 | A-5 | Payloads are opaque bytes, `0..slot_size` long; the subscriber copies them out | Zero-copy loans (out of scope, see section 13) |
 | A-6 | A subscriber that attaches starts at the **next** sample to be published (no history replay) | Replay the whole ring on attach |
-| A-7 | Blocking receive may be implemented with a process-shared condition variable, a futex, or bounded polling with back-off, as long as the latency requirements hold | Mandating one mechanism |
+| A-7 | Blocking receive uses **bounded polling with back-off** (spin 64, yield, then sleep 50 µs doubling to 1 ms), so the publisher never makes a system call | Process-shared condition variable or futex wake-ups (rejected: the publisher would need a syscall or a lock to wake readers) |
 | A-8 | A `ShmPublisher` / `ShmSubscriber` handle is used by one thread at a time; the shared channel is safe for concurrent use by many handles | Internally synchronized handles |
+| A-9 | A lapped (or torn) subscriber jumps to the **newest** sample, not the oldest still in the ring | Oldest available (rejected: the oldest slot is the next one the publisher overwrites, so the reader would likely tear again) |
+| A-10 | Each subscriber picks a read mode at attach: `kInOrder` (default; continuity) or `kLatest` (freshness) | One fixed policy for all consumers |
+| A-11 | `create()` / `open()` are boot-phase calls: they fault every page in and `mlock` it; a lock failure is fatal (`kMemoryLockFailed`) | Best-effort locking (rejected: an unwired real-time buffer is a latent timing fault) |
+| A-12 | `mlock` is retried only on `EAGAIN`, three times (1, 2, 4 ms back-off); `EPERM` / `ENOMEM` fail at once | No retry; unbounded retry |
 
 ## 4. Glossary
 
@@ -43,14 +47,18 @@ heap, take no locks on the writer path, and survive the publisher being killed a
 | Sequence | Monotonic 64-bit sample number assigned by the publisher, starting at 1 |
 | Missed | Number of samples a subscriber skipped because they were overwritten before it read them |
 | Torn sample | A sample whose bytes mix two different publications |
+| Seqlock | Per-slot 64-bit sequence word: even `2s` = slot stable and holds sample `s`; odd `2s - 1` = publisher is writing sample `s` |
+| Read mode | Per-subscriber policy: `kInOrder` (every sample while keeping up) or `kLatest` (always the newest unread sample) |
+| Lapped | A subscriber that is `slot_count` or more samples behind: the slot it wants has been overwritten |
 
 ## 5. Interface overview
 
 - `ShmPubSubConfig` — `slot_count`, `slot_size`; limits `kShmMinSlotCount`, `kShmMaxSlotCount`, `kShmMaxSlotSize`.
-- `ShmPubSubError` — error enumeration, `to_string()`.
+- `ShmPubSubError` — error enumeration (including `kMemoryLockFailed`), `to_string()`.
 - `ShmChannel::create(name, config)`, `ShmChannel::open(name)`, `ShmChannel::unlink(name)`, `config()`, `close()`, `is_closed()`.
 - `ShmPublisher::attach(channel)`, `publish(bytes)`.
-- `ShmSubscriber::attach(channel)`, `try_receive(buffer)`, `receive_for(buffer, timeout)`, `receive(buffer)`; `ShmSample{sequence, size, missed}`.
+- `ShmSubscriber::attach(channel, mode = ShmReadMode::kInOrder)`, `try_receive(buffer)`, `receive_for(buffer, timeout)`, `receive(buffer)`;
+  `ShmSample{sequence, size, missed}`.
 - `detail::SharedMemoryRegion` — OS adapter (`create`, `open`, `unlink`, `data`, `size`), the only code that calls POSIX.
 
 ## 6. Functional requirements
@@ -129,11 +137,23 @@ size, as long as it keeps up (falls behind by fewer than `slot_count` samples).
 
 ### SHMPS-REQ-011: Overrun is detected and reported
 
-When a subscriber falls behind by `slot_count` samples or more, its next successful receive shall return the oldest sample still available, and
-`ShmSample::missed` shall equal the number of samples skipped since its previous receive. Sequence numbers make the gap visible.
+When a `kInOrder` subscriber falls behind by `slot_count` samples or more (lapped), or a read is torn by the publisher overwriting the slot mid-copy, its
+next successful receive shall return the **newest** published sample, and `ShmSample::missed` shall equal the number of samples skipped since its previous
+receive. A `kLatest` subscriber shall always skip to the newest sample with the same `missed` accounting. Sequence numbers make every gap visible.
 
 - **Verification:** Test
-- **Rationale:** Consumers must know data was lost (for example to invalidate a filter state) rather than silently processing a discontinuity.
+- **Rationale:** Consumers must know data was lost (for example to invalidate a filter state) rather than silently processing a discontinuity. Jumping to
+  the newest sample (A-9) both delivers the freshest data and picks the slot farthest from being overwritten again.
+
+### SHMPS-REQ-027: Per-subscriber read modes
+
+`ShmSubscriber::attach(channel, mode)` shall accept `ShmReadMode::kInOrder` (the default) or `ShmReadMode::kLatest`. A `kInOrder` subscriber shall satisfy
+REQ-010 and REQ-011. A `kLatest` subscriber shall return the newest unread sample on every receive, with `missed` counting the unread samples it skipped;
+it shall return `kWouldBlock` when nothing new was published. Subscribers with different modes on one channel shall not affect each other.
+
+- **Verification:** Test
+- **Rationale:** Continuity consumers (IMU integration, state estimation, logging) and freshness consumers (inference, video, lidar) need different
+  policies on the same stream.
 
 ### SHMPS-REQ-012: Non-blocking receive
 
@@ -180,6 +200,25 @@ others.
 
 - **Verification:** Test
 
+### SHMPS-REQ-025: Wait-free publisher
+
+`publish` shall complete in a bounded number of steps (plus the payload copy) regardless of the number, state, or speed of subscribers, including
+subscribers that are preempted, stopped (`SIGSTOP`), or killed in the middle of a read. It shall use no locks, no read-modify-write atomics, no loops on
+shared state, and no system calls; it shall derive each slot's sequence values from its private counter instead of loading them from shared memory.
+
+- **Verification:** Test (publisher throughput while a subscriber process is stopped), Review (`publish()` body)
+- **Rationale:** A hard real-time producer's worst-case execution time must not depend on soft real-time consumers.
+
+### SHMPS-REQ-026: Correct on weakly ordered memory models
+
+The publish and receive protocols shall be correct under the C++ memory model alone, without relying on x86-TSO ordering, so that they are correct on
+AArch64 and other weakly ordered CPUs: the odd mark shall become visible before any payload store, the even mark only after every payload store, and a
+subscriber's second sequence check shall not be satisfied by loads reordered before its payload copy. Payload bytes shared between the writer and readers
+shall be accessed only through atomic operations (no data races).
+
+- **Verification:** Test (multi-thread and multi-process torn-read stress, ThreadSanitizer), Review (ordering table in section 15)
+- **Rationale:** x86 hides most store-store and load-load reordering bugs; target ECUs and the Raspberry Pi 5 / Neoverse hosts do not.
+
 ## 8. Resource and memory requirements
 
 ### SHMPS-REQ-018: No heap allocation after initialization
@@ -197,6 +236,24 @@ Channel, publisher, and subscriber handles shall be move-only with `noexcept` mo
 handle shall unmap memory and release descriptors without unlinking the name.
 
 - **Verification:** Test
+
+### SHMPS-REQ-023: Memory is resident before steady state
+
+On Linux, every successful `create` and `open` shall return with every page of the mapping present in the calling process's page tables and locked into
+RAM, so that `publish` and `receive` take no page faults. `create` shall fault pages in by writing a dummy byte to every page of the new, zero-filled
+object; `open` shall never write (the segment may be live) and shall use `MAP_POPULATE`, `mlock`, and a read-touch of every page instead.
+
+- **Verification:** Test (`VmLck` accounting; zero per-thread page faults over two laps of publish + receive)
+- **Rationale:** Linux allocates and maps pages lazily per process; a first-touch fault inside `publish` would stall a hard real-time thread.
+- **Note:** The ASan and TSan runtimes replace `mlock` with a successful no-op, so lock accounting is verified only in release, coverage, and UBSan builds.
+
+### SHMPS-REQ-024: Memory-lock failure is fatal and leaves nothing behind
+
+If the pages cannot be locked (`EPERM`, `ENOMEM`, or `EAGAIN` after three retries with 1, 2, and 4 ms back-off), `create` and `open` shall return
+`kMemoryLockFailed`. A failed `create` shall unmap and unlink the object it created; a failed `open` shall unmap its mapping and never unlink the name.
+
+- **Verification:** Test (child process with `RLIMIT_MEMLOCK = 0`)
+- **Rationale:** Running with an unwired buffer would turn a configuration error into sporadic timing faults in the field.
 
 ## 9. Robustness and failure-model requirements
 
@@ -229,12 +286,16 @@ Everything placed in shared memory shall be trivially copyable data or `std::ato
 
 | Failure mode | Effect | Detection / mitigation | Requirement |
 | --- | --- | --- | --- |
-| Publisher overwrites a slot while a subscriber copies it | Torn sample delivered | Per-slot sequence counter checked before and after the copy (retry on change) | SHMPS-REQ-015 |
-| Subscriber far behind | Reads overwritten data as if contiguous | Sequence gap detection, `missed` count | SHMPS-REQ-011 |
-| Publisher dies mid-write | Slot left half-written; role never released | Slot marked "being written" until commit; liveness check on publisher takeover | SHMPS-REQ-020, SHMPS-REQ-007 |
-| Second publisher starts | Concurrent writers corrupt slots | Publisher role claimed atomically in the header | SHMPS-REQ-007 |
+| Publisher overwrites a slot while a subscriber copies it | Torn sample delivered | Per-slot seqlock checked before and after the copy; on change the copy is discarded and the reader jumps to the newest sample | SHMPS-REQ-015, SHMPS-REQ-011 |
+| Subscriber far behind | Reads overwritten data as if contiguous | Sequence gap detection, jump to newest, `missed` count | SHMPS-REQ-011 |
+| Publisher dies mid-write | Slot left half-written; role never released | Slot stays odd ("being written") forever, so readers never accept it; liveness check (`kill(pid, 0)` + zombie check) on publisher takeover; the new publisher resumes after the highest sequence found in the header or any slot | SHMPS-REQ-020, SHMPS-REQ-007 |
+| Second publisher starts | Concurrent writers corrupt slots | Publisher role claimed with a CAS on the pid in the header | SHMPS-REQ-007 |
 | Stale or foreign segment | Garbage interpreted as samples | Magic, version, configuration check on open | SHMPS-REQ-005 |
-| Shutdown while blocked | Threads hang forever | `closed` flag in shared header plus bounded wake-up | SHMPS-REQ-014 |
+| Shutdown while blocked | Threads hang forever | `closed` flag in shared header; pollers re-check it at least every 1 ms | SHMPS-REQ-014 |
+| First touch of a page inside `publish` | Microsecond stall of the real-time thread | Pre-fault + `mlock` in `create` / `open` | SHMPS-REQ-023 |
+| `RLIMIT_MEMLOCK` too low / no `CAP_IPC_LOCK` | Buffer silently pageable | `kMemoryLockFailed` at init; nothing left behind | SHMPS-REQ-024 |
+| Subscriber preempted, stopped, or killed mid-read | Publisher delayed | Publisher never reads subscriber state (wait-free) | SHMPS-REQ-025 |
+| CPU or compiler reorders seqlock and payload accesses (ARM) | Torn sample accepted as valid | Release fence after the odd mark, release store of the even mark, acquire fence before the second check | SHMPS-REQ-026 |
 
 ## 12. Standards guidance (informative)
 
@@ -258,3 +319,66 @@ Rule numbers are informative pointers; confirm them against licensed copies of t
 Read about: seqlocks (per-slot sequence counters with odd = "writing"), `std::atomic_thread_fence` and acquire / release pairing, cache-line padding between
 the header and slots, `ftruncate` + `mmap(MAP_SHARED)`, `O_CREAT | O_EXCL`, checking whether a process is alive with `kill(pid, 0)`, and why
 `std::atomic<std::uint64_t>` must be lock-free to be usable across processes.
+
+## 15. Design (Linux reference implementation)
+
+Read the code in this order: the design walkthrough at the top of `src/include/systems/shm_pubsub.hpp`, then `ShmPublisher::publish()` and `read_slot()` /
+`ShmSubscriber::try_receive()` in `src/cpp/systems/shm_pubsub.cpp`, then the residency code in `src/cpp/systems/shm_pubsub_posix.cpp`.
+
+### 15.1 Shared layout
+
+| Region | Contents | Notes |
+| --- | --- | --- |
+| Header, cache line 0 | `magic`, `layout_version`, `slot_count`, `slot_size`, `slot_stride` | Written once by `create`; `magic` is stored last (release) so `open` never sees a half-initialized header |
+| Header, cache line 1 | `published` (newest committed sequence), `publisher_pid` | Written by the publisher; read by subscribers and by `attach` |
+| Header, cache line 2 | `closed` | Written by `close()` from any process |
+| Slot `i` (`slot_stride` bytes, cache-line multiple) | `seq` (seqlock), `size`, `reserved`, payload words | Sample `s` lives in slot `(s - 1) & (slot_count - 1)` |
+
+Every shared field is a lock-free `std::atomic` or is accessed through `std::atomic_ref` (payload words); the layout holds no pointers (SHMPS-REQ-022).
+
+### 15.2 Protocol and memory ordering
+
+| Step | Operation | Order | x86-64 | AArch64 | Why |
+| --- | --- | --- | --- | --- | --- |
+| W1 | `seq = 2s - 1` | relaxed | `mov` | `str` | Mark the slot as being written; value computed from the publisher's private counter (no load) |
+| W2 | fence | release | (compiler barrier only) | `dmb ish` | The odd mark becomes visible before any payload store |
+| W3 | payload words, `size` | relaxed | `mov` | `str` | No data race: readers use atomic loads too |
+| W4 | `seq = 2s` | release | `mov` | `stlr` | The even mark becomes visible only after every payload store |
+| W5 | `published = s` | release | `mov` | `stlr` | Subscribers find the head without scanning slots |
+| R1 | `v1 = seq` | acquire | `mov` | `ldar` / `ldapr` | Payload loads cannot move above the first check; reject if `v1 != 2s` |
+| R2 | `size`, payload words | relaxed | `mov` | `ldr` | Copy into the caller's buffer |
+| R3 | fence | acquire | (compiler barrier only) | `dmb ishld` | Payload loads complete before the second check |
+| R4 | `v2 = seq` | relaxed | `mov` | `ldr` | Accept only if `v2 == v1`; otherwise the copy was torn and is discarded |
+
+If a reader's payload loads (R2) saw any word written by a later publication, the acquire fence (R3) synchronizes with that publication's release fence
+(W2), so R4 must observe its odd mark or something newer, and the copy is rejected. The publisher executes W1–W5 with no loop, no load of shared state, no
+read-modify-write, and no system call (SHMPS-REQ-025). x86-64 needs no fence instructions because TSO already forbids store-store and load-load reordering;
+AArch64 needs the barriers shown, which is why every ordering is stated in the C++ source rather than assumed.
+
+### 15.3 Subscriber policy
+
+- `try_receive` loads `closed` before `published`, so a reader that sees the channel closed also sees every sample committed before the close (drain).
+- When lag > 0 and the reader is lapped, its previous read tore, or it is in `kLatest` mode, the cursor jumps to `published` and `missed` grows by the
+  skipped count. The cursor is committed only after a successful read, so `kBufferTooSmall` consumes nothing.
+- `receive_for` / `receive` poll `try_receive` with back-off (A-7); the deadline saturates, so `nanoseconds::max()` means "forever".
+
+### 15.4 Publisher takeover
+
+`attach` claims the role with a CAS on `publisher_pid`. If the holder is dead (`kill(pid, 0)` fails with `ESRCH`, or `/proc/<pid>/stat` shows a zombie),
+a second CAS takes the role over. The new publisher resumes at `max(published, max over slots of seq / 2) + 1`, which is greater than any sequence the dead
+publisher committed or started (SHMPS-REQ-020). Release is fork-safe: a handle releases the role only in the process that claimed it.
+
+## 16. QNX differences (not built or tested)
+
+The portable layer (`shm_pubsub.cpp`) is unchanged on QNX; only the OS adapter differs. The adapter's file comment holds the details.
+
+| Concern | Linux (implemented) | QNX Neutrino (port notes) |
+| --- | --- | --- |
+| Allocation | `ftruncate`; tmpfs pages allocated lazily on first touch | `shm_ctl(fd, SHMCTL_ANON \| SHMCTL_PHYS, 0, bytes)` allocates physically contiguous memory immediately, or map a typed-memory pool with `posix_typed_mem_open(..., POSIX_TYPED_MEM_ALLOCATE_CONTIG)` |
+| Pre-fault | `create` writes every page; `open` uses `MAP_POPULATE` + read-touch | Not needed for `SHMCTL_PHYS` memory; avoid `MAP_LAZY` |
+| Locking | `mlock` (fatal on failure) | No swapping, but keep `mlock` / `procnto -mL` superlocking per the target's safety manual |
+| Privileges | `RLIMIT_MEMLOCK` or `CAP_IPC_LOCK` | `PROCMGR_AID_MEM_PHYS` and `PROCMGR_AID_MEM_LOCK` abilities via `procmgr_ability()` |
+| Zombie check | `/proc/<pid>/stat` state `Z` / `X` | `/proc/<pid>/as` with `devctl(DCMD_PROC_INFO)` |
+| Capability flags | `platform::kHasMapPopulate` | `platform::kHasPhysicalShmCtl` |
+
+A port would add `shm_pubsub_qnx.cpp` (or narrow `#if defined(__QNX__)` blocks around QNX-only symbols) and select it through `systems/platform.hpp`.
