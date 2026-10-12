@@ -12,6 +12,7 @@
 
 #include <fcntl.h>
 #include <gtest/gtest.h>
+#include <sanitizer/asan_interface.h>
 #include <sys/mman.h>
 #include <sys/resource.h>
 #include <unistd.h>
@@ -900,6 +901,35 @@ constexpr bool kUnderThreadSanitizer = false;
 constexpr bool kMlockIsIntercepted =
     kUnderAddressSanitizer || kUnderThreadSanitizer;
 
+/// Moves this thread's stack frames off ASan's "fake stack" while alive. A
+/// no-op in builds without ASan.
+///
+/// ASan's use-after-return detection (on by default in current clang) places
+/// every frame that has an address-taken local on a separate fake stack and
+/// hands out the NEXT fake frame on every call, walking through megabytes of
+/// lazily mapped memory. Each first touch of a new fake-stack page is a page
+/// fault taken by the ASan runtime itself, about 50 of them over two laps,
+/// which would hide what the residency test measures (faults on the ring).
+/// Inside this scope frames use the real stack, still with ASan redzones, so
+/// every other ASan check stays active.
+class RealStackFramesScope {
+ public:
+  RealStackFramesScope() noexcept {
+    if constexpr (kUnderAddressSanitizer) {
+      __asan_suppress_fake_stack();
+    }
+  }
+  ~RealStackFramesScope() {
+    if constexpr (kUnderAddressSanitizer) {
+      __asan_unsuppress_fake_stack();
+    }
+  }
+  RealStackFramesScope(const RealStackFramesScope&) = delete;
+  RealStackFramesScope(RealStackFramesScope&&) = delete;
+  auto operator=(const RealStackFramesScope&) -> RealStackFramesScope& = delete;
+  auto operator=(RealStackFramesScope&&) -> RealStackFramesScope& = delete;
+};
+
 /// Outcome of one `measure_laps` run.
 struct LapResult {
   int delivered{0};        ///< Iterations where publish AND receive succeeded.
@@ -921,6 +951,7 @@ struct LapResult {
                                     std::span<const std::byte> payload,
                                     std::span<std::byte> buffer, int laps)
     -> LapResult {
+  const RealStackFramesScope real_stack;
   const auto before = page_faults_this_thread();
   int delivered = 0;
   for (int i = 0; i < laps; ++i) {
@@ -1003,16 +1034,8 @@ TEST(ShmPubSubResidencyTest, PublishAndReceiveTakeNoPageFaults) {
   // Two full laps of the ring: every slot is written and read twice.
   constexpr int kLaps = 2 * static_cast<int>(kPaged.slot_count);
 
-  // Warm-up on a separate channel, repeated until one whole run takes no page
-  // fault: the first calls fault in code, stack, and libc pages that have
-  // nothing to do with the ring. Under ASan this takes many runs. Its
-  // use-after-return detection puts frames on a "fake stack" and hands out
-  // the NEXT fake frame on every call, walking through megabytes of lazily
-  // mapped memory; those pages keep faulting until the allocator has wrapped
-  // around once (at most a few hundred runs). Every ASan check stays active.
-  // The rings measured below are fresh, so a create()/open() that skipped
-  // pre-faulting still fails there; a hot path that faults on every call
-  // never settles and fails here.
+  // Warm-up on a separate channel: the first calls fault in code, stack, and
+  // libc pages that have nothing to do with the ring.
   {
     const TestName warm;
     auto channel = ShmChannel::create(warm.str(), kPaged);
@@ -1021,16 +1044,9 @@ TEST(ShmPubSubResidencyTest, PublishAndReceiveTakeNoPageFaults) {
     ASSERT_TRUE(publisher.has_value()) << error_text(publisher.error());
     auto subscriber = ShmSubscriber::attach(*channel);
     ASSERT_TRUE(subscriber.has_value()) << error_text(subscriber.error());
-    constexpr int kMaxWarmUpRuns = 2048;
-    LapResult warm_up{};
-    for (int run = 0; run < kMaxWarmUpRuns; ++run) {
-      warm_up = measure_laps(*publisher, *subscriber, payload, buffer, kLaps);
-      ASSERT_EQ(warm_up.delivered, kLaps);
-      if (warm_up.faults == 0) {
-        break;
-      }
-    }
-    ASSERT_EQ(warm_up.faults, 0) << "warm-up never reached a fault-free run";
+    EXPECT_EQ(
+        measure_laps(*publisher, *subscriber, payload, buffer, kLaps).delivered,
+        kLaps);
   }
 
   const TestName name;
