@@ -288,7 +288,7 @@ Everything placed in shared memory shall be trivially copyable data or `std::ato
 | --- | --- | --- | --- |
 | Publisher overwrites a slot while a subscriber copies it | Torn sample delivered | Per-slot seqlock checked before and after the copy; on change the copy is discarded and the reader jumps to the newest sample | SHMPS-REQ-015, SHMPS-REQ-011 |
 | Subscriber far behind | Reads overwritten data as if contiguous | Sequence gap detection, jump to newest, `missed` count | SHMPS-REQ-011 |
-| Publisher dies mid-write | Slot left half-written; role never released | Slot stays odd ("being written") forever, so readers never accept it; liveness check (`kill(pid, 0)` + zombie check) on publisher takeover; the new publisher resumes after the highest sequence found in the header or any slot | SHMPS-REQ-020, SHMPS-REQ-007 |
+| Publisher dies mid-write | Slot left half-written; role never released | Slot stays odd ("being written") forever, so readers never accept it; liveness check (`getpgid(pid)` + zombie check) on publisher takeover; the new publisher resumes after the highest sequence found in the header or any slot | SHMPS-REQ-020, SHMPS-REQ-007 |
 | Second publisher starts | Concurrent writers corrupt slots | Publisher role claimed with a CAS on the pid in the header | SHMPS-REQ-007 |
 | Stale or foreign segment | Garbage interpreted as samples | Magic, version, configuration check on open | SHMPS-REQ-005 |
 | Shutdown while blocked | Threads hang forever | `closed` flag in shared header; pollers re-check it at least every 1 ms | SHMPS-REQ-014 |
@@ -317,7 +317,7 @@ Rule numbers are informative pointers; confirm them against licensed copies of t
 ## 14. Implementation hints (optional, spoiler-free)
 
 Read about: seqlocks (per-slot sequence counters with odd = "writing"), `std::atomic_thread_fence` and acquire / release pairing, cache-line padding between
-the header and slots, `ftruncate` + `mmap(MAP_SHARED)`, `O_CREAT | O_EXCL`, checking whether a process is alive with `kill(pid, 0)`, and why
+the header and slots, `ftruncate` + `mmap(MAP_SHARED)`, `O_CREAT | O_EXCL`, checking whether a process is alive with `getpgid(pid)`, and why
 `std::atomic<std::uint64_t>` must be lock-free to be usable across processes.
 
 ## 15. Design (Linux reference implementation)
@@ -364,7 +364,7 @@ AArch64 needs the barriers shown, which is why every ordering is stated in the C
 
 ### 15.4 Publisher takeover
 
-`attach` claims the role with a CAS on `publisher_pid`. If the holder is dead (`kill(pid, 0)` fails with `ESRCH`, or `/proc/<pid>/stat` shows a zombie),
+`attach` claims the role with a CAS on `publisher_pid`. If the holder is dead (`getpgid(pid)` fails with `ESRCH`, or `/proc/<pid>/stat` shows a zombie),
 a second CAS takes the role over. The new publisher resumes at `max(published, max over slots of seq / 2) + 1`, which is greater than any sequence the dead
 publisher committed or started (SHMPS-REQ-020). Release is fork-safe: a handle releases the role only in the process that claimed it.
 

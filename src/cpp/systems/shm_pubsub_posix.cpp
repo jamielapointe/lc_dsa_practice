@@ -51,15 +51,14 @@
 ///     `PROCMGR_AID_MEM_PHYS` / `PROCMGR_AID_MEM_LOCK` for non-root
 ///     processes (`procmgr_ability()`).
 ///   - `open()`: only map; the pages are already physical and resident.
-///   - Liveness: `kill(pid, 0)` works the same; the `/proc/<pid>/stat` zombie
-///     check below is Linux-specific (QNX would query `/proc/<pid>/as`
-///     `DCMD_PROC_INFO` instead).
+///   - Liveness: `getpgid(pid)` (POSIX, `<unistd.h>`) works the same; the
+///     `/proc/<pid>/stat` zombie check below is Linux-specific (QNX would
+///     query `/proc/<pid>/as` `DCMD_PROC_INFO` instead).
 ///   - Capability flags already reserved in `systems/platform.hpp`:
 ///     `kHasPhysicalShmCtl`. A port adds a `shm_pubsub_qnx.cpp` (or narrow
 ///     `#if defined(__QNX__)` blocks around QNX-only symbols here).
 
 #include <fcntl.h>
-#include <signal.h>  // NOLINT(modernize-deprecated-headers): POSIX kill() is declared only in <signal.h>.
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -232,7 +231,7 @@ void prefault_by_reading(std::span<std::byte> region) noexcept {
 /// @brief Linux only: true if `/proc/<pid>/stat` says the process is a
 /// zombie (`Z`) or dead (`X`).
 ///
-/// `kill(pid, 0)` still succeeds for a zombie: a process that has died but
+/// `getpgid(pid)` still succeeds for a zombie: a process that has died but
 /// whose parent has not reaped it yet. A publisher killed under a careless
 /// supervisor would otherwise block every takeover until the parent calls
 /// `wait()`.
@@ -393,10 +392,12 @@ auto SharedMemoryRegion::process_alive(std::int64_t pid) noexcept -> bool {
   if (pid <= 0) {
     return false;
   }
-  // Signal 0 performs the existence and permission checks without sending
-  // anything. EPERM means "exists, but owned by someone else": alive.
-  if (::kill(static_cast<pid_t>(pid), 0) != 0) {
-    return errno == EPERM;
+  // getpgid only looks the process up; it sends nothing and changes
+  // nothing. ESRCH means "no such process": gone. Any other error (POSIX
+  // allows EPERM for a process in another session) proves the pid exists,
+  // or at least does not prove it is gone, so treat it as alive.
+  if (::getpgid(static_cast<pid_t>(pid)) == -1) {
+    return errno != ESRCH;
   }
   return !is_zombie(pid);
 }

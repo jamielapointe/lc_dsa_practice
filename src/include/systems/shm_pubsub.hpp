@@ -133,7 +133,7 @@
 /// Known limits
 /// ------------
 ///   - Sequences are 64-bit; wrap-around would take 2^63 publishes.
-///   - Publisher takeover trusts process ids (`kill(pid, 0)`); a recycled pid
+///   - Publisher takeover trusts process ids (`getpgid(pid)`); a recycled pid
 ///     or a pid from another PID namespace can delay a takeover.
 
 #include <chrono>
