@@ -69,3 +69,6 @@ systems_add_library(
     SOURCES shm_pubsub.cpp shm_pubsub_posix.cpp
     LIBS systems::platform Threads::Threads
 )
+
+# In-place horizontal flipping for 1-bpp monochrome bitmaps (spec: docs/systems/bitmap_flip.md).
+systems_add_library(bitmap_flip SOURCES bitmap_flip.cpp)

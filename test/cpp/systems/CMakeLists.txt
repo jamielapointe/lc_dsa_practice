@@ -46,3 +46,10 @@ add_project_test(
     LIBS systems::shm_pubsub systems::test_support
     LABELS "systems;multiprocess;fault"
 )
+
+add_project_test(
+    bitmap_flip_test
+    SOURCES bitmap_flip_test.cpp
+    LIBS systems::bitmap_flip systems::test_support
+    LABELS "systems"
+)
