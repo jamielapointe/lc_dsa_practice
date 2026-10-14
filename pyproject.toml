@@ -237,6 +237,7 @@ cov-cpp = "cmake --workflow --preset coverage && python scripts/ci/cpp_coverage.
 cov-python = "pytest --cov --cov-report=term-missing --cov-report=xml"
 cpp-asan = "cmake --workflow --preset asan"
 cpp-debug = "cmake --workflow --preset dev-debug"
+cpp-debug-config = "cmake --preset dev-debug"
 cpp-release = "cmake --workflow --preset dev-release"
 cpp-tsan = "cmake --workflow --preset tsan"
 cpp-ubsan = "cmake --workflow --preset ubsan"
