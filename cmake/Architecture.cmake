@@ -6,6 +6,15 @@ include(CMakePushCheckState)
 
 add_library(project_architecture INTERFACE)
 
+# Detect Target OS Family
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(TARGET_OS_FAMILY "LINUX")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(TARGET_OS_FAMILY "MACOS")
+else()
+    set(TARGET_OS_FAMILY "OTHER")
+endif()
+
 # Detect Target Architecture Family
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
     set(TARGET_ARCH_FAMILY "X86_64")
@@ -17,7 +26,33 @@ else()
     set(TARGET_ARCH_FAMILY "GENERIC")
 endif()
 
-target_compile_definitions(project_architecture INTERFACE "ARCH_FAMILY_${TARGET_ARCH_FAMILY}=1")
+# Enforce supported OS + architecture combinations:
+#   - Linux x86_64
+#   - Linux aarch64
+#   - macOS arm64
+set(SYSTEMS_POSIX_SUPPORTED FALSE)
+if(
+    TARGET_OS_FAMILY STREQUAL "LINUX"
+    AND (TARGET_ARCH_FAMILY STREQUAL "X86_64" OR TARGET_ARCH_FAMILY STREQUAL "ARM64")
+)
+    set(SYSTEMS_POSIX_SUPPORTED TRUE)
+elseif(TARGET_OS_FAMILY STREQUAL "MACOS" AND TARGET_ARCH_FAMILY STREQUAL "ARM64")
+    set(SYSTEMS_POSIX_SUPPORTED TRUE)
+else()
+    message(
+        FATAL_ERROR
+        "Unsupported OS/architecture combination: ${CMAKE_SYSTEM_NAME} (${CMAKE_SYSTEM_PROCESSOR}). "
+        "Supported targets are Linux x86_64, Linux aarch64, and macOS arm64."
+    )
+endif()
+
+target_compile_definitions(
+    project_architecture
+    INTERFACE
+        "OS_FAMILY_${TARGET_OS_FAMILY}=1"
+        "ARCH_FAMILY_${TARGET_ARCH_FAMILY}=1"
+        $<$<BOOL:${SYSTEMS_POSIX_SUPPORTED}>:SYSTEMS_POSIX_SUPPORTED=1>
+)
 
 # Optional native host optimizations
 option(ENABLE_NATIVE_OPTIMIZATION "Build with native host optimizations (-march=native)" OFF)

@@ -870,12 +870,19 @@ auto locked_kib() -> std::int64_t {
   return -1;
 }
 
-/// Page faults (minor + major) taken so far by the calling thread, or -1 if
-/// the platform has no per-thread accounting.
+/// Page faults (minor + major) taken so far by the calling thread (or process
+/// on single-threaded macOS residency tests), or -1 if unavailable.
 auto page_faults_this_thread() -> std::int64_t {
 #if defined(RUSAGE_THREAD)
   rusage usage{};
   if (::getrusage(RUSAGE_THREAD, &usage) != 0) {
+    return -1;
+  }
+  return static_cast<std::int64_t>(usage.ru_minflt) +
+         static_cast<std::int64_t>(usage.ru_majflt);
+#elif defined(__APPLE__)
+  rusage usage{};
+  if (::getrusage(RUSAGE_SELF, &usage) != 0) {
     return -1;
   }
   return static_cast<std::int64_t>(usage.ru_minflt) +
@@ -1603,9 +1610,15 @@ TEST(ShmPubSubFaultTest, PublisherTakeoverRequiresDeadOwner) {
   ASSERT_FALSE(while_alive.has_value());
   EXPECT_EQ(while_alive.error(), ShmPubSubError::kPublisherExists);
 
-  EXPECT_TRUE(child.kill(SIGKILL).killed_by(SIGKILL));
-  const auto after_death = ShmPublisher::attach(*channel);
-  EXPECT_TRUE(after_death.has_value()) << error_text(after_death.error());
+  // Send SIGKILL without reaping first so the child becomes a zombie;
+  // takeover must succeed even before the parent reaps the zombie.
+  ASSERT_TRUE(child.send_signal(SIGKILL));
+  EXPECT_TRUE(systems_test::wait_until(
+      [&] { return ShmPublisher::attach(*channel).has_value(); },
+      std::chrono::seconds{5}));
+  EXPECT_TRUE(child.wait_for(kChildWait).killed_by(SIGKILL));
+  const auto after_reap = ShmPublisher::attach(*channel);
+  EXPECT_TRUE(after_reap.has_value()) << error_text(after_reap.error());
 }
 
 TEST(ShmPubSubFaultTest, PublisherKilledAtRandomPointsNeverCorruptsReaders) {

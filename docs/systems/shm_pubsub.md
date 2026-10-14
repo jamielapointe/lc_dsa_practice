@@ -368,9 +368,10 @@ AArch64 needs the barriers shown, which is why every ordering is stated in the C
 
 ### 15.4 Publisher takeover
 
-`attach` claims the role with a CAS on `publisher_pid`. If the holder is dead (`getpgid(pid)` fails with `ESRCH`, or `/proc/<pid>/stat` shows a zombie),
-a second CAS takes the role over. The new publisher resumes at `max(published, max over slots of seq / 2) + 1`, which is greater than any sequence the dead
-publisher committed or started (SHMPS-REQ-020). Release is fork-safe: a handle releases the role only in the process that claimed it.
+`attach` claims the role with a CAS on `publisher_pid`. If the holder is dead (`getpgid(pid)` fails with `ESRCH`, or the OS reports a zombie via
+`/proc/<pid>/stat` on Linux or `sysctl` `KERN_PROC_PID` `SZOMB` on macOS), a second CAS takes the role over. The new publisher resumes at
+`max(published, max over slots of seq / 2) + 1`, which is greater than any sequence the dead publisher committed or started (SHMPS-REQ-020). Release is
+fork-safe: a handle releases the role only in the process that claimed it.
 
 The liveness check trusts the pid alone, which has two limits that behave differently:
 
@@ -382,17 +383,19 @@ The liveness check trusts the pid alone, which has two limits that behave differ
   `init`), a *dead* publisher is never detected and takeover stays blocked while that process lives. Assumption A-13 (every process sharing a channel runs in
   the same PID namespace) excludes both outcomes; containers that share a channel must also share a PID namespace.
 
-## 16. QNX differences (not built or tested)
+## 16. Platform differences (Linux, macOS Apple Silicon, QNX notes)
 
-The portable layer (`shm_pubsub.cpp`) is unchanged on QNX; only the OS adapter differs. The adapter's file comment holds the details.
+The portable layer (`shm_pubsub.cpp`) is unchanged across targets; only the OS adapter (`shm_pubsub_posix.cpp`) and `systems/platform.hpp` differ. Supported
+targets enforced by CMake and preprocessor guards are Linux (`x86_64`, `aarch64`) and macOS (`arm64`).
 
-| Concern | Linux (implemented) | QNX Neutrino (port notes) |
-| --- | --- | --- |
-| Allocation | `ftruncate`; tmpfs pages allocated lazily on first touch | `shm_ctl(fd, SHMCTL_ANON \| SHMCTL_PHYS, 0, bytes)` allocates physically contiguous memory immediately, or map a typed-memory pool with `posix_typed_mem_open(..., POSIX_TYPED_MEM_ALLOCATE_CONTIG)` |
-| Pre-fault | `create` writes every page; `open` uses `MAP_POPULATE` + read-touch | Not needed for `SHMCTL_PHYS` memory; avoid `MAP_LAZY` |
-| Locking | `mlock` (fatal on failure) | No swapping, but keep `mlock` / `procnto -mL` superlocking per the target's safety manual |
-| Privileges | `RLIMIT_MEMLOCK` or `CAP_IPC_LOCK` | `PROCMGR_AID_MEM_PHYS` and `PROCMGR_AID_MEM_LOCK` abilities via `procmgr_ability()` |
-| Zombie check | `/proc/<pid>/stat` state `Z` / `X` | `/proc/<pid>/as` with `devctl(DCMD_PROC_INFO)` |
-| Capability flags | `platform::kHasMapPopulate` | `platform::kHasPhysicalShmCtl` |
+| Concern | Linux (`x86_64`, `aarch64`) | macOS (`arm64` Apple Silicon) | QNX Neutrino (port notes, not built) |
+| --- | --- | --- | --- |
+| Allocation | `ftruncate`; tmpfs pages allocated lazily on first touch | `ftruncate`; XNU rounds segment size up to the 16 KiB VM page size | `shm_ctl(fd, SHMCTL_ANON \| SHMCTL_PHYS, 0, bytes)` allocates physically contiguous memory immediately, or map a typed-memory pool with `posix_typed_mem_open(..., POSIX_TYPED_MEM_ALLOCATE_CONTIG)` |
+| Pre-fault | `create` writes every page; `open` uses `MAP_POPULATE` + read-touch | `create` writes every page; `open` uses `mlock` + read-touch (no `MAP_POPULATE`) | Not needed for `SHMCTL_PHYS` memory; avoid `MAP_LAZY` |
+| Locking | `mlock` (fatal on failure) | `mlock` (fatal on failure) | No swapping, but keep `mlock` / `procnto -mL` superlocking per the target's safety manual |
+| Privileges | `RLIMIT_MEMLOCK` or `CAP_IPC_LOCK` | `RLIMIT_MEMLOCK` | `PROCMGR_AID_MEM_PHYS` and `PROCMGR_AID_MEM_LOCK` abilities via `procmgr_ability()` |
+| Zombie check | `/proc/<pid>/stat` state `Z` / `X` | `sysctl({CTL_KERN, KERN_PROC, KERN_PROC_PID, pid})` state `SZOMB` | `/proc/<pid>/as` with `devctl(DCMD_PROC_INFO)` |
+| Cache line | 64 B (`kCacheLineSize`) | 128 B (`kCacheLineSize`) | 64 B (`kCacheLineSize`) |
+| Capability flags | `platform::kHasMapPopulate` | `platform::kIsMacos && platform::kIsAarch64` | `platform::kHasPhysicalShmCtl` |
 
-A port would add `shm_pubsub_qnx.cpp` (or narrow `#if defined(__QNX__)` blocks around QNX-only symbols) and select it through `systems/platform.hpp`.
+A QNX port would add `shm_pubsub_qnx.cpp` (or narrow `#if defined(__QNX__)` blocks around QNX-only symbols) and select it through `systems/platform.hpp`.

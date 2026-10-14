@@ -27,8 +27,7 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "ENABLE_SANITIZER_ADDRESS": "ON",
-        "ENABLE_SANITIZER_UNDEFINED": "ON",
-        "ENABLE_CLANG_TIDY": "ON"
+        "ENABLE_SANITIZER_UNDEFINED": "ON"
       }
     },
     {

@@ -45,6 +45,21 @@ inline constexpr OsFamily kOsFamily = OsFamily::kMacos;
 inline constexpr OsFamily kOsFamily = OsFamily::kOther;
 #endif
 
+/// @brief Host CPU architecture family.
+enum class ArchFamily : std::uint8_t {
+  kX86_64,   ///< 64-bit x86 (x86-64 / AMD64).
+  kAarch64,  ///< 64-bit ARM (AArch64 / arm64, including Apple Silicon).
+  kOther,    ///< Any other architecture.
+};
+
+#if defined(__x86_64__) || defined(_M_X64)
+inline constexpr ArchFamily kArchFamily = ArchFamily::kX86_64;
+#elif defined(__aarch64__) || defined(__arm64__) || defined(_M_ARM64)
+inline constexpr ArchFamily kArchFamily = ArchFamily::kAarch64;
+#else
+inline constexpr ArchFamily kArchFamily = ArchFamily::kOther;
+#endif
+
 /// @brief True on Linux (desktop or embedded).
 inline constexpr bool kIsLinux = kOsFamily == OsFamily::kLinux;
 /// @brief True on QNX Neutrino.
@@ -53,6 +68,16 @@ inline constexpr bool kIsQnx = kOsFamily == OsFamily::kQnx;
 inline constexpr bool kIsMacos = kOsFamily == OsFamily::kMacos;
 /// @brief True on a production target OS (Linux or QNX).
 inline constexpr bool kIsProductionTarget = kIsLinux || kIsQnx;
+
+/// @brief True on 64-bit x86 (x86_64).
+inline constexpr bool kIsX86_64 = kArchFamily == ArchFamily::kX86_64;
+/// @brief True on 64-bit ARM (aarch64 / arm64).
+inline constexpr bool kIsAarch64 = kArchFamily == ArchFamily::kAarch64;
+
+/// @brief True on a supported host OS and architecture combination:
+/// Linux (x86_64 or aarch64) or macOS on Apple Silicon (arm64).
+inline constexpr bool kIsSupportedTarget =
+    (kIsLinux && (kIsX86_64 || kIsAarch64)) || (kIsMacos && kIsAarch64);
 
 /// @brief `shm_open` / `shm_unlink` / `mmap(MAP_SHARED)` are available.
 inline constexpr bool kHasPosixSharedMemory = kIsLinux || kIsQnx || kIsMacos;
@@ -85,8 +110,11 @@ inline constexpr bool kHasPhysicalShmCtl = kIsQnx;
 inline constexpr std::size_t kMaxShmNameLength = 30;
 
 /// @brief Cache-line size used to separate data written by different cores or
-/// processes (false-sharing avoidance) in shared layouts.
-#if defined(__cpp_lib_hardware_interference_size)
+/// processes (false-sharing avoidance) in shared layouts. Apple Silicon uses a
+/// 128-byte coherence granule (`hw.cachelinesize`).
+#if defined(__APPLE__) && defined(__aarch64__)
+inline constexpr std::size_t kCacheLineSize = 128;
+#elif defined(__cpp_lib_hardware_interference_size)
 inline constexpr std::size_t kCacheLineSize =
     std::hardware_destructive_interference_size;
 #else

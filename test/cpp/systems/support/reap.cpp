@@ -2,6 +2,10 @@
 /// @brief `waitpid` helpers behind `ChildProcess` (see `reap.hpp` for why
 /// they live in their own translation unit).
 
+#if defined(SYSTEMS_POSIX_SUPPORTED) &&                                       \
+    ((defined(__linux__) && (defined(__x86_64__) || defined(__aarch64__))) || \
+     (defined(__APPLE__) && defined(__aarch64__)))
+
 #include "systems_test/reap.hpp"
 
 #include <sys/types.h>
@@ -42,3 +46,8 @@ auto reap(::pid_t pid) noexcept -> int {
 }
 
 }  // namespace systems_test::detail
+
+#else
+#error \
+    "reap.cpp requires a supported POSIX target (Linux x86_64/aarch64 or macOS arm64) and SYSTEMS_POSIX_SUPPORTED."
+#endif

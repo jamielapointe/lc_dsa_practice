@@ -44,6 +44,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 # Include modular configuration components
 include(ProjectOptions)
 include(CompilerWarnings)
+include(StaticAnalysis)
 include(Sanitizers)
 include(Coverage)
 include(Architecture)

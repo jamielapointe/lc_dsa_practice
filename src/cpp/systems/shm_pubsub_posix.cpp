@@ -57,9 +57,29 @@
 ///   - Capability flags already reserved in `systems/platform.hpp`:
 ///     `kHasPhysicalShmCtl`. A port adds a `shm_pubsub_qnx.cpp` (or narrow
 ///     `#if defined(__QNX__)` blocks around QNX-only symbols here).
+///
+/// macOS (Darwin / Apple Silicon arm64) notes
+/// ------------------------------------------
+///   - Allocation: XNU's `shm_open` + `ftruncate` rounds segment sizes up to
+///     the 16 KiB VM page size (`_SC_PAGESIZE`), so `fstat` in `open()` may
+///     report a page-rounded size larger than `region_bytes(config)`.
+///   - Pre-fault and locking: `MAP_POPULATE` is Linux-only (`kHasMapPopulate`
+///     is false on macOS), so `open()` relies on `mlock()` plus the explicit
+///     `prefault_by_reading()` touch loop to install page-table entries.
+///   - Zombie detection: Darwin has no `/proc`; `is_zombie()` queries
+///     `sysctl({CTL_KERN, KERN_PROC, KERN_PROC_PID, pid})` and checks
+///     `kp_proc.p_stat == SZOMB`.
+
+#if defined(SYSTEMS_POSIX_SUPPORTED) &&                                       \
+    ((defined(__linux__) && (defined(__x86_64__) || defined(__aarch64__))) || \
+     (defined(__APPLE__) && defined(__aarch64__)))
 
 #include <fcntl.h>
 #include <sys/mman.h>
+#if defined(__APPLE__)
+#include <sys/proc.h>
+#include <sys/sysctl.h>
+#endif
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -80,6 +100,9 @@
 
 #include "systems/platform.hpp"
 #include "systems/shm_pubsub.hpp"
+
+static_assert(systems::platform::kIsSupportedTarget,
+              "shm_pubsub_posix.cpp compiled on an unsupported target");
 
 namespace systems::detail {
 namespace {
@@ -228,14 +251,28 @@ void prefault_by_reading(std::span<std::byte> region) noexcept {
   }
 }
 
-/// @brief Linux only: true if `/proc/<pid>/stat` says the process is a
-/// zombie (`Z`) or dead (`X`).
+/// @brief True if the OS reports `pid` as a zombie (`Z`/`X` in
+/// `/proc/<pid>/stat` on Linux, `SZOMB` via `sysctl` `KERN_PROC_PID` on macOS).
 ///
 /// `getpgid(pid)` still succeeds for a zombie: a process that has died but
 /// whose parent has not reaped it yet. A publisher killed under a careless
 /// supervisor would otherwise block every takeover until the parent calls
 /// `wait()`.
 [[nodiscard]] auto is_zombie(std::int64_t pid) noexcept -> bool {
+  if constexpr (platform::kIsMacos) {
+#if defined(__APPLE__)
+    std::array<int, 4> mib{CTL_KERN, KERN_PROC, KERN_PROC_PID,
+                           static_cast<int>(pid)};
+    struct kinfo_proc info{};
+    std::size_t length = sizeof(info);
+    if (::sysctl(mib.data(), static_cast<unsigned int>(mib.size()), &info,
+                 &length, nullptr, 0) != 0 ||
+        length == 0) {
+      return false;
+    }
+    return info.kp_proc.p_stat == SZOMB;
+#endif
+  }
   if constexpr (!platform::kIsLinux) {
     static_cast<void>(pid);
     return false;
@@ -301,10 +338,11 @@ auto SharedMemoryRegion::create(std::string_view name,
 
   // O_EXCL: fail instead of re-initializing a live channel (SHMPS-REQ-003).
   // 0600: owner-only access (security is out of scope, so be conservative).
-  // NOLINTNEXTLINE(*-vararg): POSIX shm_open is variadic.
+  // NOLINTBEGIN(*-vararg): POSIX shm_open is variadic on Darwin.
   const FileDescriptor fd{retry_on_eintr([&] {
     return ::shm_open(c_name->data(), O_CREAT | O_EXCL | O_RDWR, 0600);
   })};
+  // NOLINTEND(*-vararg)
   if (!fd.valid()) {
     return std::unexpected(errno == EEXIST ? ShmPubSubError::kAlreadyExists
                                            : ShmPubSubError::kOsError);
@@ -341,9 +379,10 @@ auto SharedMemoryRegion::open(std::string_view name) noexcept
   if (!c_name) {
     return std::unexpected(ShmPubSubError::kInvalidArgument);
   }
-  // NOLINTNEXTLINE(*-vararg): POSIX shm_open is variadic.
+  // NOLINTBEGIN(*-vararg): POSIX shm_open is variadic on Darwin.
   const FileDescriptor fd{
       retry_on_eintr([&] { return ::shm_open(c_name->data(), O_RDWR, 0); })};
+  // NOLINTEND(*-vararg)
   if (!fd.valid()) {
     return std::unexpected(errno == ENOENT ? ShmPubSubError::kNotFound
                                            : ShmPubSubError::kOsError);
@@ -407,3 +446,8 @@ auto SharedMemoryRegion::current_process_id() noexcept -> std::int64_t {
 }
 
 }  // namespace systems::detail
+
+#else
+#error \
+    "shm_pubsub_posix.cpp requires a supported POSIX target (Linux x86_64/aarch64 or macOS arm64) and SYSTEMS_POSIX_SUPPORTED."
+#endif

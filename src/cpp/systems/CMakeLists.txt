@@ -48,6 +48,9 @@ target_include_directories(
     INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/include> $<INSTALL_INTERFACE:include>
 )
 target_compile_features(systems_platform INTERFACE cxx_std_23)
+if(SYSTEMS_POSIX_SUPPORTED)
+    target_compile_definitions(systems_platform INTERFACE SYSTEMS_POSIX_SUPPORTED=1)
+endif()
 
 # POSIX shared memory (shm_open/shm_unlink) lives in librt on older glibc, including the conda-forge
 # Linux sysroot; macOS and QNX provide it in libc. Link rt only where it exists and exports the
@@ -64,9 +67,13 @@ systems_add_library(bounded_fifo SOURCES bounded_fifo.cpp LIBS Threads::Threads)
 
 # Single-publisher / multi-subscriber channel over a shared-memory ring buffer, safe across threads
 # and processes (spec: docs/systems/shm_pubsub.md). OS calls live only in shm_pubsub_posix.cpp.
+set(SHM_PUBSUB_SOURCES shm_pubsub.cpp)
+if(SYSTEMS_POSIX_SUPPORTED)
+    list(APPEND SHM_PUBSUB_SOURCES shm_pubsub_posix.cpp)
+endif()
 systems_add_library(
     shm_pubsub
-    SOURCES shm_pubsub.cpp shm_pubsub_posix.cpp
+    SOURCES ${SHM_PUBSUB_SOURCES}
     LIBS systems::platform Threads::Threads
 )
 
