@@ -184,6 +184,20 @@ auto flip_bitmap_unaligned_optimized(std::span<std::uint8_t> bitmap,
   for (std::size_t row = 0; row < height; ++row) {
     std::uint8_t* const row_ptr = base_ptr + (row * num_bytes);
     std::size_t i = 0;
+    constexpr std::size_t kBytesPerDualWord = 2U * kBytesPerWord64;
+    for (; i + kBytesPerDualWord <= half_bytes; i += kBytesPerDualWord) {
+      std::uint8_t* const left_ptr = row_ptr + i;
+      std::uint8_t* const right_ptr =
+          row_ptr + num_bytes - kBytesPerDualWord - i;
+      const std::uint64_t left_w0 = load_u64_le(left_ptr);
+      const std::uint64_t left_w1 = load_u64_le(left_ptr + kBytesPerWord64);
+      const std::uint64_t right_w0 = load_u64_le(right_ptr);
+      const std::uint64_t right_w1 = load_u64_le(right_ptr + kBytesPerWord64);
+      store_u64_le(left_ptr, reverse_bits_u64(right_w1));
+      store_u64_le(left_ptr + kBytesPerWord64, reverse_bits_u64(right_w0));
+      store_u64_le(right_ptr, reverse_bits_u64(left_w1));
+      store_u64_le(right_ptr + kBytesPerWord64, reverse_bits_u64(left_w0));
+    }
     for (; i + kBytesPerWord64 <= half_bytes; i += kBytesPerWord64) {
       std::uint8_t* const left_ptr = row_ptr + i;
       std::uint8_t* const right_ptr = row_ptr + num_bytes - kBytesPerWord64 - i;
