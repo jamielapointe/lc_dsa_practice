@@ -1,5 +1,6 @@
 #include "systems/bitmap_flip.hpp"
 
+#include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <expected>
@@ -17,6 +18,43 @@
 // docs/systems/bitmap_flip.md, section 7.
 
 namespace systems {
+
+namespace {
+
+inline constexpr std::size_t kBytesPerWord64 = sizeof(std::uint64_t);
+
+[[nodiscard]] constexpr auto load_u64_le(const std::uint8_t* ptr) noexcept
+    -> std::uint64_t {
+  return (static_cast<std::uint64_t>(ptr[0]) << 0U) |
+         (static_cast<std::uint64_t>(ptr[1]) << 8U) |
+         (static_cast<std::uint64_t>(ptr[2]) << 16U) |
+         (static_cast<std::uint64_t>(ptr[3]) << 24U) |
+         (static_cast<std::uint64_t>(ptr[4]) << 32U) |
+         (static_cast<std::uint64_t>(ptr[5]) << 40U) |
+         (static_cast<std::uint64_t>(ptr[6]) << 48U) |
+         (static_cast<std::uint64_t>(ptr[7]) << 56U);
+}
+
+constexpr void store_u64_le(std::uint8_t* ptr, std::uint64_t val) noexcept {
+  ptr[0] = static_cast<std::uint8_t>(val >> 0U);
+  ptr[1] = static_cast<std::uint8_t>(val >> 8U);
+  ptr[2] = static_cast<std::uint8_t>(val >> 16U);
+  ptr[3] = static_cast<std::uint8_t>(val >> 24U);
+  ptr[4] = static_cast<std::uint8_t>(val >> 32U);
+  ptr[5] = static_cast<std::uint8_t>(val >> 40U);
+  ptr[6] = static_cast<std::uint8_t>(val >> 48U);
+  ptr[7] = static_cast<std::uint8_t>(val >> 56U);
+}
+
+[[nodiscard]] constexpr auto reverse_bits_u64(std::uint64_t x) noexcept
+    -> std::uint64_t {
+  x = ((x & 0x5555555555555555ULL) << 1U) | ((x >> 1U) & 0x5555555555555555ULL);
+  x = ((x & 0x3333333333333333ULL) << 2U) | ((x >> 2U) & 0x3333333333333333ULL);
+  x = ((x & 0x0F0F0F0F0F0F0F0FULL) << 4U) | ((x >> 4U) & 0x0F0F0F0F0F0F0F0FULL);
+  return std::byteswap(x);
+}
+
+}  // namespace
 
 using internal::reverse_bits;
 using internal::reverse_bits_lookup;
@@ -145,7 +183,16 @@ auto flip_bitmap_unaligned_optimized(std::span<std::uint8_t> bitmap,
   const std::size_t half_bytes = num_bytes / 2;
   for (std::size_t row = 0; row < height; ++row) {
     std::uint8_t* const row_ptr = base_ptr + (row * num_bytes);
-    for (std::size_t i = 0; i < half_bytes; ++i) {
+    std::size_t i = 0;
+    for (; i + kBytesPerWord64 <= half_bytes; i += kBytesPerWord64) {
+      std::uint8_t* const left_ptr = row_ptr + i;
+      std::uint8_t* const right_ptr = row_ptr + num_bytes - kBytesPerWord64 - i;
+      const std::uint64_t left_word = load_u64_le(left_ptr);
+      const std::uint64_t right_word = load_u64_le(right_ptr);
+      store_u64_le(left_ptr, reverse_bits_u64(right_word));
+      store_u64_le(right_ptr, reverse_bits_u64(left_word));
+    }
+    for (; i < half_bytes; ++i) {
       const std::size_t right_idx = num_bytes - 1 - i;
       const std::uint8_t left_byte = row_ptr[i];
       const std::uint8_t right_byte = row_ptr[right_idx];
@@ -162,9 +209,9 @@ auto flip_bitmap_unaligned_optimized(std::span<std::uint8_t> bitmap,
     // pixel `width - 1` lands at bit 0 (LSB) and pad bits with 0
     if (remainder > 0) {
       const std::size_t shift = kBitsPerByte - remainder;
-      for (std::size_t i = 0; i < num_bytes - 1; ++i) {
-        row_ptr[i] = static_cast<std::uint8_t>((row_ptr[i] >> shift) |
-                                               (row_ptr[i + 1] << remainder));
+      for (std::size_t col = 0; col < num_bytes - 1; ++col) {
+        row_ptr[col] = static_cast<std::uint8_t>(
+            (row_ptr[col] >> shift) | (row_ptr[col + 1] << remainder));
       }
       // Need to shift the last byte, which will automatically fill the MSB with
       // zeroes.
