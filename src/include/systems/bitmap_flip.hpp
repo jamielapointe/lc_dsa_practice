@@ -16,8 +16,10 @@
 ///
 ///   - Byte bit reversal, `reverse_bits()`: `BitmapFlipTest.ReverseBits*`.
 ///   - Problem 0 (`width % 8 == 0`), `flip_bitmap()`: `BitmapFlipTest`.
-///   - Follow-up 1 (performance): same API, verified by review.
-///   - Follow-up 2 (any width), `flip_bitmap()`: `BitmapFlipUnalignedTest`.
+///   - Follow-up 1 (performance): same API (`flip_bitmap()`), verified by
+///     review.
+///   - Follow-up 2 (any width), `flip_bitmap_unaligned()`:
+///     `BitmapFlipUnalignedTest`.
 ///   - Follow-up 3, `flip_bitmap_stride()`: `BitmapFlipStrideTest`;
 ///     `flip_bitmap_roi()`: `BitmapFlipRoiTest`.
 ///   - Input validation (all functions): `BitmapFlipErrorTest`.
@@ -41,13 +43,17 @@
 /// --------------
 ///   - Flip definition: afterwards, pixel `x` of every row holds what pixel
 ///     `width - 1 - x` of the same row held before. Row order is unchanged.
-///   - Full-row flips (`flip_bitmap`, `flip_bitmap_stride`) write the padding
-///     bits of each row's last pixel byte as **zero** (BMFLP-REQ-009).
+///   - `flip_bitmap` requires `width % 8 == 0` (Problem 0 and Follow-up 1) and
+///     rejects unaligned widths with `kInvalidWidth`.
+///   - `flip_bitmap_unaligned` accepts any `width > 0` (Follow-up 2).
+///   - Full-row flips (`flip_bitmap_unaligned`, `flip_bitmap_stride`) write the
+///     padding bits of each row's last pixel byte as **zero** (BMFLP-REQ-009).
 ///   - ROI flips (`flip_bitmap_roi`) change only the pixels inside the ROI;
 ///     every other bit of the buffer, including padding bits, is preserved.
 ///   - Validation happens before any write: on error the buffer is untouched.
 ///     Order of checks (first failure wins): `kNullPointer`, `kZeroDimension`,
-///     `kInvalidStride`, `kInvalidRoi`, `kBufferTooSmall` (BMFLP-REQ-022).
+///     `kInvalidWidth` (`flip_bitmap` only), `kInvalidStride`, `kInvalidRoi`,
+///     `kBufferTooSmall` (BMFLP-REQ-022).
 ///
 /// Thread safety
 /// -------------
@@ -80,13 +86,15 @@
 /// -----------------------------------------------
 /// 1. `reverse_bits()`: mirror one byte. Several very different solutions
 ///    exist; think about which suits a small MCU vs a 64-bit core.
-/// 2. Problem 0: flip one aligned row in place, then apply it to every row.
-///    Write the time and space complexity in a comment (BMFLP-REQ-006).
-/// 3. Follow-up 1: make it faster without changing the API (BMFLP-REQ-007).
-///    Write down what you changed and why it is faster.
-/// 4. Follow-up 2: support `width % 8 != 0`. A row no longer ends on a byte
-///    boundary, so check where each mirrored pixel must land, and make sure
-///    padding garbage cannot end up in a pixel.
+/// 2. Problem 0 (`flip_bitmap`): flip one byte-aligned row (`width % 8 == 0`)
+///    in place, then apply it to every row. Write the time and space
+///    complexity in a comment (BMFLP-REQ-006).
+/// 3. Follow-up 1 (`flip_bitmap`): make it faster without changing the API
+///    (BMFLP-REQ-007). Write down what you changed and why it is faster.
+/// 4. Follow-up 2 (`flip_bitmap_unaligned`): support any `width > 0`
+///    (including `width % 8 != 0`). A row no longer ends on a byte boundary,
+///    so check where each mirrored pixel must land, and make sure padding
+///    garbage cannot end up in a pixel.
 /// 5. Follow-up 3: generalize the row addressing to a byte stride, then to a
 ///    rectangle whose left and right edges may fall in the middle of a byte.
 /// 6. Validation: implement the checks in the documented order, guarding
@@ -103,6 +111,40 @@
 ///   - ROI edges inside a byte clobbering neighbouring pixels.
 ///   - `stride_bytes * height` or `roi.x + roi.width` overflowing.
 ///   - Implicit integer promotion: `~byte` and `byte << n` are `int`.
+///
+/// Examples
+/// ---------
+/// 1 - aligned width: width = 16, height = 1 (width_bytes = 2, remainder = 0,
+/// shift = 0)
+///
+///    (MSB..LSB): [p7 p6 p5 p4 p3 p2 p1 p0], [p15 p14 p13 p12 p11 p10 p9 p8]
+///    - swap bytes: [p15 p14 p13 p12 p11 p10 p9 p8], [p7 p6 p5 p4 p3 p2 p1 p0]
+///    - reverse bits:
+///       - [p7 p6 p5 p4 p3 p2 p1 p0] -> [p0 p1 p2 p3 p4 p5 p6 p7]
+///       - [p15 p14 p13 p12 p11 p10 p9 p8] -> [p8 p9 p10 p11 p12 p13 p14 p15]
+///    - result (MSB..LSB):
+///        - [p8 p9 p10 p11 p12 p13 p14 p15], [p0 p1 p2 p3 p4 p5 p6 p7]
+///
+/// 2 - unaligned width: width = 10, height = 1 (width_bytes = 2, remainder = 2,
+/// shift = 6)
+///    (X = padding)
+///    (MSB..LSB): [p7 p6 p5 p4 p3 p2 p1 p0],
+///                [ X  X  X  X  X  X p9 p8]
+///   - swap bytes: [ X  X  X  X  X  X p9 p8], [p7 p6 p5 p4 p3 p2 p1 p0]
+///   - reverse bits:
+///      - [p7 p6 p5 p4 p3 p2 p1 p0] -> [p0 p1 p2 p3 p4 p5 p6 p7]
+///      - [ X  X  X  X  X  X p9 p8] -> [p8 p9  X  X  X  X  X  X]
+///   - initial result (MSB..LSB):
+///     - [p8 p9  X  X  X  X  X  X], [p0 p1 p2 p3 p4 p5 p6 p7]
+///   Now we need to pack everything together and then add zeros for padding at
+///   the LSB.
+///   - Byte 0 = (Bytes 0 >> 6) | (Byte 1 << 2)
+///            = [0 0 0 0 0 0 p8 p9] | [p2 p3 p4 p5 p6 p7 0 0]
+///            = [p2 p3 p4 p5 p6 p7 p8 p9]
+///   - Byte 1 = (Bytes 1 >> 6)
+///            = [0 0 0 0 0 0 p0 p1]
+///   - Final result (MSB..LSB): [p2 p3 p4 p5 p6 p7 p8 p9], [0 0 0 0 0 0 p0 p1]
+///
 
 #include <cstddef>
 #include <cstdint>
@@ -115,12 +157,18 @@ namespace systems {
 /// @brief Number of bits (pixels) in one byte of a 1-bpp bitmap.
 inline constexpr std::size_t kBitsPerByte = 8;
 
+/// @brief Maximum number of distinct values for an 8-bit unsigned integer
+/// (2^8).
+inline constexpr std::size_t kMaxUint8Combinations = 256;
+
 /// @brief Error codes returned by the span-based flip operations.
 enum class [[nodiscard]] BitmapFlipError : std::uint8_t {
   /// Stub placeholder; never returned by a finished implementation.
   kNotImplemented = 0,
   /// The buffer span is empty or its data pointer is null.
   kNullPointer,
+  /// Width is not a multiple of 8 (`flip_bitmap` only).
+  kInvalidWidth,
   /// `width` or `height` (or the ROI's width or height) is zero.
   kZeroDimension,
   /// The buffer is smaller than `stride_bytes * height` bytes.
@@ -141,6 +189,8 @@ enum class [[nodiscard]] BitmapFlipError : std::uint8_t {
       return "not implemented";
     case BitmapFlipError::kNullPointer:
       return "null or empty buffer";
+    case BitmapFlipError::kInvalidWidth:
+      return "width is not a multiple of 8";
     case BitmapFlipError::kZeroDimension:
       return "zero width or height";
     case BitmapFlipError::kBufferTooSmall:
@@ -167,37 +217,67 @@ struct BitmapRoi {
   /// ROI height in rows.
   std::size_t height{0};
 };
-
-/// @brief Mirrors the bit order of one byte: bit `i` moves to bit `7 - i`.
+/// @brief Flips a tightly packed, byte-aligned (`width % 8 == 0`) bitmap
+/// horizontally in place (Problem 0 and Follow-up 1).
 ///
-/// This is the horizontal flip of one fully used 8-pixel byte.
-/// @param value Byte to mirror.
-/// @return The mirrored byte.
+/// Rows are `width / 8` bytes long with no gap between them.
+/// @param bitmap Pixel buffer; at least `(width / 8) * height` bytes.
+///   Bytes past that size are not accessed.
+/// @param width Image width in pixels (must be a non-zero multiple of 8).
+/// @param height Image height in rows (> 0).
+/// @return Nothing on success; otherwise `kNullPointer`, `kZeroDimension`,
+///   `kInvalidWidth`, or `kBufferTooSmall` (checked in that order, buffer
+///   untouched).
 /// @par Thread safety
-/// Pure function; reentrant.
+/// Reentrant; see the file comment.
 /// @par Requirements
-/// BMFLP-REQ-002
-[[nodiscard]] auto reverse_bits(std::uint8_t value) noexcept -> std::uint8_t;
+/// BMFLP-REQ-001, BMFLP-REQ-003, BMFLP-REQ-004, BMFLP-REQ-005, BMFLP-REQ-017,
+/// BMFLP-REQ-018, BMFLP-REQ-021, BMFLP-REQ-022
+[[nodiscard]] auto flip_bitmap(std::span<std::uint8_t> bitmap,
+                               std::size_t width, std::size_t height) noexcept
+    -> std::expected<void, BitmapFlipError>;
 
-/// @brief Flips a tightly packed bitmap horizontally in place.
+/// @brief Flips a tightly packed bitmap of any width horizontally in place
+/// (Follow-up 2).
 ///
 /// Rows are `ceil(width / 8)` bytes long with no gap between them. Padding
 /// bits of each row's last byte are written as zero.
 /// @param bitmap Pixel buffer; at least `ceil(width / 8) * height` bytes.
 ///   Bytes past that size are not accessed.
-/// @param width Image width in pixels (any value > 0; Problem 0 assumes a
-///   multiple of 8, Follow-up 2 removes that assumption).
+/// @param width Image width in pixels (any value > 0, aligned or unaligned).
 /// @param height Image height in rows (> 0).
 /// @return Nothing on success; otherwise `kNullPointer`, `kZeroDimension`, or
 ///   `kBufferTooSmall` (checked in that order, buffer untouched).
 /// @par Thread safety
 /// Reentrant; see the file comment.
 /// @par Requirements
-/// BMFLP-REQ-001, BMFLP-REQ-003, BMFLP-REQ-004, BMFLP-REQ-005, BMFLP-REQ-008,
-/// BMFLP-REQ-009, BMFLP-REQ-017, BMFLP-REQ-018, BMFLP-REQ-021, BMFLP-REQ-022
-[[nodiscard]] auto flip_bitmap(std::span<std::uint8_t> bitmap,
-                               std::size_t width, std::size_t height) noexcept
+/// BMFLP-REQ-001, BMFLP-REQ-004, BMFLP-REQ-005, BMFLP-REQ-008, BMFLP-REQ-009,
+/// BMFLP-REQ-017, BMFLP-REQ-018, BMFLP-REQ-021, BMFLP-REQ-022
+[[nodiscard]] auto flip_bitmap_unaligned(std::span<std::uint8_t> bitmap,
+                                         std::size_t width,
+                                         std::size_t height) noexcept
     -> std::expected<void, BitmapFlipError>;
+
+/// @brief Flips a tightly packed bitmap of any width horizontally in place
+/// using an optimized candidate implementation (Follow-up 2).
+///
+/// Initial baseline implementation identical to `flip_bitmap_unaligned`.
+/// Rows are `ceil(width / 8)` bytes long with no gap between them. Padding
+/// bits of each row's last byte are written as zero.
+/// @param bitmap Pixel buffer; at least `ceil(width / 8) * height` bytes.
+///   Bytes past that size are not accessed.
+/// @param width Image width in pixels (any value > 0, aligned or unaligned).
+/// @param height Image height in rows (> 0).
+/// @return Nothing on success; otherwise `kNullPointer`, `kZeroDimension`, or
+///   `kBufferTooSmall` (checked in that order, buffer untouched).
+/// @par Thread safety
+/// Reentrant; see the file comment.
+/// @par Requirements
+/// BMFLP-REQ-001, BMFLP-REQ-004, BMFLP-REQ-005, BMFLP-REQ-008, BMFLP-REQ-009,
+/// BMFLP-REQ-017, BMFLP-REQ-018, BMFLP-REQ-021, BMFLP-REQ-022
+[[nodiscard]] auto flip_bitmap_unaligned_optimized(
+    std::span<std::uint8_t> bitmap, std::size_t width,
+    std::size_t height) noexcept -> std::expected<void, BitmapFlipError>;
 
 /// @brief Flips a bitmap whose rows are `stride_bytes` apart, in place.
 ///
@@ -249,18 +329,48 @@ struct BitmapRoi {
                                    BitmapRoi roi) noexcept
     -> std::expected<void, BitmapFlipError>;
 
-/// @brief C-style entry point with the problem's original prototype.
+/// @brief C-style entry point with the problem's original prototype
+/// (Problem 0 and Follow-up 1: requires `width % 8 == 0`).
 ///
-/// Equivalent to `flip_bitmap(std::span{bitmap, ceil(width / 8) * height},
+/// Equivalent to `flip_bitmap(std::span{bitmap, (width / 8) * height},
 /// width, height)`. The caller guarantees the buffer is that large (a raw
-/// pointer cannot be checked). If `bitmap` is null, or `width` or `height` is
-/// zero, the call does nothing.
+/// pointer cannot be bounds-checked). If `bitmap` is null, `width` or `height`
+/// is zero, or `width % 8 != 0`, the call does nothing.
 /// @param bitmap Packed 1-bpp pixel buffer, or null.
-/// @param width Number of columns (pixels).
+/// @param width Number of columns (pixels, must be a multiple of 8).
 /// @param height Number of rows.
 /// @par Requirements
 /// BMFLP-REQ-012
 void flip_bitmap(std::uint8_t* bitmap, std::size_t width,
                  std::size_t height) noexcept;
+
+/// @brief C-style entry point for generic widths (Follow-up 2: any `width >
+/// 0`).
+///
+/// Equivalent to `flip_bitmap_unaligned(std::span{bitmap,
+/// ceil(width / 8) * height}, width, height)`. The caller guarantees the
+/// buffer is that large. If `bitmap` is null, or `width` or `height` is zero,
+/// the call does nothing.
+/// @param bitmap Packed 1-bpp pixel buffer, or null.
+/// @param width Number of columns (pixels).
+/// @param height Number of rows.
+/// @par Requirements
+/// BMFLP-REQ-012
+void flip_bitmap_unaligned(std::uint8_t* bitmap, std::size_t width,
+                           std::size_t height) noexcept;
+
+/// @brief C-style entry point for generic widths using the optimized candidate.
+///
+/// Equivalent to `flip_bitmap_unaligned_optimized(std::span{bitmap,
+/// ceil(width / 8) * height}, width, height)`. The caller guarantees the
+/// buffer is that large. If `bitmap` is null, or `width` or `height` is zero,
+/// the call does nothing.
+/// @param bitmap Packed 1-bpp pixel buffer, or null.
+/// @param width Number of columns (pixels).
+/// @param height Number of rows.
+/// @par Requirements
+/// BMFLP-REQ-012
+void flip_bitmap_unaligned_optimized(std::uint8_t* bitmap, std::size_t width,
+                                     std::size_t height) noexcept;
 
 }  // namespace systems

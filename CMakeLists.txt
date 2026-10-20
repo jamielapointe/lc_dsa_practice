@@ -37,6 +37,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Project-level switches for the two C++ trees
 option(BUILD_LEET_CODE "Build the C++ LeetCode practice libraries and tests" ON)
 option(BUILD_SYSTEMS "Build the low-level / systems / embedded C++ libraries and tests" ON)
+option(BUILD_BENCHMARKS "Build the C++ benchmark targets" OFF)
 
 # Register modular cmake helper path
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -68,5 +69,13 @@ if(BUILD_TESTING)
     endif()
     if(BUILD_SYSTEMS)
         add_subdirectory(test/cpp/systems)
+    endif()
+endif()
+
+# C++ benchmarks: benchmarks/cpp/<tree>/
+if(BUILD_BENCHMARKS)
+    include(Benchmarking)
+    if(BUILD_SYSTEMS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/cpp/systems/CMakeLists.txt")
+        add_subdirectory(benchmarks/cpp/systems)
     endif()
 endif()

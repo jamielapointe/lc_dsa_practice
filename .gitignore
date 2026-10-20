@@ -74,6 +74,9 @@ htmlcov/
 # Teamwork Agent Working Directory
 .agents/teamwork/**
 
+# Benchmark Telemetry and Reports
+data/
+
 # direnv
 .envrc
 

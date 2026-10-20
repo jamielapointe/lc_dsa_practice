@@ -59,6 +59,10 @@ workspace (toolchain, dependencies, tasks, CI) is a single Pixi workspace define
 | 19 | Systems C++ Track | `src/cpp/systems` + `src/include/systems`: header-only `BoundedFifo` (no heap, no STL containers) with GoogleTest and TSan | M5 | Refactor |
 | 21 | Systems Setup Plugin | `.agents/plugins/systems`: prompt-driven `systems-setup` skill (spec, outline header, stubs, 6-tier red tests), `systems/platform.hpp`, `systems::test_support` (fork harness, shared regions, shm names, allocation counter), traceability checker | M6 | #28 |
 | 20 | Pixi Infrastructure & CI | Pixi tasks, CMake presets (debug/release/ASan/UBSan/TSan/coverage), pre-commit, GitHub Actions, Renovate, Scorecard, coverage gates | M5 | Refactor |
+| 22 | Systems Google Benchmark Infrastructure | `benchmarks/cpp/systems/` with `cmake/Benchmarking.cmake`, `BUILD_BENCHMARKS=OFF` default, Google Benchmark suite | M7 | R1 |
+| 23 | Baseline Function & Unit Tests | `systems::flip_bitmap_unaligned_optimized` (`std::span` and pointer overloads) with unit tests and ASPICE traceability | M7 | R2 |
+| 24 | Bayesian BEST + ROPE Engine & Host Tuning | SciPy/NumPy Student-t posterior analysis (`P(better)`, `P(same)`, `P(worse)`), host tuning (Darwin/Linux), Plotly reports | M7 | R3 |
+| 25 | Agentic Optimization Loop Skill | `.agents/skills/optimization-loop/SKILL.md` (preloop, two-stage fast-screen/full BEST benchmark, git rollbacks, Academic Scribe) | M7 | R4 |
 
 ## Milestones
 
@@ -71,6 +75,7 @@ workspace (toolchain, dependencies, tasks, CI) is a single Pixi workspace define
 | M4 | Final Milestone: LeetCode #2 & E2E Pass | Scaffold LeetCode #2, update CMake, build, verify GTest clean failure; pass 100% E2E tests + Tier 5 | E2E, M3 | DONE |
 | M6 | Systems Setup Plugin | Systems plugin + skill, platform header, test-support library, traceability check | M5 | IN PROGRESS |
 | M5 | Multi-Language & Pixi Refactor | `src/`+`test/` split by language, Python and systems tracks, Pixi workspace, CI, plugin supports C++ and Python | M4 | DONE |
+| M7 | Systems Benchmark & Bayesian Optimization | Benchmark infrastructure, baseline function, host tuner, Bayesian BEST engine, optimization loop skill | M6 | DONE |
 
 ## Interface Contracts
 
@@ -168,21 +173,44 @@ workspace (toolchain, dependencies, tasks, CI) is a single Pixi workspace define
 - Tests: `test/python/leet_code/test_<slug_snake>.py` (4 tiers: canonical, boundary, invariants, stress marked `@pytest.mark.stress`)
 - No registration step is needed: the package is on `PYTHONPATH` through the Pixi activation environment.
 
+### 7. Google Benchmark & Bayesian Telemetry Contract
+
+- Benchmark target: `benchmarks/cpp/systems/bitmap_flip_benchmark.cpp` (registered via `systems_add_benchmark`)
+- Registered benchmark names: `BM_FlipBitmap_Baseline/<WxH>`, `BM_FlipBitmap_Candidate/<WxH>`
+- Telemetry outputs in `data/latest/<experiment>/`:
+  - `benchmark_raw.json` (Google Benchmark JSON output)
+  - `telemetry.json` (host metadata, git SHA, paired benchmark timing samples)
+  - `analysis.json` (Bayesian BEST Student-t posterior parameters, P(better), P(same), P(worse), effect size, 95% HDI, verdict)
+  - `report.md` (Markdown summary table)
+  - `report.html` (interactive Plotly standalone HTML report)
+- Baseline directory: `data/baseline/<experiment>/` (promoted on $P(\text{better}) \ge 0.95$ and zero test regressions)
+
+### 8. Agentic Optimization Loop Protocol Contract
+
+- Location: `.agents/skills/optimization-loop/SKILL.md` (with `references/` for Bayesian BEST, hardware tuning, subagents, and scribe guidelines)
+- Execution phases:
+  - **Preloop**: Deterministic random seed (`0x5EED`), host variance mitigation, baseline run (`data/baseline/<experiment>`), Gemini 4 Argon hypothesis queue.
+  - **Iterative Loop**: Clean git check (`git status --porcelain`), base hash capture (`git rev-parse HEAD`), hypothesis implementation, static gate
+    (`clang-format`, `clang-tidy`, `pre-commit`), Stage-1 Fast Screen (3 reps, abort if >5% regression), Stage-2 Full BEST benchmark (30 reps), unit test
+    validation (`pixi run test-cpp`), atomic git commit + baseline promotion or clean git revert.
+  - **Post Loop**: Clickable browser link (`file://.../report.html`), multi-regime anomaly verification, workspace cleanup, Academic Scribe report synthesis.
+
 ## Code Layout
 
 - C++ LeetCode: `src/include/leet_code/`, `src/cpp/leet_code/`, `test/cpp/leet_code/`
 - Systems C++: `src/include/systems/`, `src/cpp/systems/`, `test/cpp/systems/`
+- Systems Benchmarks: `benchmarks/cpp/systems/` (Google Benchmark targets, `CMakeLists.txt`)
 - Python LeetCode: `src/python/leet_code/`, `test/python/leet_code/`
 - Systems specs: `docs/systems/`; systems test support: `test/cpp/systems/support/`
-- Repo scripts: `scripts/ci/` (C++ coverage gate, pyproject sorter, systems traceability check), tested in `test/python/scripts/`
-- Plugin & MCP Server:
-  - `.agents/plugins/leetcode/plugin.json`
-  - `.agents/plugins/leetcode/mcp_config.json`
-  - `.agents/plugins/leetcode/README.md`
-  - `.agents/plugins/leetcode/src/leetcode_mcp/`
-  - `.agents/plugins/leetcode/tests/`
-  - `.agents/plugins/leetcode/skills/leetcode-setup/SKILL.md` (plus `references/cpp.md`, `references/python.md`)
-- Systems plugin: `.agents/plugins/systems/` (`plugin.json`, `README.md`, `skills/systems-setup/SKILL.md` plus `references/{spec,safety,cpp,testing}.md`)
+- Repo scripts:
+  - `scripts/ci/` (C++ coverage gate, pyproject sorter, systems traceability check)
+  - `scripts/benchmarks/` (`run_benchmark.py`, `bayesian_compare.py`, `host_tuner.py`)
+- Python tests: `test/python/scripts/` (traceability, coverage, benchmark runner, and Bayesian tests)
+- Skills & Plugins:
+  - `.agents/plugins/leetcode/` (LeetCode MCP server + `leetcode-setup` skill)
+  - `.agents/plugins/systems/` (`systems-setup` skill plus references)
+  - `.agents/skills/optimization-loop/` (`SKILL.md` plus `references/` for Bayesian BEST, hardware tuning, subagent coordination, and scribe guidelines)
+- Benchmark Telemetry: `data/` (local telemetry and reports, strictly gitignored)
 - Infrastructure: `pyproject.toml` (Pixi), `CMakePresets.json`, `cmake/`, `.pre-commit-config.yaml`, `.github/workflows/`, `renovate.jsonc`
 - Multi-Agent Metadata:
   - `.agents/teamwork/`

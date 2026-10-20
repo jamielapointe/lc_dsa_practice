@@ -4,3 +4,7 @@
 if(BUILD_TESTING OR NOT DEFINED BUILD_TESTING)
     find_package(GTest CONFIG REQUIRED)
 endif()
+
+if(BUILD_BENCHMARKS)
+    find_package(benchmark CONFIG REQUIRED)
+endif()

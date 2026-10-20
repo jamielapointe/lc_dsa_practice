@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file shm_pubsub.hpp
-/// @brief Single-publisher / multi-subscriber channel over a POSIX
+/// @brief Single-publisher/multi-subscriber (SPMS) channel over POSIX
 /// shared-memory ring buffer, safe across threads and processes.
 ///
 /// Problem

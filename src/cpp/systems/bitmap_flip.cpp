@@ -5,6 +5,8 @@
 #include <expected>
 #include <span>
 
+#include "systems/bitmap_utils.hpp"
+
 // Complexity (BMFLP-REQ-006): TODO - write the time and space complexity of
 // your flip_bitmap() here, for Problem 0 and again after Follow-up 1.
 //
@@ -16,32 +18,164 @@
 
 namespace systems {
 
-auto reverse_bits(std::uint8_t value) noexcept -> std::uint8_t {
-  // TODO(BMFLP-REQ-002):
-  //   1. Return `value` with bit i moved to bit 7 - i.
-  //   2. Keep it reentrant: no table that is filled in lazily at run time.
-  static_cast<void>(value);
-  return 0;
-}
+using internal::reverse_bits;
+using internal::reverse_bits_lookup;
+using internal::swap_bytes;
 
 auto flip_bitmap(std::span<std::uint8_t> bitmap, std::size_t width,
                  std::size_t height) noexcept
+    -> std::expected<void, BitmapFlipError> {
+  // Validate in order, before touching the buffer (BMFLP-REQ-022):
+  //   1. (BMFLP-REQ-017) empty span / null data -> kNullPointer.
+  //   2. (BMFLP-REQ-018) width == 0 or height == 0 -> kZeroDimension.
+  //   3. (BMFLP-REQ-003) width % 8 != 0 -> kInvalidWidth.
+  //   4. (BMFLP-REQ-021) size < (width / 8) * height (overflow-safe)
+  //      -> kBufferTooSmall.
+  if (bitmap.empty()) {
+    return std::unexpected(BitmapFlipError::kNullPointer);
+  }
+  if (width == 0 || height == 0) {
+    return std::unexpected(BitmapFlipError::kZeroDimension);
+  }
+  if ((width % kBitsPerByte) != 0) {
+    return std::unexpected(BitmapFlipError::kInvalidWidth);
+  }
+  const std::size_t num_bytes = width / kBitsPerByte;
+  if (bitmap.size() / height < num_bytes) {
+    return std::unexpected(BitmapFlipError::kBufferTooSmall);
+  }
+  for (std::size_t row = 0; row < height; ++row) {
+    const std::size_t start_row = row * num_bytes;
+    const std::size_t end_row = start_row + num_bytes - 1;
+    for (std::size_t i = 0; i < num_bytes / 2; ++i) {
+      const std::size_t left = start_row + i;
+      const std::size_t right = end_row - i;
+      swap_bytes(&bitmap[left], &bitmap[right]);
+      bitmap[left] = reverse_bits(bitmap[left]);
+      bitmap[right] = reverse_bits(bitmap[right]);
+    }
+    if (num_bytes % 2 == 1) {
+      bitmap[start_row + (num_bytes / 2)] =
+          reverse_bits(bitmap[start_row + (num_bytes / 2)]);
+    }
+  }
+  return {};
+}
+
+auto flip_bitmap_unaligned(std::span<std::uint8_t> bitmap, std::size_t width,
+                           std::size_t height) noexcept
     -> std::expected<void, BitmapFlipError> {
   // TODO(BMFLP-REQ-022): validate in order, before touching the buffer:
   //   1. (BMFLP-REQ-017) empty span / null data -> kNullPointer.
   //   2. (BMFLP-REQ-018) width == 0 or height == 0 -> kZeroDimension.
   //   3. (BMFLP-REQ-021) size < ceil(width / 8) * height (overflow-safe)
   //      -> kBufferTooSmall.
-  // TODO(BMFLP-REQ-003): 4. Flip one row of width % 8 == 0 in place.
-  // TODO(BMFLP-REQ-004): 5. Apply it to every row.
-  // TODO(BMFLP-REQ-008): 6. Support width % 8 != 0 (Follow-up 2).
-  // TODO(BMFLP-REQ-009): 7. Ignore input padding bits; write them as zero.
-  // TODO(BMFLP-REQ-015): 8. No heap, no recursion.
+  // TODO(BMFLP-REQ-008): 4. Support any width > 0 (including width % 8 != 0).
+  // TODO(BMFLP-REQ-009): 5. Ignore input padding bits; write them as zero.
+  // TODO(BMFLP-REQ-015): 6. No heap, no recursion.
   // Hint: once flip_bitmap_stride() exists this can delegate to it.
-  static_cast<void>(bitmap);
-  static_cast<void>(width);
-  static_cast<void>(height);
-  return std::unexpected(BitmapFlipError::kNotImplemented);
+  if (bitmap.empty()) {
+    return std::unexpected(BitmapFlipError::kNullPointer);
+  }
+  if (width == 0 || height == 0) {
+    return std::unexpected(BitmapFlipError::kZeroDimension);
+  }
+  // this is equivalent to num_bytes = ceil(width / 8) without overflow
+  const std::size_t num_bytes =
+      (width / kBitsPerByte) + ((width % kBitsPerByte != 0) ? 1U : 0U);
+  if (bitmap.size() / height < num_bytes) {
+    return std::unexpected(BitmapFlipError::kBufferTooSmall);
+  }
+  const std::size_t remainder = width % kBitsPerByte;
+  for (std::size_t row = 0; row < height; ++row) {
+    // First do the swap as if width was a multiple of 8
+    const std::size_t start_row = row * num_bytes;
+    const std::size_t end_row = start_row + num_bytes - 1;
+    for (std::size_t i = 0; i < num_bytes / 2; ++i) {
+      const std::size_t left = start_row + i;
+      const std::size_t right = end_row - i;
+      swap_bytes(&bitmap[left], &bitmap[right]);
+      bitmap[left] = reverse_bits_lookup(bitmap[left]);
+      bitmap[right] = reverse_bits_lookup(bitmap[right]);
+    }
+    if (num_bytes % 2 == 1) {
+      const std::size_t mid_index = start_row + (num_bytes / 2);
+      bitmap[mid_index] = reverse_bits_lookup(bitmap[mid_index]);
+    }
+    // If width is not a multiple of 8, the 8-remainder unused padding bits
+    // that were originally in the MSBs of the last byte are now sitting in
+    // the LSBs of the first byte.
+    // Shift all bits across the row right by `shift = 87 - remainder` so
+    // pixel `width - 1` lands at bit 0 (LSB) and pad bits with 0
+    if (remainder > 0) {
+      const std::size_t shift = kBitsPerByte - remainder;
+      for (std::size_t i = 0; i < num_bytes - 1; ++i) {
+        bitmap[start_row + i] =
+            static_cast<std::uint8_t>((bitmap[start_row + i] >> shift) |
+                                      (bitmap[start_row + i + 1] << remainder));
+      }
+      // Need to shift the last byte, which will automatically fill the MSB with
+      // zeroes.
+      bitmap[start_row + num_bytes - 1] =
+          bitmap[start_row + num_bytes - 1] >> shift;
+    }
+  }
+
+  return {};
+}
+
+auto flip_bitmap_unaligned_optimized(std::span<std::uint8_t> bitmap,
+                                     std::size_t width,
+                                     std::size_t height) noexcept
+    -> std::expected<void, BitmapFlipError> {
+  if (bitmap.empty()) {
+    return std::unexpected(BitmapFlipError::kNullPointer);
+  }
+  if (width == 0 || height == 0) {
+    return std::unexpected(BitmapFlipError::kZeroDimension);
+  }
+  // this is equivalent to num_bytes = ceil(width / 8) without overflow
+  const std::size_t num_bytes =
+      (width / kBitsPerByte) + ((width % kBitsPerByte != 0) ? 1U : 0U);
+  if (bitmap.size() / height < num_bytes) {
+    return std::unexpected(BitmapFlipError::kBufferTooSmall);
+  }
+  const std::size_t remainder = width % kBitsPerByte;
+  for (std::size_t row = 0; row < height; ++row) {
+    // First do the swap as if width was a multiple of 8
+    const std::size_t start_row = row * num_bytes;
+    const std::size_t end_row = start_row + num_bytes - 1;
+    for (std::size_t i = 0; i < num_bytes / 2; ++i) {
+      const std::size_t left = start_row + i;
+      const std::size_t right = end_row - i;
+      swap_bytes(&bitmap[left], &bitmap[right]);
+      bitmap[left] = reverse_bits_lookup(bitmap[left]);
+      bitmap[right] = reverse_bits_lookup(bitmap[right]);
+    }
+    if (num_bytes % 2 == 1) {
+      const std::size_t mid_index = start_row + (num_bytes / 2);
+      bitmap[mid_index] = reverse_bits_lookup(bitmap[mid_index]);
+    }
+    // If width is not a multiple of 8, the 8-remainder unused padding bits
+    // that were originally in the MSBs of the last byte are now sitting in
+    // the LSBs of the first byte.
+    // Shift all bits across the row right by `shift = 87 - remainder` so
+    // pixel `width - 1` lands at bit 0 (LSB) and pad bits with 0
+    if (remainder > 0) {
+      const std::size_t shift = kBitsPerByte - remainder;
+      for (std::size_t i = 0; i < num_bytes - 1; ++i) {
+        bitmap[start_row + i] =
+            static_cast<std::uint8_t>((bitmap[start_row + i] >> shift) |
+                                      (bitmap[start_row + i + 1] << remainder));
+      }
+      // Need to shift the last byte, which will automatically fill the MSB with
+      // zeroes.
+      bitmap[start_row + num_bytes - 1] =
+          bitmap[start_row + num_bytes - 1] >> shift;
+    }
+  }
+
+  return {};
 }
 
 auto flip_bitmap_stride(std::span<std::uint8_t> bitmap, std::size_t width,
@@ -88,18 +222,67 @@ auto flip_bitmap_roi(std::span<std::uint8_t> bitmap,
   return std::unexpected(BitmapFlipError::kNotImplemented);
 }
 
-// The stub never writes through `bitmap`; the implementation will.
-// NOLINTNEXTLINE(readability-non-const-parameter)
+// Assume width is a multiple of 8.
 void flip_bitmap(std::uint8_t* bitmap, std::size_t width,
                  std::size_t height) noexcept {
+  if (bitmap == nullptr) {
+    return;
+  }
+  if (width == 0 || height == 0 || (width % kBitsPerByte) != 0) {
+    return;
+  }
+  const std::size_t bytes_per_row = width / kBitsPerByte;
+  for (std::size_t row = 0; row < height; ++row) {
+    std::uint8_t* start = bitmap + (row * bytes_per_row);
+    std::uint8_t* end = start + bytes_per_row - 1;
+    for (std::size_t i = 0; i < bytes_per_row / 2; ++i) {
+      auto* left = start + i;
+      auto* right = end - i;
+      swap_bytes(left, right);
+      *left = reverse_bits(*left);
+      *right = reverse_bits(*right);
+    }
+    if (bytes_per_row % 2 == 1) {
+      *(start + (bytes_per_row / 2)) =
+          reverse_bits(*(start + (bytes_per_row / 2)));
+    }
+  }
+}
+
+// The stub never writes through `bitmap`; the implementation will.
+// NOLINTNEXTLINE(readability-non-const-parameter)
+void flip_bitmap_unaligned(std::uint8_t* bitmap, std::size_t width,
+                           std::size_t height) noexcept {
   // TODO(BMFLP-REQ-012):
   //   1. Return immediately if bitmap is null or width or height is zero.
   //   2. Otherwise build a span of ceil(width / 8) * height bytes and call
-  //      the span overload (the result cannot be reported; ignore it
+  //      flip_bitmap_unaligned(span, width, height) (ignore the result
   //      explicitly).
-  static_cast<void>(bitmap);
-  static_cast<void>(width);
-  static_cast<void>(height);
+  if (bitmap == nullptr) {
+    return;
+  }
+  if (width == 0 || height == 0) {
+    return;
+  }
+  const std::size_t bytes_per_row =
+      (width / kBitsPerByte) + ((width % kBitsPerByte != 0) ? 1U : 0U);
+  std::span<std::uint8_t> bitmap_span(bitmap, bytes_per_row * height);
+  (void)flip_bitmap_unaligned(bitmap_span, width, height);
+}
+
+// NOLINTNEXTLINE(readability-non-const-parameter)
+void flip_bitmap_unaligned_optimized(std::uint8_t* bitmap, std::size_t width,
+                                     std::size_t height) noexcept {
+  if (bitmap == nullptr) {
+    return;
+  }
+  if (width == 0 || height == 0) {
+    return;
+  }
+  const std::size_t bytes_per_row =
+      (width / kBitsPerByte) + ((width % kBitsPerByte != 0) ? 1U : 0U);
+  std::span<std::uint8_t> bitmap_span(bitmap, bytes_per_row * height);
+  (void)flip_bitmap_unaligned_optimized(bitmap_span, width, height);
 }
 
 }  // namespace systems

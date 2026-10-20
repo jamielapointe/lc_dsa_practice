@@ -74,6 +74,17 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "ENABLE_COVERAGE": "ON"
       }
+    },
+    {
+      "name": "benchmark",
+      "inherits": "base",
+      "displayName": "Google Benchmark (Release, Optimized, Local Only)",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_IPO": "ON",
+        "BUILD_TESTING": "OFF",
+        "BUILD_BENCHMARKS": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -106,6 +117,11 @@
       "name": "coverage",
       "configurePreset": "coverage",
       "displayName": "Build LLVM Source-Based Coverage"
+    },
+    {
+      "name": "benchmark",
+      "configurePreset": "benchmark",
+      "displayName": "Build Google Benchmark (Release, Optimized, Local Only)"
     }
   ],
   "testPresets": [
@@ -296,6 +312,20 @@
         {
           "type": "test",
           "name": "coverage"
+        }
+      ]
+    },
+    {
+      "name": "benchmark",
+      "displayName": "Benchmark Workflow (Configure, Build)",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "benchmark"
+        },
+        {
+          "type": "build",
+          "name": "benchmark"
         }
       ]
     }
