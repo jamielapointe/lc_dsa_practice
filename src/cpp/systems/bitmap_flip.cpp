@@ -141,37 +141,35 @@ auto flip_bitmap_unaligned_optimized(std::span<std::uint8_t> bitmap,
     return std::unexpected(BitmapFlipError::kBufferTooSmall);
   }
   const std::size_t remainder = width % kBitsPerByte;
+  std::uint8_t* const base_ptr = bitmap.data();
+  const std::size_t half_bytes = num_bytes / 2;
   for (std::size_t row = 0; row < height; ++row) {
-    // First do the swap as if width was a multiple of 8
-    const std::size_t start_row = row * num_bytes;
-    const std::size_t end_row = start_row + num_bytes - 1;
-    for (std::size_t i = 0; i < num_bytes / 2; ++i) {
-      const std::size_t left = start_row + i;
-      const std::size_t right = end_row - i;
-      swap_bytes(&bitmap[left], &bitmap[right]);
-      bitmap[left] = reverse_bits_lookup(bitmap[left]);
-      bitmap[right] = reverse_bits_lookup(bitmap[right]);
+    std::uint8_t* const row_ptr = base_ptr + (row * num_bytes);
+    for (std::size_t i = 0; i < half_bytes; ++i) {
+      const std::size_t right_idx = num_bytes - 1 - i;
+      const std::uint8_t left_byte = row_ptr[i];
+      const std::uint8_t right_byte = row_ptr[right_idx];
+      row_ptr[i] = reverse_bits_lookup(right_byte);
+      row_ptr[right_idx] = reverse_bits_lookup(left_byte);
     }
     if (num_bytes % 2 == 1) {
-      const std::size_t mid_index = start_row + (num_bytes / 2);
-      bitmap[mid_index] = reverse_bits_lookup(bitmap[mid_index]);
+      row_ptr[half_bytes] = reverse_bits_lookup(row_ptr[half_bytes]);
     }
     // If width is not a multiple of 8, the 8-remainder unused padding bits
     // that were originally in the MSBs of the last byte are now sitting in
     // the LSBs of the first byte.
-    // Shift all bits across the row right by `shift = 87 - remainder` so
+    // Shift all bits across the row right by `shift = 8 - remainder` so
     // pixel `width - 1` lands at bit 0 (LSB) and pad bits with 0
     if (remainder > 0) {
       const std::size_t shift = kBitsPerByte - remainder;
       for (std::size_t i = 0; i < num_bytes - 1; ++i) {
-        bitmap[start_row + i] =
-            static_cast<std::uint8_t>((bitmap[start_row + i] >> shift) |
-                                      (bitmap[start_row + i + 1] << remainder));
+        row_ptr[i] = static_cast<std::uint8_t>((row_ptr[i] >> shift) |
+                                               (row_ptr[i + 1] << remainder));
       }
       // Need to shift the last byte, which will automatically fill the MSB with
       // zeroes.
-      bitmap[start_row + num_bytes - 1] =
-          bitmap[start_row + num_bytes - 1] >> shift;
+      row_ptr[num_bytes - 1] =
+          static_cast<std::uint8_t>(row_ptr[num_bytes - 1] >> shift);
     }
   }
 
