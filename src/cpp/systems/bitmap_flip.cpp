@@ -183,12 +183,42 @@ auto flip_bitmap_unaligned_optimized(std::span<std::uint8_t> bitmap,
   const std::size_t half_bytes = num_bytes / 2;
   for (std::size_t row = 0; row < height; ++row) {
     std::uint8_t* const row_ptr = base_ptr + (row * num_bytes);
-    std::size_t i = 0;
+    std::uint8_t* left_ptr = row_ptr;
+    std::uint8_t* right_ptr = row_ptr + num_bytes;
+    std::size_t rem_half = half_bytes;
+    constexpr std::size_t kBytesPerQuadWord = 4U * kBytesPerWord64;
+    while (rem_half >= kBytesPerQuadWord) {
+      right_ptr -= kBytesPerQuadWord;
+      const std::uint64_t left_w0 = load_u64_le(left_ptr);
+      const std::uint64_t left_w1 = load_u64_le(left_ptr + kBytesPerWord64);
+      const std::uint64_t left_w2 =
+          load_u64_le(left_ptr + (2U * kBytesPerWord64));
+      const std::uint64_t left_w3 =
+          load_u64_le(left_ptr + (3U * kBytesPerWord64));
+      const std::uint64_t right_w0 = load_u64_le(right_ptr);
+      const std::uint64_t right_w1 = load_u64_le(right_ptr + kBytesPerWord64);
+      const std::uint64_t right_w2 =
+          load_u64_le(right_ptr + (2U * kBytesPerWord64));
+      const std::uint64_t right_w3 =
+          load_u64_le(right_ptr + (3U * kBytesPerWord64));
+      store_u64_le(left_ptr, reverse_bits_u64(right_w3));
+      store_u64_le(left_ptr + kBytesPerWord64, reverse_bits_u64(right_w2));
+      store_u64_le(left_ptr + (2U * kBytesPerWord64),
+                   reverse_bits_u64(right_w1));
+      store_u64_le(left_ptr + (3U * kBytesPerWord64),
+                   reverse_bits_u64(right_w0));
+      store_u64_le(right_ptr, reverse_bits_u64(left_w3));
+      store_u64_le(right_ptr + kBytesPerWord64, reverse_bits_u64(left_w2));
+      store_u64_le(right_ptr + (2U * kBytesPerWord64),
+                   reverse_bits_u64(left_w1));
+      store_u64_le(right_ptr + (3U * kBytesPerWord64),
+                   reverse_bits_u64(left_w0));
+      left_ptr += kBytesPerQuadWord;
+      rem_half -= kBytesPerQuadWord;
+    }
     constexpr std::size_t kBytesPerDualWord = 2U * kBytesPerWord64;
-    for (; i + kBytesPerDualWord <= half_bytes; i += kBytesPerDualWord) {
-      std::uint8_t* const left_ptr = row_ptr + i;
-      std::uint8_t* const right_ptr =
-          row_ptr + num_bytes - kBytesPerDualWord - i;
+    if (rem_half >= kBytesPerDualWord) {
+      right_ptr -= kBytesPerDualWord;
       const std::uint64_t left_w0 = load_u64_le(left_ptr);
       const std::uint64_t left_w1 = load_u64_le(left_ptr + kBytesPerWord64);
       const std::uint64_t right_w0 = load_u64_le(right_ptr);
@@ -197,21 +227,26 @@ auto flip_bitmap_unaligned_optimized(std::span<std::uint8_t> bitmap,
       store_u64_le(left_ptr + kBytesPerWord64, reverse_bits_u64(right_w0));
       store_u64_le(right_ptr, reverse_bits_u64(left_w1));
       store_u64_le(right_ptr + kBytesPerWord64, reverse_bits_u64(left_w0));
+      left_ptr += kBytesPerDualWord;
+      rem_half -= kBytesPerDualWord;
     }
-    for (; i + kBytesPerWord64 <= half_bytes; i += kBytesPerWord64) {
-      std::uint8_t* const left_ptr = row_ptr + i;
-      std::uint8_t* const right_ptr = row_ptr + num_bytes - kBytesPerWord64 - i;
+    if (rem_half >= kBytesPerWord64) {
+      right_ptr -= kBytesPerWord64;
       const std::uint64_t left_word = load_u64_le(left_ptr);
       const std::uint64_t right_word = load_u64_le(right_ptr);
       store_u64_le(left_ptr, reverse_bits_u64(right_word));
       store_u64_le(right_ptr, reverse_bits_u64(left_word));
+      left_ptr += kBytesPerWord64;
+      rem_half -= kBytesPerWord64;
     }
-    for (; i < half_bytes; ++i) {
-      const std::size_t right_idx = num_bytes - 1 - i;
-      const std::uint8_t left_byte = row_ptr[i];
-      const std::uint8_t right_byte = row_ptr[right_idx];
-      row_ptr[i] = reverse_bits_lookup(right_byte);
-      row_ptr[right_idx] = reverse_bits_lookup(left_byte);
+    while (rem_half > 0) {
+      --right_ptr;
+      const std::uint8_t left_byte = *left_ptr;
+      const std::uint8_t right_byte = *right_ptr;
+      *left_ptr = reverse_bits_lookup(right_byte);
+      *right_ptr = reverse_bits_lookup(left_byte);
+      ++left_ptr;
+      --rem_half;
     }
     if (num_bytes % 2 == 1) {
       row_ptr[half_bytes] = reverse_bits_lookup(row_ptr[half_bytes]);
