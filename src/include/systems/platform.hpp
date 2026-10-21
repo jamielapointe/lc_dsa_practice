@@ -82,6 +82,14 @@ inline constexpr bool kIsSupportedTarget =
 /// @brief `shm_open` / `shm_unlink` / `mmap(MAP_SHARED)` are available.
 inline constexpr bool kHasPosixSharedMemory = kIsLinux || kIsQnx || kIsMacos;
 
+/// @brief Named POSIX semaphores (`sem_open`, `sem_post`, `sem_trywait`,
+/// `sem_wait`, `sem_close`, `sem_unlink`) are available.
+inline constexpr bool kHasPosixNamedSemaphore = kIsLinux || kIsQnx || kIsMacos;
+
+/// @brief `sem_timedwait` is available on named POSIX semaphores. Present on
+/// Linux and QNX; absent on macOS (Darwin XNU).
+inline constexpr bool kHasPosixSemTimedwait = kIsLinux || kIsQnx;
+
 /// @brief `pthread_mutexattr_setpshared(PTHREAD_PROCESS_SHARED)` works.
 inline constexpr bool kHasProcessSharedMutex = kIsLinux || kIsQnx || kIsMacos;
 

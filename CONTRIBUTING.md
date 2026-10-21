@@ -27,6 +27,7 @@ This guide covers the development workflow, security policies, and dependency ma
    pixi run cpp-tsan        # ThreadSanitizer, required for anything in src/cpp/systems
    pixi run cpp-benchmark   # Google Benchmark suite workflow (local only, never on CI)
    pixi run cpp-benchmark-build # build benchmark executable
+   pixi run shm-pubsub-example  # run multi-process SPMC shared-memory camera example + verifier
    pixi run check-traceability  # systems specs (docs/systems) <-> GoogleTest RecordProperty IDs
    pixi run typecheck
    pixi run lint

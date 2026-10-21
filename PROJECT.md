@@ -198,13 +198,14 @@ workspace (toolchain, dependencies, tasks, CI) is a single Pixi workspace define
 ## Code Layout
 
 - C++ LeetCode: `src/include/leet_code/`, `src/cpp/leet_code/`, `test/cpp/leet_code/`
-- Systems C++: `src/include/systems/`, `src/cpp/systems/`, `test/cpp/systems/`
+- Systems C++: `src/include/systems/`, `src/cpp/systems/`, `test/cpp/systems/`, `examples/cpp/systems/`
 - Systems Benchmarks: `benchmarks/cpp/systems/` (Google Benchmark targets, `CMakeLists.txt`)
 - Python LeetCode: `src/python/leet_code/`, `test/python/leet_code/`
 - Systems specs: `docs/systems/`; systems test support: `test/cpp/systems/support/`
 - Repo scripts:
   - `scripts/ci/` (C++ coverage gate, pyproject sorter, systems traceability check)
   - `scripts/benchmarks/` (`run_benchmark.py`, `bayesian_compare.py`, `host_tuner.py`)
+  - `scripts/examples/` (`run_shm_pubsub_example.py`)
 - Python tests: `test/python/scripts/` (traceability, coverage, benchmark runner, and Bayesian tests)
 - Skills & Plugins:
   - `.agents/plugins/leetcode/` (LeetCode MCP server + `leetcode-setup` skill)

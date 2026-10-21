@@ -37,6 +37,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Project-level switches for the two C++ trees
 option(BUILD_LEET_CODE "Build the C++ LeetCode practice libraries and tests" ON)
 option(BUILD_SYSTEMS "Build the low-level / systems / embedded C++ libraries and tests" ON)
+option(BUILD_EXAMPLES "Build the C++ example executables" ON)
 option(BUILD_BENCHMARKS "Build the C++ benchmark targets" OFF)
 
 # Register modular cmake helper path
@@ -58,6 +59,9 @@ if(BUILD_LEET_CODE)
 endif()
 if(BUILD_SYSTEMS)
     add_subdirectory(src/cpp/systems)
+    if(BUILD_EXAMPLES AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/examples/cpp/systems/CMakeLists.txt")
+        add_subdirectory(examples/cpp/systems)
+    endif()
 endif()
 
 # C++ tests: test/cpp/<tree>/

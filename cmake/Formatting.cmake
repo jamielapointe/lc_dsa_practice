@@ -14,6 +14,9 @@ if(CLANG_FORMAT_PROGRAM)
         "${CMAKE_SOURCE_DIR}/test/cpp/*.cpp"
         "${CMAKE_SOURCE_DIR}/test/cpp/*.hpp"
         "${CMAKE_SOURCE_DIR}/test/cpp/*.h"
+        "${CMAKE_SOURCE_DIR}/examples/cpp/*.cpp"
+        "${CMAKE_SOURCE_DIR}/examples/cpp/*.hpp"
+        "${CMAKE_SOURCE_DIR}/examples/cpp/*.h"
     )
 
     if(ALL_CXX_SOURCES)

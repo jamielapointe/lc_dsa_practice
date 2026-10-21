@@ -77,5 +77,17 @@ systems_add_library(
     LIBS systems::platform Threads::Threads
 )
 
+# Cross-process initialization handshake (spec: docs/systems/process_rendezvous.md). OS calls live
+# only in process_rendezvous_posix.cpp.
+set(PROCESS_RENDEZVOUS_SOURCES process_rendezvous.cpp)
+if(SYSTEMS_POSIX_SUPPORTED)
+    list(APPEND PROCESS_RENDEZVOUS_SOURCES process_rendezvous_posix.cpp)
+endif()
+systems_add_library(
+    process_rendezvous
+    SOURCES ${PROCESS_RENDEZVOUS_SOURCES}
+    LIBS systems::platform Threads::Threads
+)
+
 # In-place horizontal flipping for 1-bpp monochrome bitmaps (spec: docs/systems/bitmap_flip.md).
 systems_add_library(bitmap_flip SOURCES bitmap_flip.cpp)
