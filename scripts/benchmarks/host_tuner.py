@@ -151,8 +151,7 @@ class DarwinHostTuner(HostTuner):
             if len(raw_bytes) < 8:
                 return None
             freqs_hz = [
-                int.from_bytes(raw_bytes[offset : offset + 4], 'little')
-                for offset in range(0, len(raw_bytes) - 3, 8)
+                int.from_bytes(raw_bytes[offset : offset + 4], 'little') for offset in range(0, len(raw_bytes) - 3, 8)
             ]
             valid_freqs = [f for f in freqs_hz if f > 0]
             if not valid_freqs:

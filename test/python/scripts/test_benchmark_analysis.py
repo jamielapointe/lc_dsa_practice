@@ -488,7 +488,7 @@ class TestBenchmarkRunnerCLI:
         patch_google_benchmark_json_context(json_path, host_meta)
 
         updated = json.loads(json_path.read_text(encoding='utf-8'))
-        assert updated['context']['mhz_per_cpu'] == 4044.0
+        assert updated['context']['mhz_per_cpu'] == pytest.approx(4044.0)
         assert updated['context']['apple_cntfrq_el0_mhz'] == 24
-        assert updated['context']['apple_pcore_max_mhz'] == 4044.0
-        assert updated['context']['apple_ecore_max_mhz'] == 2424.0
+        assert updated['context']['apple_pcore_max_mhz'] == pytest.approx(4044.0)
+        assert updated['context']['apple_ecore_max_mhz'] == pytest.approx(2424.0)

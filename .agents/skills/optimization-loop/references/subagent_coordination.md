@@ -108,8 +108,8 @@ from google.antigravity import Agent, LocalAgentConfig, types
 
 # Configure the Academic Scribe subagent
 academic_scribe = types.SubagentConfig(
-    name="academic_scribe",
-    description="Synthesizes academic-grade empirical performance reports from Bayesian benchmark data.",
+    name='academic_scribe',
+    description='Synthesizes academic-grade empirical performance reports from Bayesian benchmark data.',
     capabilities=types.SubagentCapabilities(
         enabled_tools=[
             types.BuiltinTools.VIEW_FILE,
@@ -119,9 +119,9 @@ academic_scribe = types.SubagentConfig(
         agent_behavior=types.AgentBehavior.AUTONOMOUS,
     ),
     system_instructions=(
-        "You are an expert Academic Systems Performance Researcher. "
-        "You analyze Bayesian BEST distributions, generate formal empirical reports "
-        "with LaTeX math, microarchitectural analysis, and structured tables."
+        'You are an expert Academic Systems Performance Researcher. '
+        'You analyze Bayesian BEST distributions, generate formal empirical reports '
+        'with LaTeX math, microarchitectural analysis, and structured tables.'
     ),
 )
 
@@ -131,7 +131,7 @@ root_config = LocalAgentConfig(
     capabilities=types.CapabilitiesConfig(
         enable_subagents=True,
         max_subagent_depth=2,
-        allowed_subagents=["academic_scribe"],
+        allowed_subagents=['academic_scribe'],
     ),
 )
 ```

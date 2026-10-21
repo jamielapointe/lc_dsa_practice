@@ -25,6 +25,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <cstddef>
@@ -271,6 +272,87 @@ void break_symmetry(std::span<std::uint8_t> image, std::size_t width) {
       static_cast<std::uint8_t>(image[last / kBits] & ~(1U << (last % kBits)));
 }
 
+/// Returns the symbolic enumerator name of `error` for readable test logs.
+[[nodiscard]] constexpr auto error_name(BitmapFlipError error) noexcept
+    -> std::string_view {
+  switch (error) {
+    case BitmapFlipError::kNotImplemented:
+      return "kNotImplemented";
+    case BitmapFlipError::kNullPointer:
+      return "kNullPointer";
+    case BitmapFlipError::kInvalidWidth:
+      return "kInvalidWidth";
+    case BitmapFlipError::kZeroDimension:
+      return "kZeroDimension";
+    case BitmapFlipError::kBufferTooSmall:
+      return "kBufferTooSmall";
+    case BitmapFlipError::kInvalidStride:
+      return "kInvalidStride";
+    case BitmapFlipError::kInvalidRoi:
+      return "kInvalidRoi";
+  }
+  return "kUnknown";
+}
+
+/// Checks that `result` succeeded; used inside `EXPECT_TRUE(...)` at the call
+/// site so GoogleTest logs the exact line and expression that failed.
+[[nodiscard]] auto expect_flip_ok(const FlipResult& result)
+    -> ::testing::AssertionResult {
+  if (!result.has_value()) {
+    return ::testing::AssertionFailure()
+           << "unexpected error " << error_name(result.error()) << " (\""
+           << to_string(result.error()) << "\")";
+  }
+  return ::testing::AssertionSuccess();
+}
+
+/// Checks that `result` failed with `expected`; used inside `EXPECT_TRUE(...)`
+/// at the call site so GoogleTest logs the exact line and expression that
+/// failed.
+[[nodiscard]] auto expect_flip_error(const FlipResult& result,
+                                     BitmapFlipError expected)
+    -> ::testing::AssertionResult {
+  if (result.has_value()) {
+    return ::testing::AssertionFailure()
+           << "expected error " << error_name(expected) << " (\""
+           << to_string(expected) << "\"), but call succeeded";
+  }
+  if (result.error() != expected) {
+    return ::testing::AssertionFailure()
+           << "got error " << error_name(result.error()) << " (\""
+           << to_string(result.error()) << "\"), expected "
+           << error_name(expected) << " (\"" << to_string(expected) << "\")";
+  }
+  return ::testing::AssertionSuccess();
+}
+
+/// Checks that `result` failed with `expected` and left `buffer` identical to
+/// `expected_buffer` (resetting `buffer` if modified so later checks are not
+/// poisoned).
+[[nodiscard]] auto expect_flip_error_untouched(
+    const FlipResult& result, BitmapFlipError expected, Bytes& buffer,
+    std::span<const std::uint8_t> expected_buffer)
+    -> ::testing::AssertionResult {
+  const bool untouched = std::ranges::equal(buffer, expected_buffer);
+  if (!untouched) {
+    buffer.assign(expected_buffer.begin(), expected_buffer.end());
+  }
+  const auto err_check = expect_flip_error(result, expected);
+  if (!err_check) {
+    if (!untouched) {
+      return ::testing::AssertionFailure()
+             << err_check.message() << "; AND buffer was modified on error";
+    }
+    return err_check;
+  }
+  if (!untouched) {
+    return ::testing::AssertionFailure()
+           << "buffer was modified when returning error "
+           << error_name(expected);
+  }
+  return ::testing::AssertionSuccess();
+}
+
 // ===========================================================================
 // BitmapFlipTest: reverse_bits() and Problem 0 (width % 8 == 0)
 // ===========================================================================
@@ -514,11 +596,9 @@ TEST(BitmapFlipTest, UnalignedWidthsRejectedWithInvalidWidth) {
   Bytes buffer = pattern;
   for (const std::size_t width : {1U, 3U, 7U, 9U, 10U, 15U, 17U, 23U, 31U}) {
     SCOPED_TRACE(::testing::Message() << "width " << width);
-    const FlipResult result = flip_bitmap(buffer, width, 2);
-    ASSERT_FALSE(result.has_value());
-    EXPECT_EQ(result.error(), BitmapFlipError::kInvalidWidth)
-        << to_string(result.error());
-    EXPECT_EQ(buffer, pattern) << "buffer must be untouched on kInvalidWidth";
+    EXPECT_TRUE(expect_flip_error_untouched(flip_bitmap(buffer, width, 2),
+                                            BitmapFlipError::kInvalidWidth,
+                                            buffer, pattern));
 
     flip_bitmap(buffer.data(), width, 2);
     EXPECT_EQ(buffer, pattern)
@@ -531,31 +611,37 @@ TEST(BitmapFlipTest, AlignedFlipInputValidationAndOverflow) {
                  "BMFLP-REQ-017,BMFLP-REQ-018,BMFLP-REQ-021,BMFLP-REQ-022");
   const Bytes pattern = random_bytes(16, 88);
   Bytes buffer = pattern;
-  const auto expect_err = [&](const FlipResult& result,
-                              BitmapFlipError expected) {
-    ASSERT_FALSE(result.has_value());
-    EXPECT_EQ(result.error(), expected) << to_string(result.error());
-    EXPECT_EQ(buffer, pattern) << "buffer modified on error";
-  };
 
   // Validation order: kNullPointer -> kZeroDimension -> kInvalidWidth ->
   // kBufferTooSmall.
-  expect_err(flip_bitmap(std::span<std::uint8_t>{}, 0, 0),
-             BitmapFlipError::kNullPointer);
-  expect_err(flip_bitmap(std::span{buffer}.first(0), 16, 1),
-             BitmapFlipError::kNullPointer);
-  expect_err(flip_bitmap(buffer, 0, 2), BitmapFlipError::kZeroDimension);
-  expect_err(flip_bitmap(buffer, 7, 0), BitmapFlipError::kZeroDimension);
-  expect_err(flip_bitmap(buffer, 17, 9), BitmapFlipError::kInvalidWidth);
-  expect_err(flip_bitmap(std::span{buffer}.first(7), 16, 4),
-             BitmapFlipError::kBufferTooSmall);
+  EXPECT_TRUE(expect_flip_error_untouched(
+      flip_bitmap(std::span<std::uint8_t>{}, 0, 0),
+      BitmapFlipError::kNullPointer, buffer, pattern));
+  EXPECT_TRUE(expect_flip_error_untouched(
+      flip_bitmap(std::span{buffer}.first(0), 16, 1),
+      BitmapFlipError::kNullPointer, buffer, pattern));
+  EXPECT_TRUE(expect_flip_error_untouched(flip_bitmap(buffer, 0, 2),
+                                          BitmapFlipError::kZeroDimension,
+                                          buffer, pattern));
+  EXPECT_TRUE(expect_flip_error_untouched(flip_bitmap(buffer, 7, 0),
+                                          BitmapFlipError::kZeroDimension,
+                                          buffer, pattern));
+  EXPECT_TRUE(expect_flip_error_untouched(flip_bitmap(buffer, 17, 9),
+                                          BitmapFlipError::kInvalidWidth,
+                                          buffer, pattern));
+  EXPECT_TRUE(expect_flip_error_untouched(
+      flip_bitmap(std::span{buffer}.first(7), 16, 4),
+      BitmapFlipError::kBufferTooSmall, buffer, pattern));
 
   // Overflow-safe size check for aligned widths.
   constexpr std::size_t kHalf = (kMaxSize / 2) + 1;   // multiple of 8
   constexpr std::size_t kMaxAligned = kMaxSize - 7U;  // multiple of 8
-  expect_err(flip_bitmap(buffer, kMaxAligned, 1),
-             BitmapFlipError::kBufferTooSmall);
-  expect_err(flip_bitmap(buffer, kHalf, 16), BitmapFlipError::kBufferTooSmall);
+  EXPECT_TRUE(expect_flip_error_untouched(flip_bitmap(buffer, kMaxAligned, 1),
+                                          BitmapFlipError::kBufferTooSmall,
+                                          buffer, pattern));
+  EXPECT_TRUE(expect_flip_error_untouched(flip_bitmap(buffer, kHalf, 16),
+                                          BitmapFlipError::kBufferTooSmall,
+                                          buffer, pattern));
 }
 
 TEST(BitmapFlipTest, NoHeapAllocationInAlignedFlip) {
@@ -1009,9 +1095,10 @@ TEST(BitmapFlipRoiTest, NoHeapAllocationInUnalignedStrideAndRoiFlips) {
     allocations = scope.allocations();
   }
   EXPECT_EQ(allocations, 0U);
-  for (const auto& result : results) {
-    EXPECT_TRUE(result.has_value()) << to_string(result.error());
-  }
+  EXPECT_TRUE(expect_flip_ok(results[0])) << "flip_bitmap_unaligned";
+  EXPECT_TRUE(expect_flip_ok(results[1])) << "flip_bitmap_unaligned_optimized";
+  EXPECT_TRUE(expect_flip_ok(results[2])) << "flip_bitmap_stride";
+  EXPECT_TRUE(expect_flip_ok(results[3])) << "flip_bitmap_roi";
 }
 
 // ===========================================================================
@@ -1021,84 +1108,85 @@ TEST(BitmapFlipRoiTest, NoHeapAllocationInUnalignedStrideAndRoiFlips) {
 TEST(BitmapFlipErrorTest, EmptyOrNullSpanIsNullPointer) {
   RecordProperty("requirements", "BMFLP-REQ-017");
   std::array<std::uint8_t, 8> storage{};
-  const std::span<std::uint8_t> null_span{};
-  const std::span<std::uint8_t> empty_span = std::span{storage}.first(0);
+  struct SpanCase {
+    std::string_view name;
+    std::span<std::uint8_t> span;
+  };
+  const std::array kSpanCases{
+      SpanCase{.name = "null_span", .span = std::span<std::uint8_t>{}},
+      SpanCase{.name = "empty_span", .span = std::span{storage}.first(0)},
+  };
   const BitmapRoi roi{.x = 0, .y = 0, .width = 8, .height = 1};
-  for (const auto span : {null_span, empty_span}) {
-    const FlipResult aligned = flip_bitmap(span, 16, 2);
-    ASSERT_FALSE(aligned.has_value());
-    EXPECT_EQ(aligned.error(), BitmapFlipError::kNullPointer)
-        << to_string(aligned.error());
-    const FlipResult unaligned = flip_bitmap_unaligned(span, 10, 2);
-    ASSERT_FALSE(unaligned.has_value());
-    EXPECT_EQ(unaligned.error(), BitmapFlipError::kNullPointer)
-        << to_string(unaligned.error());
-    const FlipResult unaligned_opt =
-        flip_bitmap_unaligned_optimized(span, 10, 2);
-    ASSERT_FALSE(unaligned_opt.has_value());
-    EXPECT_EQ(unaligned_opt.error(), BitmapFlipError::kNullPointer)
-        << to_string(unaligned_opt.error());
-    const FlipResult strided = flip_bitmap_stride(span, 16, 2, 2);
-    ASSERT_FALSE(strided.has_value());
-    EXPECT_EQ(strided.error(), BitmapFlipError::kNullPointer)
-        << to_string(strided.error());
-    const FlipResult region = flip_bitmap_roi(span, 16, 2, 2, roi);
-    ASSERT_FALSE(region.has_value());
-    EXPECT_EQ(region.error(), BitmapFlipError::kNullPointer)
-        << to_string(region.error());
+  for (const auto& [span_name, span] : kSpanCases) {
+    SCOPED_TRACE(::testing::Message() << "span: " << span_name);
+    EXPECT_TRUE(expect_flip_error(flip_bitmap(span, 16, 2),
+                                  BitmapFlipError::kNullPointer));
+    EXPECT_TRUE(expect_flip_error(flip_bitmap_unaligned(span, 10, 2),
+                                  BitmapFlipError::kNullPointer));
+    EXPECT_TRUE(expect_flip_error(flip_bitmap_unaligned_optimized(span, 10, 2),
+                                  BitmapFlipError::kNullPointer));
+    EXPECT_TRUE(expect_flip_error(flip_bitmap_stride(span, 16, 2, 2),
+                                  BitmapFlipError::kNullPointer));
+    EXPECT_TRUE(expect_flip_error(flip_bitmap_roi(span, 16, 2, 2, roi),
+                                  BitmapFlipError::kNullPointer));
   }
 }
 
 TEST(BitmapFlipErrorTest, ZeroDimensionsRejected) {
   RecordProperty("requirements", "BMFLP-REQ-018");
   std::array<std::uint8_t, 16> buffer{};
-  const auto expect_zero = [](const FlipResult& result) {
-    ASSERT_FALSE(result.has_value());
-    EXPECT_EQ(result.error(), BitmapFlipError::kZeroDimension)
-        << to_string(result.error());
-  };
-  expect_zero(flip_bitmap(buffer, 0, 2));
-  expect_zero(flip_bitmap(buffer, 16, 0));
-  expect_zero(flip_bitmap_unaligned(buffer, 0, 2));
-  expect_zero(flip_bitmap_unaligned(buffer, 10, 0));
-  expect_zero(flip_bitmap_unaligned_optimized(buffer, 0, 2));
-  expect_zero(flip_bitmap_unaligned_optimized(buffer, 10, 0));
-  expect_zero(flip_bitmap_stride(buffer, 0, 2, 4));
-  expect_zero(flip_bitmap_stride(buffer, 16, 0, 4));
+  EXPECT_TRUE(expect_flip_error(flip_bitmap(buffer, 0, 2),
+                                BitmapFlipError::kZeroDimension));
+  EXPECT_TRUE(expect_flip_error(flip_bitmap(buffer, 16, 0),
+                                BitmapFlipError::kZeroDimension));
+  EXPECT_TRUE(expect_flip_error(flip_bitmap_unaligned(buffer, 0, 2),
+                                BitmapFlipError::kZeroDimension));
+  EXPECT_TRUE(expect_flip_error(flip_bitmap_unaligned(buffer, 10, 0),
+                                BitmapFlipError::kZeroDimension));
+  EXPECT_TRUE(expect_flip_error(flip_bitmap_unaligned_optimized(buffer, 0, 2),
+                                BitmapFlipError::kZeroDimension));
+  EXPECT_TRUE(expect_flip_error(flip_bitmap_unaligned_optimized(buffer, 10, 0),
+                                BitmapFlipError::kZeroDimension));
+  EXPECT_TRUE(expect_flip_error(flip_bitmap_stride(buffer, 0, 2, 4),
+                                BitmapFlipError::kZeroDimension));
+  EXPECT_TRUE(expect_flip_error(flip_bitmap_stride(buffer, 16, 0, 4),
+                                BitmapFlipError::kZeroDimension));
   const BitmapRoi roi{.x = 0, .y = 0, .width = 8, .height = 1};
-  expect_zero(flip_bitmap_roi(buffer, 0, 4, 4, roi));
-  expect_zero(flip_bitmap_roi(buffer, 32, 0, 4, roi));
-  expect_zero(flip_bitmap_roi(
-      buffer, 32, 4, 4, BitmapRoi{.x = 0, .y = 0, .width = 0, .height = 1}));
-  expect_zero(flip_bitmap_roi(
-      buffer, 32, 4, 4, BitmapRoi{.x = 0, .y = 0, .width = 8, .height = 0}));
+  EXPECT_TRUE(expect_flip_error(flip_bitmap_roi(buffer, 0, 4, 4, roi),
+                                BitmapFlipError::kZeroDimension));
+  EXPECT_TRUE(expect_flip_error(flip_bitmap_roi(buffer, 32, 0, 4, roi),
+                                BitmapFlipError::kZeroDimension));
+  EXPECT_TRUE(expect_flip_error(
+      flip_bitmap_roi(buffer, 32, 4, 4,
+                      BitmapRoi{.x = 0, .y = 0, .width = 0, .height = 1}),
+      BitmapFlipError::kZeroDimension));
+  EXPECT_TRUE(expect_flip_error(
+      flip_bitmap_roi(buffer, 32, 4, 4,
+                      BitmapRoi{.x = 0, .y = 0, .width = 8, .height = 0}),
+      BitmapFlipError::kZeroDimension));
 }
 
 TEST(BitmapFlipErrorTest, StrideSmallerThanRowBytesRejected) {
   RecordProperty("requirements", "BMFLP-REQ-019");
   std::array<std::uint8_t, 64> buffer{};
-  const auto expect_stride = [](const FlipResult& result) {
-    ASSERT_FALSE(result.has_value());
-    EXPECT_EQ(result.error(), BitmapFlipError::kInvalidStride)
-        << to_string(result.error());
-  };
-  expect_stride(flip_bitmap_stride(buffer, 24, 2, 2));  // needs 3
-  expect_stride(flip_bitmap_stride(buffer, 9, 2, 1));   // needs 2
-  expect_stride(flip_bitmap_stride(buffer, 1, 2, 0));   // needs 1
-  expect_stride(flip_bitmap_roi(
-      buffer, 24, 2, 2, BitmapRoi{.x = 0, .y = 0, .width = 8, .height = 1}));
+  EXPECT_TRUE(expect_flip_error(flip_bitmap_stride(buffer, 24, 2, 2),
+                                BitmapFlipError::kInvalidStride));  // needs 3
+  EXPECT_TRUE(expect_flip_error(flip_bitmap_stride(buffer, 9, 2, 1),
+                                BitmapFlipError::kInvalidStride));  // needs 2
+  EXPECT_TRUE(expect_flip_error(flip_bitmap_stride(buffer, 1, 2, 0),
+                                BitmapFlipError::kInvalidStride));  // needs 1
+  EXPECT_TRUE(expect_flip_error(
+      flip_bitmap_roi(buffer, 24, 2, 2,
+                      BitmapRoi{.x = 0, .y = 0, .width = 8, .height = 1}),
+      BitmapFlipError::kInvalidStride));
 
   // The exact minimum stride is valid.
-  const FlipResult exact = flip_bitmap_stride(buffer, 9, 2, 2);
-  EXPECT_TRUE(exact.has_value()) << to_string(exact.error());
+  EXPECT_TRUE(expect_flip_ok(flip_bitmap_stride(buffer, 9, 2, 2)));
 }
 
 TEST(BitmapFlipErrorTest, RoiOutsideFramebufferRejected) {
   RecordProperty("requirements", "BMFLP-REQ-020");
   std::array<std::uint8_t, 16> buffer{};  // 32 x 4, stride 4
-  const auto roi_error = [&buffer](BitmapRoi roi) {
-    return flip_bitmap_roi(buffer, 32, 4, 4, roi);
-  };
   const std::array kBadRois{
       BitmapRoi{.x = 20, .y = 0, .width = 13, .height = 1},  // x + w = 33
       BitmapRoi{.x = 32, .y = 0, .width = 1, .height = 1},   // x == width
@@ -1114,16 +1202,13 @@ TEST(BitmapFlipErrorTest, RoiOutsideFramebufferRejected) {
     SCOPED_TRACE(::testing::Message()
                  << "roi x=" << roi.x << " y=" << roi.y << " w=" << roi.width
                  << " h=" << roi.height);
-    const FlipResult result = roi_error(roi);
-    ASSERT_FALSE(result.has_value());
-    EXPECT_EQ(result.error(), BitmapFlipError::kInvalidRoi)
-        << to_string(result.error());
+    EXPECT_TRUE(expect_flip_error(flip_bitmap_roi(buffer, 32, 4, 4, roi),
+                                  BitmapFlipError::kInvalidRoi));
   }
 
   // An ROI touching the right and bottom edges exactly is valid.
-  const FlipResult exact =
-      roi_error(BitmapRoi{.x = 19, .y = 1, .width = 13, .height = 3});
-  EXPECT_TRUE(exact.has_value()) << to_string(exact.error());
+  EXPECT_TRUE(expect_flip_ok(flip_bitmap_roi(
+      buffer, 32, 4, 4, BitmapRoi{.x = 19, .y = 1, .width = 13, .height = 3})));
 }
 
 TEST(BitmapFlipErrorTest, BufferTooSmallRejectedWithoutOverflow) {
@@ -1132,90 +1217,106 @@ TEST(BitmapFlipErrorTest, BufferTooSmallRejectedWithoutOverflow) {
   const auto first = [&storage](std::size_t count) {
     return std::span{storage}.first(count);
   };
-  const auto expect_small = [](const FlipResult& result) {
-    ASSERT_FALSE(result.has_value());
-    EXPECT_EQ(result.error(), BitmapFlipError::kBufferTooSmall)
-        << to_string(result.error());
-  };
   const BitmapRoi roi{.x = 0, .y = 0, .width = 8, .height = 1};
 
-  expect_small(flip_bitmap(first(7), 16, 4));            // needs 2 * 4 = 8
-  expect_small(flip_bitmap_unaligned(first(5), 10, 3));  // needs 2 * 3 = 6
-  expect_small(flip_bitmap_unaligned_optimized(first(5), 10, 3));
-  expect_small(flip_bitmap_stride(first(7), 16, 2, 4));     // needs 4 * 2 = 8
-  expect_small(flip_bitmap_roi(first(15), 32, 4, 4, roi));  // needs 16
+  EXPECT_TRUE(expect_flip_error(flip_bitmap(first(7), 16, 4),
+                                BitmapFlipError::kBufferTooSmall));
+  EXPECT_TRUE(expect_flip_error(flip_bitmap_unaligned(first(5), 10, 3),
+                                BitmapFlipError::kBufferTooSmall));
+  EXPECT_TRUE(
+      expect_flip_error(flip_bitmap_unaligned_optimized(first(5), 10, 3),
+                        BitmapFlipError::kBufferTooSmall));
+  EXPECT_TRUE(expect_flip_error(flip_bitmap_stride(first(7), 16, 2, 4),
+                                BitmapFlipError::kBufferTooSmall));
+  EXPECT_TRUE(expect_flip_error(flip_bitmap_roi(first(15), 32, 4, 4, roi),
+                                BitmapFlipError::kBufferTooSmall));
 
   // Sizes whose products wrap around std::size_t must still be rejected. A
   // wrapping check accepts them and the flip then writes out of bounds, so
   // this test aborts under ASan instead of failing an assertion.
   constexpr std::size_t kHalf = (kMaxSize / 2) + 1;   // 2^(N-1), multiple of 8
   constexpr std::size_t kMaxAligned = kMaxSize - 7U;  // multiple of 8
-  expect_small(flip_bitmap(first(16), kMaxAligned, 1));
-  expect_small(flip_bitmap(first(16), kHalf, 16));  // 2^(N-4) * 16 wraps
-  expect_small(
-      flip_bitmap_unaligned(first(16), kMaxSize, 1));  // ceil() must not wrap
-  expect_small(flip_bitmap_unaligned(first(16), kHalf, 16));
-  expect_small(flip_bitmap_unaligned_optimized(first(16), kMaxSize, 1));
-  expect_small(flip_bitmap_unaligned_optimized(first(16), kHalf, 16));
-  expect_small(flip_bitmap_stride(first(16), 8, 2, kHalf));
-  expect_small(flip_bitmap_roi(first(16), 8, 2, kHalf, roi));
+  EXPECT_TRUE(expect_flip_error(flip_bitmap(first(16), kMaxAligned, 1),
+                                BitmapFlipError::kBufferTooSmall));
+  EXPECT_TRUE(expect_flip_error(flip_bitmap(first(16), kHalf, 16),
+                                BitmapFlipError::kBufferTooSmall));
+  EXPECT_TRUE(expect_flip_error(flip_bitmap_unaligned(first(16), kMaxSize, 1),
+                                BitmapFlipError::kBufferTooSmall));
+  EXPECT_TRUE(expect_flip_error(flip_bitmap_unaligned(first(16), kHalf, 16),
+                                BitmapFlipError::kBufferTooSmall));
+  EXPECT_TRUE(
+      expect_flip_error(flip_bitmap_unaligned_optimized(first(16), kMaxSize, 1),
+                        BitmapFlipError::kBufferTooSmall));
+  EXPECT_TRUE(
+      expect_flip_error(flip_bitmap_unaligned_optimized(first(16), kHalf, 16),
+                        BitmapFlipError::kBufferTooSmall));
+  EXPECT_TRUE(expect_flip_error(flip_bitmap_stride(first(16), 8, 2, kHalf),
+                                BitmapFlipError::kBufferTooSmall));
+  EXPECT_TRUE(expect_flip_error(flip_bitmap_roi(first(16), 8, 2, kHalf, roi),
+                                BitmapFlipError::kBufferTooSmall));
 
   // Exactly stride * height bytes is enough; larger buffers are also valid.
-  const FlipResult exact_aligned = flip_bitmap(first(8), 16, 4);
-  EXPECT_TRUE(exact_aligned.has_value()) << to_string(exact_aligned.error());
-  const FlipResult larger_aligned = flip_bitmap(first(16), 16, 4);
-  EXPECT_TRUE(larger_aligned.has_value()) << to_string(larger_aligned.error());
-  const FlipResult exact_unaligned = flip_bitmap_unaligned(first(6), 10, 3);
-  EXPECT_TRUE(exact_unaligned.has_value())
-      << to_string(exact_unaligned.error());
-  const FlipResult exact_unaligned_opt =
-      flip_bitmap_unaligned_optimized(first(6), 10, 3);
-  EXPECT_TRUE(exact_unaligned_opt.has_value())
-      << to_string(exact_unaligned_opt.error());
-  const FlipResult exact_strided = flip_bitmap_stride(first(8), 16, 2, 4);
-  EXPECT_TRUE(exact_strided.has_value()) << to_string(exact_strided.error());
+  EXPECT_TRUE(expect_flip_ok(flip_bitmap(first(8), 16, 4)));
+  EXPECT_TRUE(expect_flip_ok(flip_bitmap(first(16), 16, 4)));
+  EXPECT_TRUE(expect_flip_ok(flip_bitmap_unaligned(first(6), 10, 3)));
+  EXPECT_TRUE(expect_flip_ok(flip_bitmap_unaligned_optimized(first(6), 10, 3)));
+  EXPECT_TRUE(expect_flip_ok(flip_bitmap_stride(first(8), 16, 2, 4)));
 }
 
 TEST(BitmapFlipErrorTest, ValidationOrderAndBufferUntouchedOnError) {
   RecordProperty("requirements", "BMFLP-REQ-022");
   const Bytes pattern = random_bytes(16, 18);
   Bytes buffer = pattern;
-  const auto expect_error = [&](const FlipResult& result,
-                                BitmapFlipError expected) {
-    ASSERT_FALSE(result.has_value());
-    EXPECT_EQ(result.error(), expected) << to_string(result.error());
-    EXPECT_EQ(buffer, pattern) << "buffer modified on error";
-  };
   const std::span<std::uint8_t> all{buffer};
   const BitmapRoi bad_roi{.x = 30, .y = 0, .width = 8, .height = 1};
 
   // Each call has several problems; the first one in the documented order
   // (null, zero, invalid width [flip_bitmap only], stride, roi, size) wins.
-  expect_error(flip_bitmap(std::span<std::uint8_t>{}, 0, 0),
-               BitmapFlipError::kNullPointer);
-  expect_error(flip_bitmap_unaligned(std::span<std::uint8_t>{}, 0, 0),
-               BitmapFlipError::kNullPointer);
-  expect_error(flip_bitmap_unaligned_optimized(std::span<std::uint8_t>{}, 0, 0),
-               BitmapFlipError::kNullPointer);
-  expect_error(flip_bitmap(all, 7, 0), BitmapFlipError::kZeroDimension);
-  expect_error(flip_bitmap_unaligned(all, 7, 0),
-               BitmapFlipError::kZeroDimension);
-  expect_error(flip_bitmap_unaligned_optimized(all, 7, 0),
-               BitmapFlipError::kZeroDimension);
-  expect_error(flip_bitmap(all, 17, 9), BitmapFlipError::kInvalidWidth);
-  expect_error(flip_bitmap_stride(all, 24, 0, 1),
-               BitmapFlipError::kZeroDimension);
-  expect_error(flip_bitmap_roi(all, 32, 8, 1, bad_roi),
-               BitmapFlipError::kInvalidStride);
-  expect_error(flip_bitmap_roi(all, 32, 8, 4, bad_roi),
-               BitmapFlipError::kInvalidRoi);
-  expect_error(flip_bitmap(all, 16, 9), BitmapFlipError::kBufferTooSmall);
-  expect_error(flip_bitmap_unaligned(all, 16, 9),
-               BitmapFlipError::kBufferTooSmall);
-  expect_error(flip_bitmap_unaligned_optimized(all, 16, 9),
-               BitmapFlipError::kBufferTooSmall);
-  expect_error(flip_bitmap_stride(all, 24, 2, 9),
-               BitmapFlipError::kBufferTooSmall);
+  EXPECT_TRUE(expect_flip_error_untouched(
+      flip_bitmap(std::span<std::uint8_t>{}, 0, 0),
+      BitmapFlipError::kNullPointer, buffer, pattern));
+  EXPECT_TRUE(expect_flip_error_untouched(
+      flip_bitmap_unaligned(std::span<std::uint8_t>{}, 0, 0),
+      BitmapFlipError::kNullPointer, buffer, pattern));
+  EXPECT_TRUE(expect_flip_error_untouched(
+      flip_bitmap_unaligned_optimized(std::span<std::uint8_t>{}, 0, 0),
+      BitmapFlipError::kNullPointer, buffer, pattern));
+  EXPECT_TRUE(expect_flip_error_untouched(flip_bitmap(all, 7, 0),
+                                          BitmapFlipError::kZeroDimension,
+                                          buffer, pattern));
+  EXPECT_TRUE(expect_flip_error_untouched(flip_bitmap_unaligned(all, 7, 0),
+                                          BitmapFlipError::kZeroDimension,
+                                          buffer, pattern));
+  EXPECT_TRUE(expect_flip_error_untouched(
+      flip_bitmap_unaligned_optimized(all, 7, 0),
+      BitmapFlipError::kZeroDimension, buffer, pattern));
+  EXPECT_TRUE(expect_flip_error_untouched(flip_bitmap(all, 17, 9),
+                                          BitmapFlipError::kInvalidWidth,
+                                          buffer, pattern));
+  EXPECT_TRUE(expect_flip_error_untouched(flip_bitmap_stride(all, 24, 0, 1),
+                                          BitmapFlipError::kZeroDimension,
+                                          buffer, pattern));
+  EXPECT_TRUE(expect_flip_error_untouched(flip_bitmap_stride(all, 24, 9, 2),
+                                          BitmapFlipError::kInvalidStride,
+                                          buffer, pattern));
+  EXPECT_TRUE(expect_flip_error_untouched(
+      flip_bitmap_roi(all, 32, 8, 1, bad_roi), BitmapFlipError::kInvalidStride,
+      buffer, pattern));
+  EXPECT_TRUE(expect_flip_error_untouched(
+      flip_bitmap_roi(all, 32, 8, 4, bad_roi), BitmapFlipError::kInvalidRoi,
+      buffer, pattern));
+  EXPECT_TRUE(expect_flip_error_untouched(flip_bitmap(all, 16, 9),
+                                          BitmapFlipError::kBufferTooSmall,
+                                          buffer, pattern));
+  EXPECT_TRUE(expect_flip_error_untouched(flip_bitmap_unaligned(all, 16, 9),
+                                          BitmapFlipError::kBufferTooSmall,
+                                          buffer, pattern));
+  EXPECT_TRUE(expect_flip_error_untouched(
+      flip_bitmap_unaligned_optimized(all, 16, 9),
+      BitmapFlipError::kBufferTooSmall, buffer, pattern));
+  EXPECT_TRUE(expect_flip_error_untouched(flip_bitmap_stride(all, 24, 2, 9),
+                                          BitmapFlipError::kBufferTooSmall,
+                                          buffer, pattern));
 }
 
 TEST(BitmapFlipErrorTest, CStyleWrapperIgnoresInvalidInput) {

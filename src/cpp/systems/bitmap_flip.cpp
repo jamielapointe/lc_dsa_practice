@@ -283,11 +283,50 @@ auto flip_bitmap_stride(std::span<std::uint8_t> bitmap, std::size_t width,
   //      -> kBufferTooSmall.
   // TODO(BMFLP-REQ-010): 5. Row y starts at y * stride_bytes; flip its
   //   ceil(width / 8) pixel bytes, never write the stride padding bytes.
-  static_cast<void>(bitmap);
-  static_cast<void>(width);
-  static_cast<void>(height);
-  static_cast<void>(stride_bytes);
-  return std::unexpected(BitmapFlipError::kNotImplemented);
+  // Recall that stride_bytes >= ceil(width / 8) and is the distance in bytes
+  // between the start of consecutive rows.
+  if (bitmap.empty()) {
+    return std::unexpected(BitmapFlipError::kNullPointer);
+  }
+  if (width == 0 || height == 0) {
+    return std::unexpected(BitmapFlipError::kZeroDimension);
+  }
+  const std::size_t num_bytes_per_row =
+      (width / kBitsPerByte) + ((width % kBitsPerByte != 0) ? 1U : 0U);
+  if (stride_bytes < num_bytes_per_row) {
+    return std::unexpected(BitmapFlipError::kInvalidStride);
+  }
+  if (bitmap.size() / height < stride_bytes) {
+    return std::unexpected(BitmapFlipError::kBufferTooSmall);
+  }
+  const std::size_t remainder = width % kBitsPerByte;
+
+  // BMFLP-REQ-009: shall write every padding bit as zero.
+  for (std::size_t row = 0; row < height; ++row) {
+    const std::size_t start_row = row * stride_bytes;
+    const std::size_t end_row = start_row + num_bytes_per_row - 1;
+    for (std::size_t i = 0; i < num_bytes_per_row / 2; ++i) {
+      const std::size_t left = start_row + i;
+      const std::size_t right = end_row - i;
+      swap_bytes(&bitmap[left], &bitmap[right]);
+      bitmap[left] = reverse_bits_lookup(bitmap[left]);
+      bitmap[right] = reverse_bits_lookup(bitmap[right]);
+    }
+    if (num_bytes_per_row % 2 == 1) {
+      const std::size_t mid_index = start_row + (num_bytes_per_row / 2);
+      bitmap[mid_index] = reverse_bits_lookup(bitmap[mid_index]);
+    }
+    if (remainder > 0) {
+      const std::size_t shift = kBitsPerByte - remainder;
+      for (std::size_t i = 0; i < num_bytes_per_row - 1; ++i) {
+        bitmap[start_row + i] =
+            static_cast<std::uint8_t>((bitmap[start_row + i] >> shift) |
+                                      (bitmap[start_row + i + 1] << remainder));
+      }
+      bitmap[end_row] = bitmap[end_row] >> shift;
+    }
+  }
+  return {};
 }
 
 auto flip_bitmap_roi(std::span<std::uint8_t> bitmap,
@@ -308,12 +347,67 @@ auto flip_bitmap_roi(std::span<std::uint8_t> bitmap,
   // TODO(BMFLP-REQ-011): 6. For each ROI row, mirror pixels
   //   [roi.x, roi.x + roi.width) and preserve every other bit, including
   //   the partial bytes at both ROI edges.
-  static_cast<void>(bitmap);
-  static_cast<void>(framebuffer_width);
-  static_cast<void>(framebuffer_height);
-  static_cast<void>(stride_bytes);
-  static_cast<void>(roi);
-  return std::unexpected(BitmapFlipError::kNotImplemented);
+  if (bitmap.empty()) {
+    return std::unexpected(BitmapFlipError::kNullPointer);
+  }
+  if (framebuffer_width == 0 || framebuffer_height == 0 || roi.width == 0 ||
+      roi.height == 0) {
+    return std::unexpected(BitmapFlipError::kZeroDimension);
+  }
+  const std::size_t num_bytes_per_row =
+      (framebuffer_width / kBitsPerByte) +
+      ((framebuffer_width % kBitsPerByte != 0) ? 1U : 0U);
+  if (stride_bytes < num_bytes_per_row) {
+    return std::unexpected(BitmapFlipError::kInvalidStride);
+  }
+  if (roi.x > framebuffer_width || roi.width > framebuffer_width - roi.x) {
+    return std::unexpected(BitmapFlipError::kInvalidRoi);
+  }
+  if (roi.y > framebuffer_height || roi.height > framebuffer_height - roi.y) {
+    return std::unexpected(BitmapFlipError::kInvalidRoi);
+  }
+  if (bitmap.size() / framebuffer_height < stride_bytes) {
+    return std::unexpected(BitmapFlipError::kBufferTooSmall);
+  }
+
+  // General unaligned-start case (`roi.x % kBitsPerByte != 0`):
+  // Swap symmetric pixel paris `(left_x, y)` and `(right_x, y)` within the ROI
+  // so bits outside of the ROI in the boundary bytes are left untouched.
+  for (std::size_t row_offset = 0; row_offset < roi.height; ++row_offset) {
+    std::size_t start_row = (roi.y + row_offset) * stride_bytes;
+    for (size_t dx = 0; dx < roi.width / 2; ++dx) {
+      const std::size_t left_x = roi.x + dx;
+      const std::size_t right_x = roi.x + roi.width - dx - 1;
+
+      const std::size_t left_byte_index = start_row + (left_x / kBitsPerByte);
+      const std::size_t left_bit_index = left_x % kBitsPerByte;
+
+      const std::size_t right_byte_index = start_row + (right_x / kBitsPerByte);
+      const std::size_t right_bit_index = right_x % kBitsPerByte;
+
+      const std::uint8_t left_val =
+          (bitmap[left_byte_index] >> left_bit_index) & 1U;
+      const std::uint8_t right_val =
+          (bitmap[right_byte_index] >> right_bit_index) & 1U;
+
+      if (right_val != 0) {
+        bitmap[left_byte_index] |=
+            static_cast<std::uint8_t>(1U << left_bit_index);
+      } else {
+        bitmap[left_byte_index] &=
+            static_cast<std::uint8_t>(~(1U << left_bit_index));
+      }
+
+      if (left_val != 0) {
+        bitmap[right_byte_index] |=
+            static_cast<std::uint8_t>(1U << right_bit_index);
+      } else {
+        bitmap[right_byte_index] &=
+            static_cast<std::uint8_t>(~(1U << right_bit_index));
+      }
+    }
+  }
+  return {};
 }
 
 // Assume width is a multiple of 8.
