@@ -299,26 +299,26 @@ void RendezvousOsHandle::wait_slice(
   if constexpr (platform::kHasPosixSemTimedwait) {
 #if defined(HAVE_POSIX_SEM_TIMEDWAIT)
     if (sem_ != nullptr) {
-      struct timespec deadline{};
-      if (::clock_gettime(CLOCK_REALTIME, &deadline) == 0) {
-        using TvNsec = decltype(deadline.tv_nsec);
-        constexpr TvNsec kNsecPerSec = 1'000'000'000;
-        const auto add_ns =
-            static_cast<TvNsec>(std::min<std::chrono::nanoseconds>(
-                                    slice, std::chrono::milliseconds{50})
-                                    .count());
-        deadline.tv_nsec += add_ns;
-        if (deadline.tv_nsec >= kNsecPerSec) {
-          deadline.tv_sec += deadline.tv_nsec / kNsecPerSec;
-          deadline.tv_nsec %= kNsecPerSec;
-        }
-        if (::sem_timedwait(static_cast<sem_t*>(sem_), &deadline) == 0) {
-          // Re-post so other processes/threads waiting on the same stage wake
-          // too.
-          static_cast<void>(::sem_post(static_cast<sem_t*>(sem_)));
-        }
-        return;
+      const auto cap_slice = std::min<std::chrono::nanoseconds>(
+          slice, std::chrono::milliseconds{50});
+      const auto deadline_tp =
+          std::chrono::system_clock::now() +
+          std::chrono::duration_cast<std::chrono::system_clock::duration>(
+              cap_slice);
+      const auto since_epoch = deadline_tp.time_since_epoch();
+      const auto secs =
+          std::chrono::duration_cast<std::chrono::seconds>(since_epoch);
+      const auto nsecs = std::chrono::duration_cast<std::chrono::nanoseconds>(
+          since_epoch - secs);
+      std::timespec deadline{};
+      deadline.tv_sec = static_cast<decltype(deadline.tv_sec)>(secs.count());
+      deadline.tv_nsec = static_cast<decltype(deadline.tv_nsec)>(nsecs.count());
+      if (::sem_timedwait(static_cast<sem_t*>(sem_), &deadline) == 0) {
+        // Re-post so other processes/threads waiting on the same stage wake
+        // too.
+        static_cast<void>(::sem_post(static_cast<sem_t*>(sem_)));
       }
+      return;
     }
 #endif
   }
