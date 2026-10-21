@@ -1,6 +1,10 @@
 /// @file shm_name.cpp
 /// @brief Unique shared-memory names and RAII unlink for tests.
 
+#if defined(SYSTEMS_POSIX_SUPPORTED) &&                                       \
+    ((defined(__linux__) && (defined(__x86_64__) || defined(__aarch64__))) || \
+     (defined(__APPLE__) && defined(__aarch64__)))
+
 #include "systems_test/shm_name.hpp"
 
 #include <fcntl.h>
@@ -56,3 +60,8 @@ auto shm_exists(const std::string& name) -> bool {
 }
 
 }  // namespace systems_test
+
+#else
+#error \
+    "shm_name.cpp requires a supported POSIX target (Linux x86_64/aarch64 or macOS arm64) and SYSTEMS_POSIX_SUPPORTED."
+#endif

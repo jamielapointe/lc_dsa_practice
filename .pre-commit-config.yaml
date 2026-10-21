@@ -4,7 +4,7 @@
 # Hooks either come from pinned upstream repos or call `pixi run ...` so that
 # every tool version is governed by pixi.lock.
 # =============================================================================
-exclude: '^(\.agents/teamwork/|\.pixi/|\.rumdl_cache/|build/|dist/|pixi\.lock$)'
+exclude: '^(\.agents/teamwork/|\.pixi/|\.rumdl_cache/|build/|data/|dist/|pixi\.lock$)'
 
 repos:
   # ---------------------------------------------------------------------------

@@ -25,6 +25,8 @@ This guide covers the development workflow, security policies, and dependency ma
    pixi run cov-python      # Python coverage, >= 85%
    pixi run cov-cpp         # C++ coverage, >= 85%
    pixi run cpp-tsan        # ThreadSanitizer, required for anything in src/cpp/systems
+   pixi run cpp-benchmark   # Google Benchmark suite workflow (local only, never on CI)
+   pixi run cpp-benchmark-build # build benchmark executable
    pixi run check-traceability  # systems specs (docs/systems) <-> GoogleTest RecordProperty IDs
    pixi run typecheck
    pixi run lint
@@ -43,6 +45,9 @@ This guide covers the development workflow, security policies, and dependency ma
 - New problems start in a TDD-red state: stubs compile and tests assert the correct answers.
 - Systems code follows `.agents/plugins/systems/skills/systems-setup/references/safety.md`: no heap after initialization,
   `noexcept` APIs returning `std::expected`, no RTTI, OS calls isolated in an adapter, POSIX portability.
+- Benchmarks in `benchmarks/cpp/systems` are local-only and must never run in CI. Benchmark telemetry in `data/` is strictly
+  gitignored and must never be committed. Performance improvements require Bayesian BEST verification ($P(\text{better}) \ge 0.95$ with ROPE)
+  with zero unit test regressions.
 
 ## Commits and pull requests
 

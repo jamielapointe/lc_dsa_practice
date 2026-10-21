@@ -20,7 +20,7 @@ the style reference for new ones.
 ```text
 .
 ├── AGENTS.md, README.md, CONTRIBUTING.md, PROJECT.md
-├── CMakeLists.txt, CMakePresets.json, cmake/      # options: BUILD_LEET_CODE, BUILD_SYSTEMS
+├── CMakeLists.txt, CMakePresets.json, cmake/      # options: BUILD_LEET_CODE, BUILD_SYSTEMS, BUILD_BENCHMARKS
 ├── pyproject.toml, pixi.lock                      # Pixi workspace and ALL Python tool config
 ├── src/
 │   ├── include/{leet_code,systems}/               # public C++ headers, included as <leet_code/x.hpp>
@@ -29,10 +29,15 @@ the style reference for new ones.
 ├── test/
 │   ├── cpp/{leet_code,systems}/                   # GoogleTest, one <name>_test.cpp per target
 │   └── python/{leet_code,scripts}/                # pytest, test_<name>.py
+├── benchmarks/
+│   └── cpp/systems/                               # Google Benchmark suites for systems components
 ├── docs/systems/                                  # requirements specs for systems problems (<name>.md)
-├── scripts/ci/                                    # cpp_coverage.py, reorder_pyproject.py, check_systems_traceability.py
-├── .agents/plugins/leetcode/                      # MCP server (leetcode_mcp) + leetcode-setup skill
-├── .agents/plugins/systems/                       # systems-setup skill (prompt-driven, no MCP server)
+├── scripts/
+│   ├── benchmarks/                                # runner and Bayesian BEST + ROPE analysis scripts
+│   └── ci/                                        # cpp_coverage.py, reorder_pyproject.py, check_systems_traceability.py
+├── .agents/
+│   ├── plugins/{leetcode,systems}/                # track plugins and skills
+│   └── skills/optimization-loop/                  # workspace optimization-loop skill & references
 └── .github/workflows/                             # ci.yml, pixi-update.yml, scorecard.yml
 ```
 
@@ -58,13 +63,15 @@ pixi run test-cpp        # dev-debug: ASan + UBSan + clang-tidy, build and ctest
 pixi run test-python     # pytest, live-network tests deselected
 pixi run cpp-release     # IPO build + tests
 pixi run cpp-asan | cpp-ubsan | cpp-tsan
+pixi run cpp-benchmark   # Google Benchmark suite workflow
+pixi run cpp-benchmark-build # build benchmark executable
 pixi run cov-cpp         # llvm-cov, gate >= 85%
 pixi run cov-python      # pytest-cov, gate >= 85%
 pixi run lint | lint-fix | format | format-check | format-cmake | format-cpp | typecheck | lint-md
 pixi run pre-commit      # the full gate; run before every commit
 ```
 
-CMake presets: `dev-debug`, `dev-release`, `asan`, `ubsan`, `tsan`, `coverage` (each has configure, build, test, and
+CMake presets: `dev-debug`, `dev-release`, `asan`, `ubsan`, `tsan`, `coverage`, `benchmark` (each has configure, build, test, and
 workflow variants; build trees go to `build/<preset>`).
 
 ## Track 1: C++ LeetCode
@@ -126,6 +133,21 @@ Intent: portable building blocks that could move to a small target without redes
   to `test-cpp` before finishing.
 - Deliberate NOLINTs (for example a C array backing the FIFO) must carry a one-line justification.
 - Avoid `std::chrono` literals (`10ms`); `misc-include-cleaner` cannot attribute them. Include public POSIX headers.
+
+## Systems benchmarks and Bayesian optimization
+
+Intent: empirical microbenchmarking and statistical performance evaluation for systems components.
+
+- Benchmarks live in `benchmarks/cpp/systems/<name>_benchmark.cpp`, registered in `benchmarks/cpp/systems/CMakeLists.txt`.
+- Built via CMake presets (`benchmark` preset or `dev-release` with IPO). CMake option `BUILD_BENCHMARKS` defaults to `OFF`.
+- **Exclusion from CI**: Benchmarks are local-only and MUST NEVER run on GitHub Actions CI (`.github/workflows/ci.yml`).
+- Runner and Bayesian BEST analysis scripts live in `scripts/benchmarks/` (`run_benchmark.py`, `bayesian_compare.py`, `host_tuner.py`).
+- Telemetry and reports live in `data/latest/<experiment>` and `data/baseline/<experiment>`. `data/` is strictly
+  gitignored and must never be committed.
+- Workspace agentic optimization skill: `.agents/skills/optimization-loop/SKILL.md` (orchestrating preloop, two-stage fast-screen
+  then full 30-rep BEST benchmark, unit test gate, atomic git commits, and Academic Scribe report).
+- Baseline promotion requires Bayesian BEST $P(\text{better}) \ge 0.95$ with ROPE (e.g. 2%), zero unit-test regressions,
+  and clean pre-commit.
 
 ## Systems plugin (`.agents/plugins/systems`)
 

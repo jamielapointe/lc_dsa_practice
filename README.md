@@ -22,7 +22,7 @@ C++** tree for low-level components. Everything (toolchain, dependencies, tasks,
 | :--- | :--- | :--- | :--- |
 | C++ LeetCode | `src/cpp/leet_code`, `src/include/leet_code` | `test/cpp/leet_code` | `leet_code` (`leet_code::<slug>` CMake aliases) |
 | Python LeetCode | `src/python/leet_code` | `test/python/leet_code` | `leet_code` |
-| Systems C++ | `src/cpp/systems`, `src/include/systems` | `test/cpp/systems` | `systems` (`systems::<name>` CMake aliases) |
+| Systems C++ | `src/cpp/systems`, `src/include/systems`, `benchmarks/cpp/systems` | `test/cpp/systems` | `systems` (`systems::<name>` CMake aliases) |
 
 The systems track holds low-level building blocks written in an embedded-friendly style (fixed capacity, no heap, no STL
 containers, explicit concurrency). It currently contains `systems::BoundedFifo`, a thread-safe bounded MPMC FIFO, plus shared
@@ -57,6 +57,8 @@ pixi run cpp-release          # dev-release (IPO)
 pixi run cpp-asan             # AddressSanitizer
 pixi run cpp-ubsan            # UndefinedBehaviorSanitizer
 pixi run cpp-tsan             # ThreadSanitizer
+pixi run cpp-benchmark        # Google Benchmark suite workflow
+pixi run cpp-benchmark-build  # build benchmark executable
 pixi run cov-cpp              # llvm-cov line coverage, gate >= 85%
 pixi run cov-python           # pytest-cov, gate >= 85%
 
@@ -86,10 +88,15 @@ pixi run pre-commit           # all hooks over the whole tree
 ├── test/
 │   ├── cpp/{leet_code,systems}/       # GoogleTest suites
 │   └── python/{leet_code,scripts}/    # pytest suites
+├── benchmarks/
+│   └── cpp/systems/                   # Google Benchmark suites for systems components
 ├── docs/systems/                  # requirements specs for systems problems
-├── scripts/ci/                    # coverage gate, pyproject sorter, systems traceability check
-├── .agents/plugins/leetcode/      # LeetCode MCP server + `leetcode-setup` skill
-├── .agents/plugins/systems/       # `systems-setup` skill (prompt-driven, no lookup)
+├── scripts/
+│   ├── benchmarks/                    # runner and Bayesian BEST + ROPE analysis scripts
+│   └── ci/                            # coverage gate, pyproject sorter, systems traceability check
+├── .agents/
+│   ├── plugins/{leetcode,systems}/    # track plugins and skills
+│   └── skills/optimization-loop/      # workspace optimization-loop skill & references
 └── .github/workflows/             # ci, pixi-update, scorecard
 ```
 
@@ -108,6 +115,21 @@ change the API, then writes a requirements spec (`docs/systems/<name>.md`, trace
 implementation outline, stubs, and a red GoogleTest suite (threads, processes, SIGKILL fault injection). Constraints follow
 automotive / robotics practice: no heap after initialization, no exceptions or RTTI, POSIX portability (Linux, QNX). See
 [`.agents/plugins/systems/README.md`](.agents/plugins/systems/README.md).
+
+## Optimizing a systems component
+
+Use the workspace `optimization-loop` skill (`.agents/skills/optimization-loop/SKILL.md`) to systematically optimize
+a systems kernel (such as `systems::flip_bitmap_unaligned_optimized`). The agentic workflow uses Gemini 4 Argon (High Thinking)
+in Google Antigravity 2.24.0:
+
+1. **Preloop**: Establishes a deterministic baseline (`data/baseline/`) with reproducible random seeding (`0x5EED`) and host stabilization.
+2. **Two-Stage Performance Testing**: Evaluates candidate hypotheses through a fast 3-repetition screen (aborting if >5% slower),
+   followed by a high-confidence 30-repetition Google Benchmark run analyzed via Kruschke's Bayesian Estimation Supersedes the
+   t-test (BEST) with a Region of Practical Equivalence (ROPE = 2%).
+3. **Verification & Promotion**: Promotes candidate to baseline only when $P(\text{better}) \ge 0.95$, unit tests pass 100%,
+   and all pre-commit hooks pass cleanly.
+4. **Academic Reporting**: Generates interactive Plotly HTML reports (`report.html`) and publication-grade empirical analysis
+   via the Academic Scribe Agent.
 
 ## Quality gates
 

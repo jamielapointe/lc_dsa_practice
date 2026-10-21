@@ -47,6 +47,10 @@ void escape(const void* ptr) { asm volatile("" : : "r"(ptr) : "memory"); }
 // ---------------------------------------------------------------- platform
 
 TEST(PlatformTest, CapabilityFlagsAreConsistent) {
+  static_assert(systems::platform::kIsSupportedTarget,
+                "must be built on a supported OS and CPU architecture");
+  static_assert(systems::platform::kIsX86_64 != systems::platform::kIsAarch64,
+                "supported targets are either x86_64 or aarch64");
   static_assert(!systems::platform::kHasRobustMutex ||
                     systems::platform::kIsProductionTarget,
                 "robust mutexes are only expected on Linux / QNX");
@@ -54,8 +58,11 @@ TEST(PlatformTest, CapabilityFlagsAreConsistent) {
   static_assert(systems::platform::kCacheLineSize >= 32);
   if constexpr (systems::platform::kIsMacos) {
     EXPECT_FALSE(systems::platform::kHasRobustMutex);
+    EXPECT_TRUE(systems::platform::kIsAarch64);
+    EXPECT_EQ(systems::platform::kCacheLineSize, 128U);
   }
   EXPECT_TRUE(systems::platform::kHasPosixSharedMemory);
+  EXPECT_TRUE(systems::platform::kIsSupportedTarget);
 }
 
 // ----------------------------------------------------------------- process

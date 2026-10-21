@@ -74,6 +74,12 @@ htmlcov/
 # Teamwork Agent Working Directory
 .agents/teamwork/**
 
+# Benchmark Telemetry and Reports
+data/
+
+# direnv
+.envrc
+
 # Operating System & IDE Metadata
 .DS_Store
 ._*

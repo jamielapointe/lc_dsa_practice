@@ -6,16 +6,17 @@ find_package(Threads REQUIRED)
 # Reusable GoogleTest support for systems components: fork-based child processes with timeouts,
 # shared rendezvous memory, SIGKILL fault injection, unique shared-memory names, and a global
 # allocation counter. Headers are included as "systems_test/<name>.hpp".
-add_library(
-    systems_test_support
-    STATIC
-    support/allocation_counter.cpp
-    support/global_new_delete.cpp
-    support/process.cpp
-    support/reap.cpp
-    support/shared_region.cpp
-    support/shm_name.cpp
-)
+set(SYSTEMS_TEST_SUPPORT_SOURCES support/allocation_counter.cpp support/global_new_delete.cpp)
+if(SYSTEMS_POSIX_SUPPORTED)
+    list(
+        APPEND SYSTEMS_TEST_SUPPORT_SOURCES
+        support/process.cpp
+        support/reap.cpp
+        support/shared_region.cpp
+        support/shm_name.cpp
+    )
+endif()
+add_library(systems_test_support STATIC ${SYSTEMS_TEST_SUPPORT_SOURCES})
 add_library(systems::test_support ALIAS systems_test_support)
 # libc++ declares the global allocation functions with reserved parameter names, which clang-tidy
 # reports against the library header; see the comment in global_new_delete.cpp.
@@ -45,4 +46,11 @@ add_project_test(
     SOURCES shm_pubsub_test.cpp
     LIBS systems::shm_pubsub systems::test_support
     LABELS "systems;multiprocess;fault"
+)
+
+add_project_test(
+    bitmap_flip_test
+    SOURCES bitmap_flip_test.cpp
+    LIBS systems::bitmap_flip systems::test_support
+    LABELS "systems"
 )
