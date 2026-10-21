@@ -199,7 +199,7 @@ auto run_producer(const ProducerOptions& opts) -> int {
     frame.width = systems::examples::kCameraFrameWidth;
     frame.height = systems::examples::kCameraFrameHeight;
     for (std::uint32_t& pixel : frame.pixels) {
-      pixel = rng();
+      pixel = static_cast<std::uint32_t>(rng());
     }
     frame.pixel_crc32 = systems::examples::compute_pixel_crc32(frame.pixels);
 
