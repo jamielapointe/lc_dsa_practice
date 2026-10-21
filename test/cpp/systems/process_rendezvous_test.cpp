@@ -11,7 +11,6 @@
 
 #include <atomic>
 #include <chrono>
-#include <csignal>
 #include <cstddef>
 #include <cstdint>
 #include <expected>
