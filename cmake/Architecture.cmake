@@ -57,7 +57,12 @@ target_compile_definitions(
 # Dynamic POSIX Synchronization Primitive Checks (macOS vs Linux)
 if(SYSTEMS_POSIX_SUPPORTED)
     cmake_push_check_state()
-    set(CMAKE_REQUIRED_FLAGS "")
+    if(TARGET_OS_FAMILY STREQUAL "LINUX")
+        set(CMAKE_REQUIRED_FLAGS "-pthread")
+        set(CMAKE_REQUIRED_LIBRARIES "pthread;rt")
+    else()
+        set(CMAKE_REQUIRED_FLAGS "")
+    endif()
     check_cxx_source_compiles(
         "
     #include <fcntl.h>
@@ -83,7 +88,12 @@ if(SYSTEMS_POSIX_SUPPORTED)
     endif()
 
     cmake_push_check_state()
-    set(CMAKE_REQUIRED_FLAGS "")
+    if(TARGET_OS_FAMILY STREQUAL "LINUX")
+        set(CMAKE_REQUIRED_FLAGS "-pthread")
+        set(CMAKE_REQUIRED_LIBRARIES "pthread;rt")
+    else()
+        set(CMAKE_REQUIRED_FLAGS "")
+    endif()
     check_cxx_source_compiles(
         "
     #include <ctime>
