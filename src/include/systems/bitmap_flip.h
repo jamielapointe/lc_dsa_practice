@@ -70,9 +70,9 @@ typedef struct bitmap_roi bitmap_roi;
                                                            size_t width,
                                                            size_t height);
 
-/// @brief Optimized candidate implementation for flipping unaligned packed
-/// bitmaps.
-[[nodiscard]] enum bitmap_flip_error bitmap_flip_unaligned_candidate(
+/// @brief Flips a tightly packed bitmap of any width (> 0) horizontally in
+/// place using the optimized candidate implementation.
+[[nodiscard]] enum bitmap_flip_error bitmap_flip_unaligned_optimized(
     uint8_t* bitmap, size_t buf_size, size_t width, size_t height);
 
 /// @brief Flips a bitmap whose rows are stride_bytes apart in place.
@@ -86,26 +86,6 @@ typedef struct bitmap_roi bitmap_roi;
 [[nodiscard]] enum bitmap_flip_error bitmap_flip_roi(
     uint8_t* bitmap, size_t buf_size, size_t frame_width, size_t frame_height,
     size_t stride_bytes, struct bitmap_roi roi);
-
-/// @brief C-style void wrapper for aligned bitmaps (width % 8 == 0).
-void flip_bitmap_aligned(uint8_t* bitmap, size_t width, size_t height);
-
-/// @brief C-style void wrapper for unaligned bitmaps of any width (> 0).
-void flip_bitmap_unaligned(uint8_t* bitmap, size_t width, size_t height);
-
-/// @brief C-style void wrapper for unaligned bitmaps using the optimized
-/// candidate.
-void flip_bitmap_unaligned_optimized(uint8_t* bitmap, size_t width,
-                                     size_t height);
-
-/// @brief C-style void wrapper for strided bitmaps.
-void flip_bitmap_stride(uint8_t* bitmap, size_t width, size_t height,
-                        size_t stride_bytes);
-
-/// @brief C-style void wrapper for region of interest flipping.
-void flip_bitmap_roi(uint8_t* bitmap, size_t frame_width, size_t frame_height,
-                     size_t stride_bytes, size_t roi_x, size_t roi_y,
-                     size_t roi_w, size_t roi_h);
 
 #ifdef __cplusplus
 }

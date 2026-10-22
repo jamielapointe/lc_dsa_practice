@@ -207,7 +207,7 @@ enum bitmap_flip_error bitmap_flip_unaligned(uint8_t* bitmap, size_t buf_size,
   return BITMAP_FLIP_OK;
 }
 
-enum bitmap_flip_error bitmap_flip_unaligned_candidate(uint8_t* bitmap,
+enum bitmap_flip_error bitmap_flip_unaligned_optimized(uint8_t* bitmap,
                                                        size_t buf_size,
                                                        size_t width,
                                                        size_t height) {
@@ -402,83 +402,4 @@ enum bitmap_flip_error bitmap_flip_roi(uint8_t* bitmap, size_t buf_size,
     }
   }
   return BITMAP_FLIP_OK;
-}
-
-void flip_bitmap_aligned(uint8_t* bitmap, size_t width, size_t height) {
-  if (bitmap == nullptr || width == 0U || height == 0U ||
-      (width % BITMAP_BITS_PER_BYTE) != 0U) {
-    return;
-  }
-  const size_t bytes_per_row = width / BITMAP_BITS_PER_BYTE;
-  size_t required = 0U;
-  if (ckd_mul(&required, bytes_per_row, height)) {
-    return;
-  }
-  (void)bitmap_flip_aligned(bitmap, required, width, height);
-}
-
-void flip_bitmap_unaligned(uint8_t* bitmap, size_t width, size_t height) {
-  if (bitmap == nullptr || width == 0U || height == 0U) {
-    return;
-  }
-  const size_t bytes_per_row = compute_active_bytes(width);
-  size_t required = 0U;
-  if (ckd_mul(&required, bytes_per_row, height)) {
-    return;
-  }
-  (void)bitmap_flip_unaligned(bitmap, required, width, height);
-}
-
-void flip_bitmap_unaligned_optimized(uint8_t* bitmap, size_t width,
-                                     size_t height) {
-  if (bitmap == nullptr || width == 0U || height == 0U) {
-    return;
-  }
-  const size_t bytes_per_row = compute_active_bytes(width);
-  size_t required = 0U;
-  if (ckd_mul(&required, bytes_per_row, height)) {
-    return;
-  }
-  (void)bitmap_flip_unaligned_candidate(bitmap, required, width, height);
-}
-
-void flip_bitmap_stride(uint8_t* bitmap, size_t width, size_t height,
-                        size_t stride_bytes) {
-  if (bitmap == nullptr || width == 0U || height == 0U) {
-    return;
-  }
-  const size_t bytes_per_row = compute_active_bytes(width);
-  if (stride_bytes < bytes_per_row) {
-    return;
-  }
-  size_t required = 0U;
-  if (ckd_mul(&required, stride_bytes, height)) {
-    return;
-  }
-  (void)bitmap_flip_strided(bitmap, required, width, height, stride_bytes);
-}
-
-void flip_bitmap_roi(uint8_t* bitmap, size_t frame_width, size_t frame_height,
-                     size_t stride_bytes, size_t roi_x, size_t roi_y,
-                     size_t roi_w, size_t roi_h) {
-  if (bitmap == nullptr || frame_width == 0U || frame_height == 0U ||
-      roi_w == 0U || roi_h == 0U) {
-    return;
-  }
-  const size_t bytes_per_row = compute_active_bytes(frame_width);
-  if (stride_bytes < bytes_per_row) {
-    return;
-  }
-  size_t required = 0U;
-  if (ckd_mul(&required, stride_bytes, frame_height)) {
-    return;
-  }
-  const struct bitmap_roi roi = {
-      .x = roi_x,
-      .y = roi_y,
-      .width = roi_w,
-      .height = roi_h,
-  };
-  (void)bitmap_flip_roi(bitmap, required, frame_width, frame_height,
-                        stride_bytes, roi);
 }

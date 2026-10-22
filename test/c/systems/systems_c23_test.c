@@ -60,6 +60,13 @@ static_assert(systems_cache_line_size >= 64U,
       bitmap_reverse_bits(0x01U) != 0x80U) {
     return false;
   }
+  if (bitmap_flip_unaligned_optimized(row, sizeof(row), 16U, 1U) !=
+      BITMAP_FLIP_OK) {
+    return false;
+  }
+  if (row[0] != 0x01U || row[1] != 0x00U) {
+    return false;
+  }
   return bitmap_reverse_bits_lookup(0x01U) == 0x80U;
 }
 

@@ -67,11 +67,11 @@ void BM_FlipBitmap_C_Candidate(benchmark::State& state, std::size_t width,
   const std::size_t total_bytes = row_bytes * height;
   auto buffer = make_test_buffer(total_bytes);
 
-  static_cast<void>(bitmap_flip_unaligned_candidate(
+  static_cast<void>(bitmap_flip_unaligned_optimized(
       buffer.data(), buffer.size(), width, height));
 
   for (auto _ : state) {
-    static_cast<void>(bitmap_flip_unaligned_candidate(
+    static_cast<void>(bitmap_flip_unaligned_optimized(
         buffer.data(), buffer.size(), width, height));
     benchmark::DoNotOptimize(buffer.data());
     benchmark::ClobberMemory();

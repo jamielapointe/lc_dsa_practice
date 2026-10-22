@@ -60,7 +60,7 @@ workspace (toolchain, dependencies, tasks, CI) is a single Pixi workspace define
 | 21 | Systems Setup Plugin | `.agents/plugins/systems`: prompt-driven `systems-setup` skill (spec, outline header, stubs, 6-tier red tests), `systems/platform.hpp`, `systems::test_support` (fork harness, shared regions, shm names, allocation counter), traceability checker | M6 | #28 |
 | 20 | Pixi Infrastructure & CI | Pixi tasks, CMake presets (debug/release/ASan/UBSan/TSan/coverage), pre-commit, GitHub Actions, Renovate, Scorecard, coverage gates | M5 | Refactor |
 | 22 | Systems Google Benchmark Infrastructure | `benchmarks/cpp/systems/` with `cmake/Benchmarking.cmake`, `BUILD_BENCHMARKS=OFF` default, Google Benchmark suite | M7 | R1 |
-| 23 | Baseline Function & Unit Tests | `systems::flip_bitmap_unaligned_optimized` (`std::span` and pointer overloads) with unit tests and ASPICE traceability | M7 | R2 |
+| 23 | Baseline Function & Unit Tests | `systems::flip_bitmap_unaligned_optimized` (`std::span` overload) and C23 `bitmap_flip_unaligned_optimized` with unit tests and ASPICE traceability | M7 | R2 |
 | 24 | Bayesian BEST + ROPE Engine & Host Tuning | SciPy/NumPy Student-t posterior analysis (`P(better)`, `P(same)`, `P(worse)`), host tuning (Darwin/Linux), Plotly reports | M7 | R3 |
 | 25 | Agentic Optimization Loop Skill | `.agents/skills/optimization-loop/SKILL.md` (preloop, two-stage fast-screen/full BEST benchmark, git rollbacks, Academic Scribe) | M7 | R4 |
 | 26 | ISO C23 Track & Systems Translation | Parallel `c/` directories (`src/c`, `test/c`, `examples/c`, `benchmarks/c`), strict `-std=c23` CMake integration, C23 translation of all 5 `systems` components, GoogleTest + pure C23 test suites | M8 | #42 |

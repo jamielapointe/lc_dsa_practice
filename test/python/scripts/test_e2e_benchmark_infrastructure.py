@@ -225,9 +225,17 @@ class TestTier1FeatureCoverage:
         assert '-> std::expected<void, BitmapFlipError>' in hpp_content
         assert 'noexcept' in hpp_content
 
-        # Check pointer overload signature
-        assert 'void flip_bitmap_unaligned_optimized(' in hpp_content
-        assert 'std::uint8_t* bitmap' in hpp_content
+        # Legacy C-style void pointer overloads must not exist in C++ header
+        assert 'void flip_bitmap(' not in hpp_content
+        assert 'void flip_bitmap_unaligned(' not in hpp_content
+        assert 'void flip_bitmap_unaligned_optimized(' not in hpp_content
+
+        # Check C23 error-returning signature in bitmap_flip.h
+        h_path = REPO_ROOT / 'src' / 'include' / 'systems' / 'bitmap_flip.h'
+        assert h_path.exists()
+        h_content = h_path.read_text(encoding='utf-8')
+        assert '[[nodiscard]] enum bitmap_flip_error bitmap_flip_unaligned_optimized(' in h_content
+        assert 'void flip_bitmap_unaligned_optimized(' not in h_content
 
         # Check definition exists in cpp
         assert 'flip_bitmap_unaligned_optimized(' in cpp_content

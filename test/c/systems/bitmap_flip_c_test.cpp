@@ -1,8 +1,8 @@
 /**
  * @file bitmap_flip_c_test.cpp
  * @brief Google Test suite for ISO C23 bitmap_flip component.
- * Traceability: BMFLP-REQ-001 through BMFLP-REQ-013, BMFLP-REQ-015,
- *               BMFLP-REQ-017 through BMFLP-REQ-022.
+ * Traceability: BMFLP-REQ-001 through BMFLP-REQ-011, BMFLP-REQ-013,
+ *               BMFLP-REQ-015, BMFLP-REQ-017 through BMFLP-REQ-022.
  */
 
 #include <gtest/gtest.h>
@@ -194,9 +194,9 @@ TEST(BitmapFlipCTest, UnalignedMatchesPixelDefinition) {
         bitmap_flip_unaligned(buf_std.data(), buf_std.size(), width, kHeight),
         BITMAP_FLIP_OK);
 
-    // Candidate
+    // Optimized candidate
     std::vector<uint8_t> buf_cand = initial;
-    ASSERT_EQ(bitmap_flip_unaligned_candidate(buf_cand.data(), buf_cand.size(),
+    ASSERT_EQ(bitmap_flip_unaligned_optimized(buf_cand.data(), buf_cand.size(),
                                               width, kHeight),
               BITMAP_FLIP_OK);
 
@@ -308,35 +308,6 @@ TEST(BitmapFlipCTest, RoiFlipsOnlyInsideAndPreservesNeighbours) {
 }
 
 // ============================================================================
-// Tier 5: Void Wrappers (BMFLP-REQ-012)
-// ============================================================================
-
-TEST(BitmapFlipCTest, CStyleVoidWrappers) {
-  RecordProperty("requirements", "BMFLP-REQ-012");
-  // flip_bitmap_aligned
-  std::array<uint8_t, 2> buf_al = {0x01U, 0x00U};
-  flip_bitmap_aligned(buf_al.data(), 16U, 1U);
-  EXPECT_EQ(buf_al[0], 0x00U);
-  EXPECT_EQ(buf_al[1], 0x80U);
-  // Silent no-op on invalid
-  flip_bitmap_aligned(buf_al.data(), 15U, 1U);  // unaligned width -> no-op
-  EXPECT_EQ(buf_al[0], 0x00U);
-  EXPECT_EQ(buf_al[1], 0x80U);
-  flip_bitmap_aligned(nullptr, 16U, 1U);  // null -> no-op
-
-  // flip_bitmap_unaligned & flip_bitmap_unaligned_optimized
-  std::array<uint8_t, 2> buf_un = {0x01U, 0x00U};
-  flip_bitmap_unaligned(buf_un.data(), 10U, 1U);
-  flip_bitmap_unaligned_optimized(buf_un.data(), 10U, 1U);
-  flip_bitmap_unaligned_optimized(nullptr, 10U, 1U);
-
-  // flip_bitmap_stride & flip_bitmap_roi
-  std::array<uint8_t, 4> buf_st = {0x01U, 0x00U, 0x00U, 0x00U};
-  flip_bitmap_stride(buf_st.data(), 8U, 1U, 4U);
-  flip_bitmap_roi(buf_st.data(), 32U, 1U, 4U, 0U, 0U, 8U, 1U);
-}
-
-// ============================================================================
 // Tier 6: Concurrency & Reentrancy (BMFLP-REQ-013)
 // ============================================================================
 
@@ -392,7 +363,7 @@ TEST(BitmapFlipCTest, ZeroHeapAllocation) {
               BITMAP_FLIP_OK);
     EXPECT_EQ(bitmap_flip_unaligned(buf.data(), buf.size(), kWidth, kHeight),
               BITMAP_FLIP_OK);
-    EXPECT_EQ(bitmap_flip_unaligned_candidate(buf.data(), buf.size(), kWidth,
+    EXPECT_EQ(bitmap_flip_unaligned_optimized(buf.data(), buf.size(), kWidth,
                                               kHeight),
               BITMAP_FLIP_OK);
     EXPECT_EQ(bitmap_flip_strided(buf.data(), buf.size(), kWidth, kHeight,
@@ -420,12 +391,22 @@ TEST(BitmapFlipCTest, ValidationOrderAndUntouchedOnError) {
             BITMAP_FLIP_ERR_NULL_POINTER);
   EXPECT_EQ(bitmap_flip_aligned(canary.data(), 0U, 8U, 1U),
             BITMAP_FLIP_ERR_NULL_POINTER);
+  EXPECT_EQ(bitmap_flip_unaligned_optimized(nullptr, 16U, 10U, 1U),
+            BITMAP_FLIP_ERR_NULL_POINTER);
+  EXPECT_EQ(bitmap_flip_unaligned_optimized(canary.data(), 0U, 10U, 1U),
+            BITMAP_FLIP_ERR_NULL_POINTER);
 
   // 2. Zero dimension takes precedence over invalid width / size
   EXPECT_EQ(bitmap_flip_aligned(canary.data(), canary.size(), 0U, 1U),
             BITMAP_FLIP_ERR_ZERO_DIMENSIONS);
   EXPECT_EQ(bitmap_flip_aligned(canary.data(), canary.size(), 8U, 0U),
             BITMAP_FLIP_ERR_ZERO_DIMENSIONS);
+  EXPECT_EQ(
+      bitmap_flip_unaligned_optimized(canary.data(), canary.size(), 0U, 1U),
+      BITMAP_FLIP_ERR_ZERO_DIMENSIONS);
+  EXPECT_EQ(
+      bitmap_flip_unaligned_optimized(canary.data(), canary.size(), 10U, 0U),
+      BITMAP_FLIP_ERR_ZERO_DIMENSIONS);
 
   // 3. Invalid width takes precedence over buffer too small (aligned)
   EXPECT_EQ(bitmap_flip_aligned(canary.data(), 1U, 15U, 100U),
@@ -448,6 +429,9 @@ TEST(BitmapFlipCTest, ValidationOrderAndUntouchedOnError) {
   EXPECT_EQ(
       bitmap_flip_unaligned(canary.data(), 2U, 10U, 2U),  // requires 4 bytes
       BITMAP_FLIP_ERR_BUFFER_TOO_SMALL);
+  EXPECT_EQ(bitmap_flip_unaligned_optimized(canary.data(), 2U, 10U,
+                                            2U),  // requires 4 bytes
+            BITMAP_FLIP_ERR_BUFFER_TOO_SMALL);
   EXPECT_EQ(
       bitmap_flip_strided(canary.data(), 2U, 8U, 2U, 4U),  // requires 8 bytes
       BITMAP_FLIP_ERR_BUFFER_TOO_SMALL);
