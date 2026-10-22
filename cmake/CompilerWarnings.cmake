@@ -10,23 +10,33 @@ set(CLANG_GCC_WARNINGS
     -Wconversion
     -Wsign-conversion
     -Wshadow
-    -Wnon-virtual-dtor
-    -Wold-style-cast
     -Wcast-align
     -Wunused
-    -Woverloaded-virtual
     -Wnull-dereference
     -Wdouble-promotion
     -Wformat=2
     -Wimplicit-fallthrough
+    $<$<COMPILE_LANGUAGE:CXX>:-Wnon-virtual-dtor>
+    $<$<COMPILE_LANGUAGE:CXX>:-Wold-style-cast>
+    $<$<COMPILE_LANGUAGE:CXX>:-Woverloaded-virtual>
+    $<$<COMPILE_LANGUAGE:C>:-Wstrict-prototypes>
+    $<$<COMPILE_LANGUAGE:C>:-Wmissing-prototypes>
+    $<$<COMPILE_LANGUAGE:C>:-Wmissing-declarations>
+    $<$<COMPILE_LANGUAGE:C>:-Wold-style-definition>
+    $<$<COMPILE_LANGUAGE:C>:-Wbad-function-cast>
+    $<$<COMPILE_LANGUAGE:C>:-Wvla>
+    $<$<COMPILE_LANGUAGE:C>:-Wcast-qual>
+    $<$<COMPILE_LANGUAGE:C>:-Wwrite-strings>
+    $<$<COMPILE_LANGUAGE:C>:-Wundef>
+    $<$<COMPILE_LANGUAGE:C>:-Wswitch-enum>
 )
 
 set(MSVC_WARNINGS
     /W4
     /w14242
     /w14254
-    /w14263
-    /w14265
+    $<$<COMPILE_LANGUAGE:CXX>:/w14263>
+    $<$<COMPILE_LANGUAGE:CXX>:/w14265>
     /w14287
     /we4289
     /w14296
@@ -42,7 +52,7 @@ set(MSVC_WARNINGS
     /w14905
     /w14906
     /w14928
-    /permissive-
+    $<$<COMPILE_LANGUAGE:CXX>:/permissive->
 )
 
 option(WARNINGS_AS_ERRORS "Treat compiler warnings as fatal errors" ON)
@@ -53,8 +63,11 @@ endif()
 
 if(
     CMAKE_CXX_COMPILER_ID MATCHES ".*Clang"
+    OR CMAKE_C_COMPILER_ID MATCHES ".*Clang"
     OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"
+    OR CMAKE_C_COMPILER_ID STREQUAL "AppleClang"
     OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
+    OR CMAKE_C_COMPILER_ID STREQUAL "GNU"
 )
     target_compile_options(project_warnings INTERFACE ${CLANG_GCC_WARNINGS})
 elseif(MSVC)
