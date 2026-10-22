@@ -73,9 +73,8 @@
 ///
 /// Error handling
 /// --------------
-/// Public operations are `noexcept`. The span-based API reports invalid input
-/// as `std::expected<void, BitmapFlipError>`; the C-style wrapper has no
-/// return value and treats invalid input as a no-op.
+/// Public operations are `noexcept` and report invalid input as
+/// `std::expected<void, BitmapFlipError>`.
 ///
 /// Portability
 /// -----------
@@ -328,49 +327,5 @@ struct BitmapRoi {
                                    std::size_t stride_bytes,
                                    BitmapRoi roi) noexcept
     -> std::expected<void, BitmapFlipError>;
-
-/// @brief C-style entry point with the problem's original prototype
-/// (Problem 0 and Follow-up 1: requires `width % 8 == 0`).
-///
-/// Equivalent to `flip_bitmap(std::span{bitmap, (width / 8) * height},
-/// width, height)`. The caller guarantees the buffer is that large (a raw
-/// pointer cannot be bounds-checked). If `bitmap` is null, `width` or `height`
-/// is zero, or `width % 8 != 0`, the call does nothing.
-/// @param bitmap Packed 1-bpp pixel buffer, or null.
-/// @param width Number of columns (pixels, must be a multiple of 8).
-/// @param height Number of rows.
-/// @par Requirements
-/// BMFLP-REQ-012
-void flip_bitmap(std::uint8_t* bitmap, std::size_t width,
-                 std::size_t height) noexcept;
-
-/// @brief C-style entry point for generic widths (Follow-up 2: any `width >
-/// 0`).
-///
-/// Equivalent to `flip_bitmap_unaligned(std::span{bitmap,
-/// ceil(width / 8) * height}, width, height)`. The caller guarantees the
-/// buffer is that large. If `bitmap` is null, or `width` or `height` is zero,
-/// the call does nothing.
-/// @param bitmap Packed 1-bpp pixel buffer, or null.
-/// @param width Number of columns (pixels).
-/// @param height Number of rows.
-/// @par Requirements
-/// BMFLP-REQ-012
-void flip_bitmap_unaligned(std::uint8_t* bitmap, std::size_t width,
-                           std::size_t height) noexcept;
-
-/// @brief C-style entry point for generic widths using the optimized candidate.
-///
-/// Equivalent to `flip_bitmap_unaligned_optimized(std::span{bitmap,
-/// ceil(width / 8) * height}, width, height)`. The caller guarantees the
-/// buffer is that large. If `bitmap` is null, or `width` or `height` is zero,
-/// the call does nothing.
-/// @param bitmap Packed 1-bpp pixel buffer, or null.
-/// @param width Number of columns (pixels).
-/// @param height Number of rows.
-/// @par Requirements
-/// BMFLP-REQ-012
-void flip_bitmap_unaligned_optimized(std::uint8_t* bitmap, std::size_t width,
-                                     std::size_t height) noexcept;
 
 }  // namespace systems

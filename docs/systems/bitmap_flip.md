@@ -101,7 +101,7 @@ coming from configuration data. It is staged like the interview question: a corr
 
 | ID | Assumption / decision | Alternatives considered |
 | --- | --- | --- |
-| A-1 | Primary API is C++23: `std::span<std::uint8_t>` buffer, `std::expected<void, BitmapFlipError>` result, `noexcept`. The prompt's C prototype is kept as an overload `void flip_bitmap(std::uint8_t*, std::size_t, std::size_t)` (and `void flip_bitmap_unaligned(std::uint8_t*, std::size_t, std::size_t)`) | C prototype only (rejected: a raw pointer cannot be bounds-checked and `void` cannot report errors) |
+| A-1 | Primary C++23 API uses `std::span<std::uint8_t>` buffers and `std::expected<void, BitmapFlipError>` results (`noexcept`); the ISO C23 API in `src/include/systems/bitmap_flip.h` uses explicit `buf_size` bounds and `[[nodiscard]] enum bitmap_flip_error` returns | Unchecked `void` raw-pointer prototype only (rejected: a raw pointer without size cannot be bounds-checked and `void` cannot report errors) |
 | A-2 | Separate functions per stage: `flip_bitmap` (Problem 0 / Follow-up 1, requires `width % 8 == 0`), `flip_bitmap_unaligned` (Follow-up 2, any `width > 0`), `flip_bitmap_stride` and `flip_bitmap_roi` (Follow-up 3) | Reusing `flip_bitmap` for Follow-up 2 (rejected by user: keep Problem 0 / Follow-up 1 byte-aligned in `flip_bitmap` and use a separate generic function for Follow-up 2) |
 | A-3 | **Full-row flips write the padding bits** (bits past `width` in each row's last pixel byte) **as zero**; their input value is ignored (confirmed by the user) | Preserve the input padding bits; leave them unspecified |
 | A-4 | ROI flips change only ROI pixels and preserve every other bit, including padding bits and stride padding bytes | Zero padding bits as in A-3 (rejected: they are outside the ROI) |
@@ -110,7 +110,6 @@ coming from configuration data. It is staged like the interview question: a corr
 | A-7 | Requirement (confirmed by the user): the buffer must hold `stride_bytes * height` bytes (the last row includes its stride padding) | `stride_bytes * (height - 1) + ceil(width / 8)` (tighter; rejected for simplicity) |
 | A-8 | ROI coordinates are in pixels; ROI edges may fall anywhere inside a byte | Byte-aligned ROIs only (rejected: that would skip the interesting part of Follow-up 3) |
 | A-9 | An empty span (null or non-null data) is `kNullPointer`. Validation order: `kNullPointer`, `kZeroDimension`, `kInvalidWidth` (`flip_bitmap` only), `kInvalidStride`, `kInvalidRoi`, `kBufferTooSmall`; nothing is written on error | Unspecified order (rejected: tests could not pin the error for inputs with several problems) |
-| A-10 | The C-style overloads cannot report errors, so invalid input (null pointer, zero width or height, or `width % 8 != 0` for `flip_bitmap`) is a silent no-op | Assert / abort (rejected: no aborts in runtime paths) |
 | A-11 | `reverse_bits(std::uint8_t)` is public API so the byte-reversal step, called out in the prompt, can be tested on its own | Keep it private (rejected: its tests would be indirect) |
 | A-12 | The caller owns the buffer; there is no compile-time capacity. Any `width` / `height` up to `SIZE_MAX` is validated without overflow | Template on image size (rejected: framebuffer geometry is usually run-time configuration) |
 | A-13 | The library starts no threads. Follow-up 4 is a written discussion (BMFLP-REQ-014); only reentrancy is tested (BMFLP-REQ-013) | Built-in parallel flip (rejected: the prompt says nobody writes or tests it) |
@@ -145,14 +144,10 @@ The header is authoritative for signatures.
   (Follow-up 2).
 - `flip_bitmap_stride(std::span<std::uint8_t>, width, height, stride_bytes) -> std::expected<void, BitmapFlipError>` — strided rows.
 - `flip_bitmap_roi(std::span<std::uint8_t>, framebuffer_width, framebuffer_height, stride_bytes, BitmapRoi) -> std::expected<void, BitmapFlipError>`.
-- `flip_bitmap(std::uint8_t*, width, height) -> void` — the prompt's C-style prototype for byte-aligned widths (`width % 8 == 0`).
-- `flip_bitmap_unaligned(std::uint8_t*, width, height) -> void` — C-style entry point for generic widths (`width > 0`).
-- `flip_bitmap_unaligned_optimized(std::uint8_t*, width, height) -> void` — C-style entry point for candidate (`width > 0`).
 
 ## 6. Functional requirements
 
-Grouped by exercise stage: Problem 0 and Follow-up 1 (REQ-001 to REQ-007), Follow-up 2 (REQ-008, REQ-009), Follow-up 3 (REQ-010, REQ-011), and the
-C-style entry points (REQ-012).
+Grouped by exercise stage: Problem 0 and Follow-up 1 (REQ-001 to REQ-007), Follow-up 2 (REQ-008, REQ-009), and Follow-up 3 (REQ-010, REQ-011).
 
 ### BMFLP-REQ-001: Pixel layout and flip definition
 
@@ -170,8 +165,7 @@ shall hold the value pixel `width - 1 - x` of the same row held before.
 ### BMFLP-REQ-003: Aligned rows with even and odd byte counts
 
 When `width % 8 == 0`, `flip_bitmap` shall reverse both the order of the row's bytes and the bit order inside every byte, including the middle byte of a row
-with an odd byte count. When `width % 8 != 0`, `flip_bitmap` shall return `kInvalidWidth` without modifying the buffer (and the pointer overload shall do
-nothing).
+with an odd byte count. When `width % 8 != 0`, `flip_bitmap` shall return `kInvalidWidth` without modifying the buffer.
 
 - **Verification:** Test
 - **Rationale:** Swapping bytes without reversing their bits (or the reverse) mirrors 8-pixel blocks instead of pixels: a silently wrong display.
@@ -234,16 +228,6 @@ The input value of padding bits shall not affect any pixel, and full-row flips (
 
 - **Verification:** Test
 - **Rationale:** Clobbering neighbour pixels at a partial-byte ROI edge corrupts UI elements next to the region.
-
-### BMFLP-REQ-012: C prototype wrappers
-
-`void flip_bitmap(std::uint8_t* bitmap, std::size_t width, std::size_t height)` shall behave as `flip_bitmap` on a span of `(width / 8) * height` bytes (doing
-nothing when `bitmap` is null, `width` or `height` is zero, or `width % 8 != 0`), and
-`void flip_bitmap_unaligned(std::uint8_t* bitmap, std::size_t width, std::size_t height)` as well as
-`void flip_bitmap_unaligned_optimized(std::uint8_t* bitmap, std::size_t width, std::size_t height)` shall behave as `flip_bitmap_unaligned` on a span of
-`ceil(width / 8) * height` bytes (doing nothing when `bitmap` is null or `width` or `height` is zero).
-
-- **Verification:** Test
 
 ## 7. Concurrency requirements and Follow-up 4
 

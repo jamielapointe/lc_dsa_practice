@@ -39,14 +39,15 @@ This guide covers the development workflow, security policies, and dependency ma
 
 ## Code conventions
 
-- C++23, Google style (`.clang-format`), strict `.clang-tidy`. Run CMake only through presets (`cmake --workflow --preset
+- C++23 and ISO C23 (`-std=c23`), Google style (`.clang-format`), strict `.clang-tidy`. Run CMake only through presets (`cmake --workflow --preset
   <name>`), never an ad hoc configure.
 - Python 3.14, single quotes, 120 columns, Google-style docstrings, fully typed (`mypy` strict).
-- C++ LeetCode code lives in namespace `leet_code`; low-level code lives in namespace `systems`.
+- C++ LeetCode code lives in namespace `leet_code`; C++ systems code lives in namespace `systems`; ISO C23 systems code lives in `src/c/systems` with public
+  headers in `src/include/systems/*.h`.
 - New problems start in a TDD-red state: stubs compile and tests assert the correct answers.
 - Systems code follows `.agents/plugins/systems/skills/systems-setup/references/safety.md`: no heap after initialization,
-  `noexcept` APIs returning `std::expected`, no RTTI, OS calls isolated in an adapter, POSIX portability.
-- Benchmarks in `benchmarks/cpp/systems` are local-only and must never run in CI. Benchmark telemetry in `data/` is strictly
+  `noexcept` APIs returning `std::expected` (or `[[nodiscard]] enum <name>_error` in C23), no RTTI, OS calls isolated in an adapter, POSIX portability.
+- Benchmarks in `benchmarks/{cpp,c}/systems` are local-only and must never run in CI. Benchmark telemetry in `data/` is strictly
   gitignored and must never be committed. Performance improvements require Bayesian BEST verification ($P(\text{better}) \ge 0.95$ with ROPE)
   with zero unit test regressions.
 

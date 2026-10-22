@@ -60,9 +60,10 @@ workspace (toolchain, dependencies, tasks, CI) is a single Pixi workspace define
 | 21 | Systems Setup Plugin | `.agents/plugins/systems`: prompt-driven `systems-setup` skill (spec, outline header, stubs, 6-tier red tests), `systems/platform.hpp`, `systems::test_support` (fork harness, shared regions, shm names, allocation counter), traceability checker | M6 | #28 |
 | 20 | Pixi Infrastructure & CI | Pixi tasks, CMake presets (debug/release/ASan/UBSan/TSan/coverage), pre-commit, GitHub Actions, Renovate, Scorecard, coverage gates | M5 | Refactor |
 | 22 | Systems Google Benchmark Infrastructure | `benchmarks/cpp/systems/` with `cmake/Benchmarking.cmake`, `BUILD_BENCHMARKS=OFF` default, Google Benchmark suite | M7 | R1 |
-| 23 | Baseline Function & Unit Tests | `systems::flip_bitmap_unaligned_optimized` (`std::span` and pointer overloads) with unit tests and ASPICE traceability | M7 | R2 |
+| 23 | Baseline Function & Unit Tests | `systems::flip_bitmap_unaligned_optimized` (`std::span` overload) and C23 `bitmap_flip_unaligned_optimized` with unit tests and ASPICE traceability | M7 | R2 |
 | 24 | Bayesian BEST + ROPE Engine & Host Tuning | SciPy/NumPy Student-t posterior analysis (`P(better)`, `P(same)`, `P(worse)`), host tuning (Darwin/Linux), Plotly reports | M7 | R3 |
 | 25 | Agentic Optimization Loop Skill | `.agents/skills/optimization-loop/SKILL.md` (preloop, two-stage fast-screen/full BEST benchmark, git rollbacks, Academic Scribe) | M7 | R4 |
+| 26 | ISO C23 Track & Systems Translation | Parallel `c/` directories (`src/c`, `test/c`, `examples/c`, `benchmarks/c`), strict `-std=c23` CMake integration, C23 translation of all 5 `systems` components, GoogleTest + pure C23 test suites | M8 | #42 |
 
 ## Milestones
 
@@ -73,9 +74,10 @@ workspace (toolchain, dependencies, tasks, CI) is a single Pixi workspace define
 | M2 | Python LeetCode MCP Server & Plugin | Create `.agents/plugins/leetcode/` with manifest, packaging, GraphQL client, MCP server, and tests | None | DONE |
 | M3 | LeetCode Setup Skill | Create `.agents/plugins/leetcode/skills/leetcode-setup/SKILL.md` adhering to `cpp-pro` and `cmake-pro` | M1, M2 | DONE |
 | M4 | Final Milestone: LeetCode #2 & E2E Pass | Scaffold LeetCode #2, update CMake, build, verify GTest clean failure; pass 100% E2E tests + Tier 5 | E2E, M3 | DONE |
-| M6 | Systems Setup Plugin | Systems plugin + skill, platform header, test-support library, traceability check | M5 | IN PROGRESS |
+| M6 | Systems Setup Plugin | Systems plugin + skill, platform header, test-support library, traceability check | M5 | DONE |
 | M5 | Multi-Language & Pixi Refactor | `src/`+`test/` split by language, Python and systems tracks, Pixi workspace, CI, plugin supports C++ and Python | M4 | DONE |
 | M7 | Systems Benchmark & Bayesian Optimization | Benchmark infrastructure, baseline function, host tuner, Bayesian BEST engine, optimization loop skill | M6 | DONE |
+| M8 | ISO C23 Track Extension & Systems Translation | Parallel `c/` directories, C23 compiler warnings & clang-tidy, C23 `systems` components (`platform`, `bounded_fifo`, `shm_pubsub`, `process_rendezvous`, `bitmap_flip`), examples, benchmarks, and tests | M7 | DONE |
 
 ## Interface Contracts
 
@@ -198,8 +200,9 @@ workspace (toolchain, dependencies, tasks, CI) is a single Pixi workspace define
 ## Code Layout
 
 - C++ LeetCode: `src/include/leet_code/`, `src/cpp/leet_code/`, `test/cpp/leet_code/`
-- Systems C++: `src/include/systems/`, `src/cpp/systems/`, `test/cpp/systems/`, `examples/cpp/systems/`
-- Systems Benchmarks: `benchmarks/cpp/systems/` (Google Benchmark targets, `CMakeLists.txt`)
+- C LeetCode: `src/include/leet_code/`, `src/c/leet_code/`, `test/c/leet_code/`
+- Systems C++ & C23: `src/include/systems/`, `src/{cpp,c}/systems/`, `test/{cpp,c}/systems/`, `examples/{cpp,c}/systems/`
+- Systems Benchmarks: `benchmarks/{cpp,c}/systems/` (Google Benchmark targets, `CMakeLists.txt`)
 - Python LeetCode: `src/python/leet_code/`, `test/python/leet_code/`
 - Systems specs: `docs/systems/`; systems test support: `test/cpp/systems/support/`
 - Repo scripts:

@@ -14,7 +14,7 @@
 ///     padding bits.
 ///   - `BitmapFlipStrideTest`, `BitmapFlipRoiTest`: Follow-up 3.
 ///   - `BitmapFlipErrorTest`: every error code, overflow-safe size checks,
-///     validation order, buffer untouched on error, the C-style wrappers.
+///     validation order, buffer untouched on error.
 ///   - `BitmapFlipConcurrencyTest`: reentrancy (disjoint rows / buffers from
 ///     several threads; run under TSan).
 ///
@@ -75,18 +75,6 @@ constexpr std::array<UnalignedCase, 2> kUnalignedFns{
                   .fn = flip_bitmap_unaligned_optimized},
 };
 
-using UnalignedPtrFn = void (*)(std::uint8_t*, std::size_t,
-                                std::size_t) noexcept;
-struct UnalignedPtrCase {
-  std::string_view name;
-  UnalignedPtrFn fn;
-};
-constexpr std::array<UnalignedPtrCase, 2> kUnalignedPtrFns{
-    UnalignedPtrCase{.name = "unaligned", .fn = flip_bitmap_unaligned},
-    UnalignedPtrCase{.name = "unaligned_optimized",
-                     .fn = flip_bitmap_unaligned_optimized},
-};
-
 constexpr std::size_t kBits = systems::kBitsPerByte;
 constexpr std::size_t kMaxSize = std::numeric_limits<std::size_t>::max();
 
@@ -121,11 +109,6 @@ static_assert(
 static_assert(noexcept(flip_bitmap_stride(std::span<std::uint8_t>{}, 0, 0, 0)));
 static_assert(noexcept(flip_bitmap_roi(std::span<std::uint8_t>{}, 0, 0, 0,
                                        BitmapRoi{})));
-static_assert(noexcept(flip_bitmap(static_cast<std::uint8_t*>(nullptr), 0, 0)));
-static_assert(
-    noexcept(flip_bitmap_unaligned(static_cast<std::uint8_t*>(nullptr), 0, 0)));
-static_assert(noexcept(flip_bitmap_unaligned_optimized(
-    static_cast<std::uint8_t*>(nullptr), 0, 0)));
 static_assert(
     std::is_same_v<decltype(flip_bitmap(std::span<std::uint8_t>{}, 0, 0)),
                    FlipResult>);
@@ -135,15 +118,6 @@ static_assert(std::is_same_v<
 static_assert(std::is_same_v<decltype(flip_bitmap_unaligned_optimized(
                                  std::span<std::uint8_t>{}, 0, 0)),
                              FlipResult>);
-static_assert(std::is_same_v<
-              decltype(flip_bitmap(static_cast<std::uint8_t*>(nullptr), 0, 0)),
-              void>);
-static_assert(std::is_same_v<decltype(flip_bitmap_unaligned(
-                                 static_cast<std::uint8_t*>(nullptr), 0, 0)),
-                             void>);
-static_assert(std::is_same_v<decltype(flip_bitmap_unaligned_optimized(
-                                 static_cast<std::uint8_t*>(nullptr), 0, 0)),
-                             void>);
 
 // ---------------------------------------------------------------------------
 // Test helpers (oracle = the definition of a horizontal flip)
@@ -583,13 +557,6 @@ TEST(BitmapFlipTest, LargeImage1920x1080) {
   EXPECT_EQ(image, before);
 }
 
-TEST(BitmapFlipTest, CStyleWrapperFlipsPackedImage) {
-  RecordProperty("requirements", "BMFLP-REQ-012");
-  std::array<std::uint8_t, 4> image{0x01, 0x00, 0x00, 0x03};  // 16 x 2
-  flip_bitmap(image.data(), 16, 2);
-  EXPECT_EQ(image, (std::array<std::uint8_t, 4>{0x00, 0x80, 0xC0, 0x00}));
-}
-
 TEST(BitmapFlipTest, UnalignedWidthsRejectedWithInvalidWidth) {
   RecordProperty("requirements", "BMFLP-REQ-003");
   const Bytes pattern = random_bytes(16, 77);
@@ -599,10 +566,6 @@ TEST(BitmapFlipTest, UnalignedWidthsRejectedWithInvalidWidth) {
     EXPECT_TRUE(expect_flip_error_untouched(flip_bitmap(buffer, width, 2),
                                             BitmapFlipError::kInvalidWidth,
                                             buffer, pattern));
-
-    flip_bitmap(buffer.data(), width, 2);
-    EXPECT_EQ(buffer, pattern)
-        << "C-style flip_bitmap must ignore unaligned width";
   }
 }
 
@@ -661,7 +624,6 @@ TEST(BitmapFlipTest, NoHeapAllocationInAlignedFlip) {
     reversed = reverse_bits(0x01);
     reversed_lookup = reverse_bits_lookup(0x01);
     result = flip_bitmap(packed, kWidth, kHeight);
-    flip_bitmap(packed.data(), kWidth, kHeight);  // flips back
     allocations = scope.allocations();
   }
   EXPECT_EQ(allocations, 0U);
@@ -669,11 +631,8 @@ TEST(BitmapFlipTest, NoHeapAllocationInAlignedFlip) {
   EXPECT_EQ(reversed_lookup, 0x80);
   ASSERT_TRUE(result.has_value()) << to_string(result.error());
   // Pair the heap check with observable work so the test is red on a stub.
-  Bytes once = before;
-  ASSERT_TRUE(flip_bitmap(once, kWidth, kHeight).has_value());
   EXPECT_TRUE(
-      verify_full_flip(before, once, kWidth, kHeight, bytes_per_row(kWidth)));
-  EXPECT_EQ(packed, before) << "C-style wrapper did not flip back";
+      verify_full_flip(before, packed, kWidth, kHeight, bytes_per_row(kWidth)));
 }
 
 // ===========================================================================
@@ -824,20 +783,6 @@ TEST(BitmapFlipUnalignedTest, LargeImage1366x768) {
     const FlipResult result = flip_fn(image, kWidth, kHeight);
     ASSERT_TRUE(result.has_value()) << to_string(result.error());
     EXPECT_TRUE(verify_full_flip(before, image, kWidth, kHeight, kStride));
-  }
-}
-
-TEST(BitmapFlipUnalignedTest, CStyleWrapperHandlesAnyWidth) {
-  RecordProperty("requirements", "BMFLP-REQ-012");
-  for (const auto& [name, flip_ptr_fn] : kUnalignedPtrFns) {
-    SCOPED_TRACE(::testing::Message() << "implementation: " << name);
-    std::array<std::uint8_t, 2> unaligned{0x01, 0xFF};  // width 10, garbage
-    flip_ptr_fn(unaligned.data(), 10, 1);
-    EXPECT_EQ(unaligned, (std::array<std::uint8_t, 2>{0x03, 0x02}));
-
-    std::array<std::uint8_t, 2> aligned{0x0F, 0x33};  // width 16
-    flip_ptr_fn(aligned.data(), 16, 1);
-    EXPECT_EQ(aligned, (std::array<std::uint8_t, 2>{0xCC, 0xF0}));
   }
 }
 
@@ -1090,8 +1035,6 @@ TEST(BitmapFlipRoiTest, NoHeapAllocationInUnalignedStrideAndRoiFlips) {
     results[1] = flip_bitmap_unaligned_optimized(packed, kWidth, kHeight);
     results[2] = flip_bitmap_stride(strided, kWidth, kHeight, kStride);
     results[3] = flip_bitmap_roi(strided, kWidth, kHeight, kStride, kRoi);
-    flip_bitmap_unaligned(packed.data(), kWidth, kHeight);
-    flip_bitmap_unaligned_optimized(packed.data(), kWidth, kHeight);
     allocations = scope.allocations();
   }
   EXPECT_EQ(allocations, 0U);
@@ -1317,36 +1260,6 @@ TEST(BitmapFlipErrorTest, ValidationOrderAndBufferUntouchedOnError) {
   EXPECT_TRUE(expect_flip_error_untouched(flip_bitmap_stride(all, 24, 2, 9),
                                           BitmapFlipError::kBufferTooSmall,
                                           buffer, pattern));
-}
-
-TEST(BitmapFlipErrorTest, CStyleWrapperIgnoresInvalidInput) {
-  RecordProperty("requirements", "BMFLP-REQ-012");
-  flip_bitmap(nullptr, 16, 2);  // must not crash
-  flip_bitmap(nullptr, 0, 0);
-  flip_bitmap_unaligned(nullptr, 10, 2);
-  flip_bitmap_unaligned(nullptr, 0, 0);
-  flip_bitmap_unaligned_optimized(nullptr, 10, 2);
-  flip_bitmap_unaligned_optimized(nullptr, 0, 0);
-
-  std::array<std::uint8_t, 2> image{0x01, 0x00};
-  flip_bitmap(image.data(), 0, 1);
-  EXPECT_EQ(image, (std::array<std::uint8_t, 2>{0x01, 0x00}));
-  flip_bitmap(image.data(), 16, 0);
-  EXPECT_EQ(image, (std::array<std::uint8_t, 2>{0x01, 0x00}));
-  flip_bitmap(image.data(), 10, 1);  // unaligned width ignored by flip_bitmap
-  EXPECT_EQ(image, (std::array<std::uint8_t, 2>{0x01, 0x00}));
-  flip_bitmap_unaligned(image.data(), 0, 1);
-  EXPECT_EQ(image, (std::array<std::uint8_t, 2>{0x01, 0x00}));
-  flip_bitmap_unaligned(image.data(), 10, 0);
-  EXPECT_EQ(image, (std::array<std::uint8_t, 2>{0x01, 0x00}));
-  flip_bitmap_unaligned_optimized(image.data(), 0, 1);
-  EXPECT_EQ(image, (std::array<std::uint8_t, 2>{0x01, 0x00}));
-  flip_bitmap_unaligned_optimized(image.data(), 10, 0);
-  EXPECT_EQ(image, (std::array<std::uint8_t, 2>{0x01, 0x00}));
-
-  // A valid call afterwards still flips.
-  flip_bitmap(image.data(), 16, 1);
-  EXPECT_EQ(image, (std::array<std::uint8_t, 2>{0x00, 0x80}));
 }
 
 // ===========================================================================

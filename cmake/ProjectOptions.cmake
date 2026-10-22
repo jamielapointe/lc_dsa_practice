@@ -6,12 +6,21 @@ add_library(project_options INTERFACE)
 # Hermetic toolchain guard: all builds must use the Pixi-provided compiler (.pixi/envs/...). Set
 # -DALLOW_NON_PIXI_TOOLCHAIN=ON to bypass (e.g. quick experiments with a system compiler).
 option(ALLOW_NON_PIXI_TOOLCHAIN "Allow building with a compiler outside .pixi/envs/" OFF)
-if(NOT ALLOW_NON_PIXI_TOOLCHAIN AND NOT CMAKE_CXX_COMPILER MATCHES "\\.pixi/envs/")
-    message(
-        FATAL_ERROR
-        "Hermetic toolchain violation: CMAKE_CXX_COMPILER ('${CMAKE_CXX_COMPILER}') is not located in "
-        ".pixi/envs/. Run builds through Pixi (e.g. 'pixi run cpp-debug') or pass -DALLOW_NON_PIXI_TOOLCHAIN=ON."
-    )
+if(NOT ALLOW_NON_PIXI_TOOLCHAIN)
+    if(NOT CMAKE_CXX_COMPILER MATCHES "\\.pixi/envs/")
+        message(
+            FATAL_ERROR
+            "Hermetic toolchain violation: CMAKE_CXX_COMPILER ('${CMAKE_CXX_COMPILER}') is not located in "
+            ".pixi/envs/. Run builds through Pixi (e.g. 'pixi run test-cpp') or pass -DALLOW_NON_PIXI_TOOLCHAIN=ON."
+        )
+    endif()
+    if(CMAKE_C_COMPILER AND NOT CMAKE_C_COMPILER MATCHES "\\.pixi/envs/")
+        message(
+            FATAL_ERROR
+            "Hermetic toolchain violation: CMAKE_C_COMPILER ('${CMAKE_C_COMPILER}') is not located in "
+            ".pixi/envs/. Run builds through Pixi (e.g. 'pixi run test-cpp') or pass -DALLOW_NON_PIXI_TOOLCHAIN=ON."
+        )
+    endif()
 endif()
 
 # Compiler launcher acceleration (ccache)
