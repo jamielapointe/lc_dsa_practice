@@ -54,6 +54,72 @@ target_compile_definitions(
         $<$<BOOL:${SYSTEMS_POSIX_SUPPORTED}>:SYSTEMS_POSIX_SUPPORTED=1>
 )
 
+# Dynamic POSIX Synchronization Primitive Checks (macOS vs Linux)
+if(SYSTEMS_POSIX_SUPPORTED)
+    cmake_push_check_state()
+    if(TARGET_OS_FAMILY STREQUAL "LINUX")
+        set(CMAKE_REQUIRED_FLAGS "-pthread")
+        set(CMAKE_REQUIRED_LIBRARIES "pthread;rt")
+    else()
+        set(CMAKE_REQUIRED_FLAGS "")
+    endif()
+    check_cxx_source_compiles(
+        "
+    #include <fcntl.h>
+    #include <semaphore.h>
+    int main() {
+      sem_t* sem = sem_open(\"/cmake_probe\", O_CREAT, 0600, 0);
+      if (sem != SEM_FAILED) {
+        (void)sem_post(sem);
+        (void)sem_trywait(sem);
+        (void)sem_close(sem);
+        (void)sem_unlink(\"/cmake_probe\");
+      }
+      return 0;
+    }
+  "
+        COMPILER_SUPPORTS_POSIX_SEM_OPEN
+    )
+    cmake_pop_check_state()
+
+    if(COMPILER_SUPPORTS_POSIX_SEM_OPEN)
+        target_compile_definitions(project_architecture INTERFACE HAVE_POSIX_SEM_OPEN=1)
+        message(STATUS "POSIX capability: named semaphores (sem_open) detected")
+    endif()
+
+    cmake_push_check_state()
+    if(TARGET_OS_FAMILY STREQUAL "LINUX")
+        set(CMAKE_REQUIRED_FLAGS "-pthread")
+        set(CMAKE_REQUIRED_LIBRARIES "pthread;rt")
+    else()
+        set(CMAKE_REQUIRED_FLAGS "")
+    endif()
+    check_cxx_source_compiles(
+        "
+    #include <ctime>
+    #include <semaphore.h>
+    int main() {
+      struct timespec ts{0, 0};
+      auto fn = &sem_timedwait;
+      (void)ts;
+      return fn != nullptr ? 0 : 1;
+    }
+  "
+        COMPILER_SUPPORTS_POSIX_SEM_TIMEDWAIT
+    )
+    cmake_pop_check_state()
+
+    if(COMPILER_SUPPORTS_POSIX_SEM_TIMEDWAIT)
+        target_compile_definitions(project_architecture INTERFACE HAVE_POSIX_SEM_TIMEDWAIT=1)
+        message(STATUS "POSIX capability: timed semaphore wait (sem_timedwait) detected")
+    else()
+        message(
+            STATUS
+            "POSIX capability: sem_timedwait absent (using Darwin/POSIX backoff adapter)"
+        )
+    endif()
+endif()
+
 # Optional native host optimizations
 option(ENABLE_NATIVE_OPTIMIZATION "Build with native host optimizations (-march=native)" OFF)
 if(ENABLE_NATIVE_OPTIMIZATION AND NOT CMAKE_CROSSCOMPILING)

@@ -49,6 +49,13 @@ add_project_test(
 )
 
 add_project_test(
+    process_rendezvous_test
+    SOURCES process_rendezvous_test.cpp
+    LIBS systems::process_rendezvous systems::test_support
+    LABELS "systems;multiprocess;fault"
+)
+
+add_project_test(
     bitmap_flip_test
     SOURCES bitmap_flip_test.cpp
     LIBS systems::bitmap_flip systems::test_support

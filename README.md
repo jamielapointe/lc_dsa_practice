@@ -22,7 +22,7 @@ C++** tree for low-level components. Everything (toolchain, dependencies, tasks,
 | :--- | :--- | :--- | :--- |
 | C++ LeetCode | `src/cpp/leet_code`, `src/include/leet_code` | `test/cpp/leet_code` | `leet_code` (`leet_code::<slug>` CMake aliases) |
 | Python LeetCode | `src/python/leet_code` | `test/python/leet_code` | `leet_code` |
-| Systems C++ | `src/cpp/systems`, `src/include/systems`, `benchmarks/cpp/systems` | `test/cpp/systems` | `systems` (`systems::<name>` CMake aliases) |
+| Systems C++ | `src/cpp/systems`, `src/include/systems`, `examples/cpp/systems`, `benchmarks/cpp/systems` | `test/cpp/systems` | `systems` (`systems::<name>` CMake aliases) |
 
 The systems track holds low-level building blocks written in an embedded-friendly style (fixed capacity, no heap, no STL
 containers, explicit concurrency). It currently contains `systems::BoundedFifo`, a thread-safe bounded MPMC FIFO, plus shared
@@ -59,6 +59,7 @@ pixi run cpp-ubsan            # UndefinedBehaviorSanitizer
 pixi run cpp-tsan             # ThreadSanitizer
 pixi run cpp-benchmark        # Google Benchmark suite workflow
 pixi run cpp-benchmark-build  # build benchmark executable
+pixi run shm-pubsub-example   # multi-process SPMC shared-memory camera example + CRC-32 log verifier
 pixi run cov-cpp              # llvm-cov line coverage, gate >= 85%
 pixi run cov-python           # pytest-cov, gate >= 85%
 
@@ -88,12 +89,15 @@ pixi run pre-commit           # all hooks over the whole tree
 ├── test/
 │   ├── cpp/{leet_code,systems}/       # GoogleTest suites
 │   └── python/{leet_code,scripts}/    # pytest suites
+├── examples/
+│   └── cpp/systems/                   # standalone multi-process systems examples
 ├── benchmarks/
 │   └── cpp/systems/                   # Google Benchmark suites for systems components
 ├── docs/systems/                  # requirements specs for systems problems
 ├── scripts/
 │   ├── benchmarks/                    # runner and Bayesian BEST + ROPE analysis scripts
-│   └── ci/                            # coverage gate, pyproject sorter, systems traceability check
+│   ├── ci/                            # coverage gate, pyproject sorter, systems traceability check
+│   └── examples/                      # multi-process example runner and log verifier
 ├── .agents/
 │   ├── plugins/{leetcode,systems}/    # track plugins and skills
 │   └── skills/optimization-loop/      # workspace optimization-loop skill & references

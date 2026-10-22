@@ -29,12 +29,15 @@ the style reference for new ones.
 ├── test/
 │   ├── cpp/{leet_code,systems}/                   # GoogleTest, one <name>_test.cpp per target
 │   └── python/{leet_code,scripts}/                # pytest, test_<name>.py
+├── examples/
+│   └── cpp/systems/                               # standalone multi-process systems examples
 ├── benchmarks/
 │   └── cpp/systems/                               # Google Benchmark suites for systems components
 ├── docs/systems/                                  # requirements specs for systems problems (<name>.md)
 ├── scripts/
 │   ├── benchmarks/                                # runner and Bayesian BEST + ROPE analysis scripts
-│   └── ci/                                        # cpp_coverage.py, reorder_pyproject.py, check_systems_traceability.py
+│   ├── ci/                                        # cpp_coverage.py, reorder_pyproject.py, check_systems_traceability.py
+│   └── examples/                                  # run_shm_pubsub_example.py runner and log verifier
 ├── .agents/
 │   ├── plugins/{leetcode,systems}/                # track plugins and skills
 │   └── skills/optimization-loop/                  # workspace optimization-loop skill & references

@@ -275,4 +275,4 @@ CheckOptions:
   # sys/_types/*, sys/signal.h, sys/fcntl.h; glibc bits/*; QNX sys/*). Ignore those so systems code
   # includes the portable public POSIX header (<signal.h>, <fcntl.h>, <sys/mman.h>, ...).
   - key: 'misc-include-cleaner.IgnoreHeaders'
-    value: 'sys/_types/.*;_types/.*;sys/_pthread/.*;sys/_select\.h;signal\.h;sys/fcntl\.h;sys/types\.h;sys/wait\.h;bits/.*;asm-generic/.*;asm/.*;linux/.*'
+    value: 'sys/_types/.*;_types/.*;sys/_pthread/.*;sys/_select\.h;signal\.h;sys/fcntl\.h;semaphore\.h;sys/semaphore\.h;time\.h;sys/types\.h;sys/wait\.h;bits/.*;asm-generic/.*;asm/.*;linux/.*'
