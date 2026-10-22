@@ -12,8 +12,8 @@
 [![Platforms][platform-badge]][ci]
 [![pre-commit][pre-commit-badge]][pre-commit]
 
-LeetCode data-structure and algorithm practice in **C++23** and **Python 3.14**, plus a small **systems / embedded-style
-C++** tree for low-level components. Everything (toolchain, dependencies, tasks, CI) is managed with
+LeetCode data-structure and algorithm practice in **C++23**, **ISO C23**, and **Python 3.14**, plus a **systems / embedded-style
+C++23 and ISO C23** tree for low-level components. Everything (toolchain, dependencies, tasks, CI) is managed with
 [Pixi](https://pixi.sh) and conda-forge.
 
 ## Tracks
@@ -21,13 +21,14 @@ C++** tree for low-level components. Everything (toolchain, dependencies, tasks,
 | Track | Sources | Tests | Namespace / package |
 | :--- | :--- | :--- | :--- |
 | C++ LeetCode | `src/cpp/leet_code`, `src/include/leet_code` | `test/cpp/leet_code` | `leet_code` (`leet_code::<slug>` CMake aliases) |
+| C LeetCode | `src/c/leet_code`, `src/include/leet_code` | `test/c/leet_code` | `leet_code_c` (`leet_code_c::<slug>` CMake aliases) |
 | Python LeetCode | `src/python/leet_code` | `test/python/leet_code` | `leet_code` |
-| Systems C++ | `src/cpp/systems`, `src/include/systems`, `examples/cpp/systems`, `benchmarks/cpp/systems` | `test/cpp/systems` | `systems` (`systems::<name>` CMake aliases) |
+| Systems C++ & C23 | `src/{cpp,c}/systems`, `src/include/systems`, `examples/{cpp,c}/systems`, `benchmarks/{cpp,c}/systems` | `test/{cpp,c}/systems` | `systems` (`systems::<name>`) / `systems_c` (`systems_c::<name>`) |
 
-The systems track holds low-level building blocks written in an embedded-friendly style (fixed capacity, no heap, no STL
-containers, explicit concurrency). It currently contains `systems::BoundedFifo`, a thread-safe bounded MPMC FIFO, plus shared
-infrastructure for new problems: `systems/platform.hpp` (OS capability flags) and a GoogleTest support library for multi-thread,
-multi-process, and fault-injection tests.
+The systems track holds low-level building blocks written in an embedded-friendly style in both modern C++23 and strict ISO C23 (fixed capacity, no heap, no STL
+containers, explicit concurrency). It includes `BoundedFifo` / `bounded_fifo`, `ShmChannel` / `shm_channel` (wait-free SPMC shared-memory pub/sub),
+`ProcessRendezvous` / `process_rendezvous`, and `bitmap_flip`, plus `systems/platform.{hpp,h}` (OS capability flags) and a GoogleTest support library for
+multi-thread, multi-process, and fault-injection tests.
 
 ## Quickstart
 
@@ -83,16 +84,20 @@ pixi run pre-commit           # all hooks over the whole tree
 ├── CMakeLists.txt, CMakePresets.json, cmake/
 ├── pyproject.toml, pixi.lock      # Pixi workspace + ruff/mypy/pytest/coverage/rumdl config
 ├── src/
-│   ├── include/{leet_code,systems}/   # public C++ headers
-│   ├── cpp/{leet_code,systems}/       # C++ sources and per-track CMakeLists.txt
+│   ├── include/{leet_code,systems}/   # public C (.h) and C++ (.hpp) headers
+│   ├── cpp/{leet_code,systems}/       # C++23 sources and per-track CMakeLists.txt
+│   ├── c/{leet_code,systems}/         # ISO C23 sources and per-track CMakeLists.txt
 │   └── python/leet_code/              # Python package (typed)
 ├── test/
-│   ├── cpp/{leet_code,systems}/       # GoogleTest suites
+│   ├── cpp/{leet_code,systems}/       # C++ GoogleTest suites
+│   ├── c/{leet_code,systems}/         # C23 GoogleTest (*_c_test.cpp) + pure C23 (*_c23_test.c) suites
 │   └── python/{leet_code,scripts}/    # pytest suites
 ├── examples/
-│   └── cpp/systems/                   # standalone multi-process systems examples
+│   ├── cpp/systems/                   # standalone multi-process C++ systems examples
+│   └── c/systems/                     # standalone multi-process C23 systems examples
 ├── benchmarks/
-│   └── cpp/systems/                   # Google Benchmark suites for systems components
+│   ├── cpp/systems/                   # Google Benchmark suites for C++ systems components
+│   └── c/systems/                     # Google Benchmark suites for C23 systems components
 ├── docs/systems/                  # requirements specs for systems problems
 ├── scripts/
 │   ├── benchmarks/                    # runner and Bayesian BEST + ROPE analysis scripts

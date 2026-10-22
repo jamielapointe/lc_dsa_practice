@@ -4,15 +4,16 @@ Guidance for AI agents working in `lc_dsa_practice`. Humans: see [README.md](REA
 
 ## Project overview
 
-A personal practice repository with three independent tracks that share one Pixi workspace, one CMake build, and one CI:
+A personal practice repository with four independent tracks that share one Pixi workspace, one CMake build, and one CI:
 
-| Track | Purpose | Sources | Tests | Namespace |
+| Track | Purpose | Sources | Tests | Namespace / Prefix |
 | :--- | :--- | :--- | :--- | :--- |
 | C++ LeetCode | Data-structure and algorithm problems in modern C++23 | `src/cpp/leet_code/`, `src/include/leet_code/` | `test/cpp/leet_code/` | `leet_code` |
+| C LeetCode | Data-structure and algorithm problems in strict ISO C23 | `src/c/leet_code/`, `src/include/leet_code/` | `test/c/leet_code/` | `leet_code_c` |
 | Python LeetCode | The same problems in typed Python 3.14 | `src/python/leet_code/` | `test/python/leet_code/` | package `leet_code` |
-| Systems C++ | Reusable low-level, system-level, and embedded-style components (fixed capacity, no heap, no STL containers, explicit concurrency) | `src/cpp/systems/`, `src/include/systems/` | `test/cpp/systems/` | `systems` |
+| Systems C++ & C23 | Reusable low-level, system-level, and embedded-style components in C++23 and ISO C23 (fixed capacity, no heap, no STL containers, explicit concurrency) | `src/{cpp,c}/systems/`, `src/include/systems/` | `test/{cpp,c}/systems/` | `systems` / `systems_c` |
 
-`systems::BoundedFifo<T, Capacity>` (header-only, mutex + condition variables, closable, MPMC) is the first systems component and
+`systems::BoundedFifo<T, Capacity>` (and its C23 counterpart `bounded_fifo`) is the first systems component and
 the style reference for new ones.
 
 ## Directory layout
@@ -23,16 +24,20 @@ the style reference for new ones.
 ├── CMakeLists.txt, CMakePresets.json, cmake/      # options: BUILD_LEET_CODE, BUILD_SYSTEMS, BUILD_BENCHMARKS
 ├── pyproject.toml, pixi.lock                      # Pixi workspace and ALL Python tool config
 ├── src/
-│   ├── include/{leet_code,systems}/               # public C++ headers, included as <leet_code/x.hpp>
+│   ├── include/{leet_code,systems}/               # public C (.h) and C++ (.hpp) headers
 │   ├── cpp/{leet_code,systems}/                   # .cpp files and the track's CMakeLists.txt
+│   ├── c/{leet_code,systems}/                     # ISO C23 .c files and the track's CMakeLists.txt
 │   └── python/leet_code/                          # __init__.py, py.typed, one module per problem
 ├── test/
 │   ├── cpp/{leet_code,systems}/                   # GoogleTest, one <name>_test.cpp per target
+│   ├── c/{leet_code,systems}/                     # GoogleTest (<name>_c_test.cpp) + pure C23 (*_c23_test.c)
 │   └── python/{leet_code,scripts}/                # pytest, test_<name>.py
 ├── examples/
-│   └── cpp/systems/                               # standalone multi-process systems examples
+│   ├── cpp/systems/                               # standalone multi-process C++ systems examples
+│   └── c/systems/                                 # standalone multi-process C23 systems examples
 ├── benchmarks/
-│   └── cpp/systems/                               # Google Benchmark suites for systems components
+│   ├── cpp/systems/                               # Google Benchmark suites for C++ systems components
+│   └── c/systems/                                 # Google Benchmark suites for C23 systems components
 ├── docs/systems/                                  # requirements specs for systems problems (<name>.md)
 ├── scripts/
 │   ├── benchmarks/                                # runner and Bayesian BEST + ROPE analysis scripts
@@ -109,26 +114,27 @@ workflow variants; build trees go to `build/<preset>`).
 - Coverage gate: 85% on `src/python/leet_code`. Never raise `NotImplementedError` in stubs (the red state must come from
   assertions).
 
-## Track 3: Systems / low-level / embedded-style C++
+## Track 3: Systems / low-level / embedded-style C++23 and ISO C23
 
-Intent: portable building blocks that could move to a small target without redesign.
+Intent: portable building blocks that could move to a small target without redesign, implemented in both modern C++23 and strict ISO C23 (`-std=c23`).
 
-- Headers in `src/include/systems/<name>.hpp` (included as `<systems/<name>.hpp>`), implementation or explicit
-  instantiations in `src/cpp/systems/<name>.cpp`, tests in `test/cpp/systems/<name>_test.cpp`.
-- Register with `systems_add_library(<name> SOURCES <name>.cpp [LIBS ...])` (alias `systems::<name>`); register tests with
-  `add_project_test`. clang-tidy also analyzes `src/include/systems/` headers for this track.
+- C++23 headers in `src/include/systems/<name>.hpp`, sources in `src/cpp/systems/<name>.cpp`, tests in `test/cpp/systems/<name>_test.cpp`
+  (`systems_add_library`, alias `systems::<name>`).
+- ISO C23 headers in `src/include/systems/<name>.h`, sources in `src/c/systems/<name>.c`, tests in `test/c/systems/<name>_c_test.cpp` (GoogleTest via
+  `extern "C"`) and `test/c/systems/systems_c23_test.c` (pure `-std=c23` CTest target) (`systems_c_add_library`, alias `systems_c::<name>`).
+- clang-tidy analyzes `src/include/systems/` headers and both `src/cpp/systems/` and `src/c/systems/` translation units.
 - Style rules:
   - Compile-time capacity and storage inside the object; no `new`/`malloc`; no STL containers
     (`std::vector`, `std::queue`, `std::deque`, ...). Small value types like `std::optional`, `std::array`, `std::span` and
-    `<atomic>`/`<mutex>`/`<condition_variable>` primitives are fine.
+    `<atomic>`/`<mutex>`/`<condition_variable>` (or C23 `<stdatomic.h>`, `<stdckdint.h>`, `pthread_*`) primitives are fine.
   - Prefer `constexpr`, `noexcept`, `[[nodiscard]]`, and `static_assert` for invariants; document thread-safety and blocking
     behavior in Doxygen.
   - Provide try/blocking/timed variants for blocking APIs and a `close()` path that wakes every waiter.
-  - Bit-twiddling or register-style code should use fixed-width integers and `std::bit_cast`/`<bit>`, never type punning.
-  - Public operations are `noexcept` and report errors via `std::expected<T, <Name>Error>`; no exceptions or RTTI in runtime
-    paths. Heap is allowed only in an explicit init phase (`create()`/`open()`), never in steady-state operations.
-  - OS calls (`shm_open`, `mmap`, `pthread_*attr*`, ...) live only in an adapter TU (`<name>_posix.cpp`); branch on
-    `systems/platform.hpp` capabilities (`kHasRobustMutex`, ...), not raw `#ifdef`s. Targets: Linux, QNX; macOS is a dev host.
+  - Bit-twiddling or register-style code should use fixed-width integers and `std::bit_cast`/`<bit>` (or C23 `<stdbit.h>`/`memcpy`), never type punning.
+  - Public operations are `noexcept` and report errors via `std::expected<T, <Name>Error>` in C++ or `[[nodiscard]] enum <name>_error` in C23; no exceptions or
+    RTTI in runtime paths. Heap is allowed only in an explicit init phase (`create()`/`open()`), never in steady-state operations.
+  - OS calls (`shm_open`, `mmap`, `pthread_*attr*`, ...) live only in an adapter TU (`<name>_posix.cpp` / `<name>_posix.c`); branch on
+    `systems/platform.hpp` or `systems/platform.h` capabilities (`kHasRobustMutex`, ...), not raw `#ifdef`s. Targets: Linux, QNX; macOS is a dev host.
 - Every systems component needs a test suite with functional, boundary, resource (no heap after init), and multi-threaded
   stress tiers, plus multi-process and SIGKILL fault-injection tiers when it crosses processes. Reuse
   `systems::test_support` (`test/cpp/systems/support/systems_test/`: `ChildProcess`, `SharedRegion`, `unique_shm_name`,
@@ -141,7 +147,7 @@ Intent: portable building blocks that could move to a small target without redes
 
 Intent: empirical microbenchmarking and statistical performance evaluation for systems components.
 
-- Benchmarks live in `benchmarks/cpp/systems/<name>_benchmark.cpp`, registered in `benchmarks/cpp/systems/CMakeLists.txt`.
+- Benchmarks live in `benchmarks/{cpp,c}/systems/<name>_benchmark.cpp`, registered in `benchmarks/{cpp,c}/systems/CMakeLists.txt`.
 - Built via CMake presets (`benchmark` preset or `dev-release` with IPO). CMake option `BUILD_BENCHMARKS` defaults to `OFF`.
 - **Exclusion from CI**: Benchmarks are local-only and MUST NEVER run on GitHub Actions CI (`.github/workflows/ci.yml`).
 - Runner and Bayesian BEST analysis scripts live in `scripts/benchmarks/` (`run_benchmark.py`, `bayesian_compare.py`, `host_tuner.py`).

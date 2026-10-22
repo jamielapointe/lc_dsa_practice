@@ -2,7 +2,7 @@
 
 Requirements live in ``docs/systems/<name>.md`` as level-3 headings ``### <PREFIX>-REQ-NNN: Title`` followed (within the
 section) by a ``- **Verification:** <Test|Analysis|Review>`` line. GoogleTest cases in ``test/cpp/systems/*_test.cpp``
-declare what they verify with ``RecordProperty("requirements", "<ID>[,<ID>...]")``.
+and ``test/c/systems/*_test.cpp`` declare what they verify with ``RecordProperty("requirements", "<ID>[,<ID>...]")``.
 
 The check fails when:
 
@@ -22,6 +22,11 @@ import sys
 from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 logger = logging.getLogger(__name__)
@@ -145,12 +150,12 @@ def parse_tests(path: Path) -> tuple[dict[str, list[str]], list[str]]:
     return refs, errors
 
 
-def check(spec_dir: Path, test_dir: Path) -> TraceabilityReport:
+def check(spec_dir: Path, test_dir: Path | Sequence[Path]) -> TraceabilityReport:
     """Runs the bidirectional check over every spec and test file.
 
     Args:
         spec_dir: Directory containing ``*.md`` specs (missing directory means no specs).
-        test_dir: Directory containing ``*_test.cpp`` files.
+        test_dir: Directory or sequence of directories containing ``*_test.cpp`` files.
 
     Returns:
         The populated report.
@@ -167,11 +172,13 @@ def check(spec_dir: Path, test_dir: Path) -> TraceabilityReport:
                 continue
             report.requirements[requirement.req_id] = requirement
 
-    for test_file in sorted(test_dir.rglob('*_test.cpp')) if test_dir.is_dir() else []:
-        refs, errors = parse_tests(test_file)
-        report.errors.extend(errors)
-        for req_id, tests in refs.items():
-            report.tests_by_req.setdefault(req_id, []).extend(tests)
+    test_dirs = [test_dir] if isinstance(test_dir, Path) else list(test_dir)
+    for tdir in test_dirs:
+        for test_file in sorted(tdir.rglob('*_test.cpp')) if tdir.is_dir() else []:
+            refs, errors = parse_tests(test_file)
+            report.errors.extend(errors)
+            for req_id, tests in refs.items():
+                report.tests_by_req.setdefault(req_id, []).extend(tests)
 
     for req_id, tests in sorted(report.tests_by_req.items()):
         if req_id not in report.requirements:
@@ -215,12 +222,19 @@ def main(argv: list[str] | None = None) -> int:
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--specs', type=Path, default=Path('docs/systems'), help='directory of requirement specs')
-    parser.add_argument('--tests', type=Path, default=Path('test/cpp/systems'), help='directory of GoogleTest sources')
+    parser.add_argument(
+        '--tests',
+        type=Path,
+        nargs='*',
+        default=None,
+        help='directories of GoogleTest sources (default: test/cpp/systems and test/c/systems)',
+    )
     parser.add_argument('--matrix', type=Path, default=None, help='print the matrix for this spec and exit')
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format='%(message)s')
 
-    report = check(args.specs, args.tests)
+    test_dirs: list[Path] = args.tests if args.tests else [Path('test/cpp/systems'), Path('test/c/systems')]
+    report = check(args.specs, test_dirs)
     if args.matrix is not None:
         sys.stdout.write(render_matrix(report, args.matrix))
         return 0

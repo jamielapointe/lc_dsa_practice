@@ -173,8 +173,9 @@ TEST(BitmapFlipCTest, UnalignedSubByteWidths) {
 
 TEST(BitmapFlipCTest, UnalignedMatchesPixelDefinition) {
   RecordProperty("requirements", "BMFLP-REQ-001,BMFLP-REQ-008,BMFLP-REQ-009");
-  const std::array<size_t, 15> test_widths = {
-      1U, 2U, 5U, 7U, 8U, 9U, 10U, 13U, 16U, 17U, 23U, 31U, 32U, 33U, 65U};
+  const std::array<size_t, 18> test_widths = {1U,  2U,  5U,  7U,   8U,   9U,
+                                              10U, 13U, 16U, 17U,  23U,  31U,
+                                              32U, 33U, 65U, 133U, 261U, 605U};
 
   for (const size_t width : test_widths) {
     constexpr size_t kHeight = 3U;
@@ -326,6 +327,7 @@ TEST(BitmapFlipCTest, CStyleVoidWrappers) {
   // flip_bitmap_unaligned & flip_bitmap_unaligned_optimized
   std::array<uint8_t, 2> buf_un = {0x01U, 0x00U};
   flip_bitmap_unaligned(buf_un.data(), 10U, 1U);
+  flip_bitmap_unaligned_optimized(buf_un.data(), 10U, 1U);
   flip_bitmap_unaligned_optimized(nullptr, 10U, 1U);
 
   // flip_bitmap_stride & flip_bitmap_roi
@@ -408,9 +410,8 @@ TEST(BitmapFlipCTest, ZeroHeapAllocation) {
 // ============================================================================
 
 TEST(BitmapFlipCTest, ValidationOrderAndUntouchedOnError) {
-  RecordProperty("requirements",
-                 "BMFLP-REQ-017,BMFLP-REQ-018,BMFLP-REQ-019,BMFLP-REQ-020,"
-                 "BMFLP-REQ-021,BMFLP-REQ-022");
+  RecordProperty("requirements", "BMFLP-REQ-017,BMFLP-REQ-018,BMFLP-REQ-019");
+  RecordProperty("requirements", "BMFLP-REQ-020,BMFLP-REQ-021,BMFLP-REQ-022");
   std::array<uint8_t, 16> canary = {0xDE, 0xAD, 0xBE, 0xEF};
   const std::array<uint8_t, 16> expected_canary = {0xDE, 0xAD, 0xBE, 0xEF};
 
