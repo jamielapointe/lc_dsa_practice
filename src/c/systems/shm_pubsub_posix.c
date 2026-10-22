@@ -10,24 +10,21 @@
     ((defined(__linux__) && (defined(__x86_64__) || defined(__aarch64__))) || \
      (defined(__APPLE__) && (defined(__aarch64__) || defined(__arm64__))))
 
-#include <errno.h>
-#include <fcntl.h>
-#include <sched.h>
+#include <errno.h>  // IWYU pragma: keep
+#include <fcntl.h>  // IWYU pragma: keep
+#include <sched.h>  // IWYU pragma: keep
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/errno.h>
-#include <sys/mman.h>
+#include <sys/mman.h>  // IWYU pragma: keep
 #if defined(__APPLE__)
 #include <sys/proc.h>
 #include <sys/sysctl.h>
 #endif
-#include <sys/stat.h>
-#include <time.h>
-#include <unistd.h>
+#include <sys/stat.h>  // IWYU pragma: keep
+#include <time.h>      // IWYU pragma: keep
+#include <unistd.h>    // IWYU pragma: keep
 
 #include "shm_pubsub_posix.h"
 #include "systems/shm_pubsub.h"
@@ -96,11 +93,24 @@ static bool is_zombie_process(int64_t pid) {
   }
   return info.kp_proc.p_stat == SZOMB;
 #elif defined(__linux__)
-  char path[48] = {};
-  const int written =
-      snprintf(path, sizeof(path), "/proc/%lld/stat", (long long)pid);
-  if (written <= 0 || (size_t)written >= sizeof(path)) {
+  if (pid <= 0) {
     return false;
+  }
+  char path[48] = {'/', 'p', 'r', 'o', 'c', '/'};
+  size_t pos = 6U;
+  uint64_t val = (uint64_t)pid;
+  char rev[24] = {};
+  size_t digits = 0U;
+  while (val > 0U) {
+    rev[digits++] = (char)('0' + (val % 10U));
+    val /= 10U;
+  }
+  while (digits > 0U) {
+    path[pos++] = rev[--digits];
+  }
+  static constexpr char kSuffix[] = "/stat";
+  for (size_t i = 0U; i < sizeof(kSuffix); ++i) {
+    path[pos + i] = kSuffix[i];
   }
   // NOLINTBEGIN(*-vararg): POSIX open is variadic.
   int fd = -1;
@@ -121,7 +131,13 @@ static bool is_zombie_process(int64_t pid) {
     return false;
   }
   stat_buf[bytes_read] = '\0';
-  const char* close_paren = strrchr(stat_buf, ')');
+  const char* close_paren = nullptr;
+  for (ssize_t i = bytes_read - 1; i >= 0; --i) {
+    if (stat_buf[i] == ')') {
+      close_paren = &stat_buf[i];
+      break;
+    }
+  }
   if (close_paren == nullptr || close_paren[1] == '\0' ||
       close_paren[2] == '\0') {
     return false;

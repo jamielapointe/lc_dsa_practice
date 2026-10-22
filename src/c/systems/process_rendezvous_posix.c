@@ -9,19 +9,18 @@
     ((defined(__linux__) && (defined(__x86_64__) || defined(__aarch64__))) || \
      (defined(__APPLE__) && (defined(__aarch64__) || defined(__arm64__))))
 
-#include <errno.h>
-#include <fcntl.h>
-#include <semaphore.h>
+#include <errno.h>      // IWYU pragma: keep
+#include <fcntl.h>      // IWYU pragma: keep
+#include <semaphore.h>  // IWYU pragma: keep
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
-#include <sys/errno.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <time.h>
-#include <unistd.h>
+#include <sys/mman.h>  // IWYU pragma: keep
+#include <sys/stat.h>  // IWYU pragma: keep
+#include <time.h>      // IWYU pragma: keep
+#include <unistd.h>    // IWYU pragma: keep
 
 #include "process_rendezvous_posix.h"
 #include "systems/process_rendezvous.h"
@@ -37,24 +36,28 @@ static constexpr uint64_t kMlockFirstDelayUs = 1000U;
 static constexpr size_t kFallbackPageSize = 4096U;
 
 static size_t get_page_size() {
+  // NOLINTNEXTLINE(google-runtime-int): sysconf's POSIX return type is long.
   const long sz = sysconf(_SC_PAGESIZE);
   return sz > 0 ? (size_t)sz : kFallbackPageSize;
 }
 
 static void prefault_memory_write(void* base, size_t bytes) {
   const size_t step = get_page_size();
-  volatile uint8_t* ptr = (volatile uint8_t*)base;
+  uint8_t* const byte_base = (uint8_t*)base;
   for (size_t offset = 0U; offset < bytes; offset += step) {
-    ptr[offset] = 0U;
+    _Atomic(uint8_t)* const cell = (_Atomic(uint8_t)*)(byte_base + offset);
+    atomic_store_explicit(cell, 0U, memory_order_relaxed);
   }
 }
 
 static void prefault_memory_read(const void* base, size_t bytes) {
   const size_t step = get_page_size();
-  const volatile uint8_t* ptr = (const volatile uint8_t*)base;
+  const uint8_t* const byte_base = (const uint8_t*)base;
   uint8_t sink = 0U;
   for (size_t offset = 0U; offset < bytes; offset += step) {
-    sink = (uint8_t)(sink | ptr[offset]);
+    const _Atomic(uint8_t)* const cell =
+        (const _Atomic(uint8_t)*)(byte_base + offset);
+    sink = (uint8_t)(sink | atomic_load_explicit(cell, memory_order_relaxed));
   }
   atomic_signal_fence(memory_order_seq_cst);
   (void)sink;
@@ -246,21 +249,17 @@ void process_rendezvous_posix_wait_slice(const struct process_rendezvous* rdv,
   }
 
 #if defined(HAVE_POSIX_SEM_TIMEDWAIT)
-  if (systems_has_posix_sem_timedwait) {
-    const int64_t cap_slice = slice_ns > 50'000'000LL ? 50'000'000LL : slice_ns;
-    struct timespec now = {};
-    clock_gettime(CLOCK_REALTIME, &now);
-    struct timespec deadline = {};
-    const uint64_t total_nsec = (uint64_t)now.tv_nsec + (uint64_t)cap_slice;
-    deadline.tv_sec = now.tv_sec + (time_t)(total_nsec / 1'000'000'000ULL);
-    deadline.tv_nsec = (long)(total_nsec % 1'000'000'000ULL);
-    if (sem_timedwait(rdv->sem, &deadline) == 0) {
-      (void)sem_post(rdv->sem);
-    }
-    return;
+  const int64_t cap_slice = slice_ns > 50'000'000LL ? 50'000'000LL : slice_ns;
+  struct timespec now = {};
+  clock_gettime(CLOCK_REALTIME, &now);
+  struct timespec deadline = {};
+  const uint64_t total_nsec = (uint64_t)now.tv_nsec + (uint64_t)cap_slice;
+  deadline.tv_sec = now.tv_sec + (time_t)(total_nsec / 1'000'000'000ULL);
+  deadline.tv_nsec = (long)(total_nsec % 1'000'000'000ULL);
+  if (sem_timedwait(rdv->sem, &deadline) == 0) {
+    (void)sem_post(rdv->sem);
   }
-#endif
-
+#else
   if (sem_trywait(rdv->sem) == 0) {
     (void)sem_post(rdv->sem);
     return;
@@ -269,6 +268,7 @@ void process_rendezvous_posix_wait_slice(const struct process_rendezvous* rdv,
   const int64_t poll_step_ns = slice_ns > 200'000LL ? 200'000LL : slice_ns;
   struct timespec req = {.tv_sec = 0, .tv_nsec = (long)poll_step_ns};
   nanosleep(&req, nullptr);
+#endif
 }
 
 void process_rendezvous_posix_sleep_us(uint32_t us) {

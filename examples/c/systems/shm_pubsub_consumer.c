@@ -2,16 +2,14 @@
 /// @brief Standalone camera-frame consumer process for the ISO C23 shm_pubsub
 /// multi-process example.
 
-#include <errno.h>
+#include <errno.h>  // IWYU pragma: keep
 #include <inttypes.h>
-#include <limits.h>
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
+#include <time.h>  // IWYU pragma: keep
 
 #include "camera_frame.h"
 #include "systems/process_rendezvous.h"

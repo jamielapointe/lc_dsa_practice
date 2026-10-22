@@ -6,15 +6,14 @@
 
 #include "systems/bounded_fifo.h"
 
-#include <errno.h>
+#include <errno.h>  // IWYU pragma: keep
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdckdint.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
-#include <sys/errno.h>
-#include <time.h>
+#include <time.h>  // IWYU pragma: keep
 
 static void compute_deadline(int64_t timeout_ns,
                              struct timespec* out_deadline) {

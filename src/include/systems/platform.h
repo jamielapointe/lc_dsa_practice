@@ -159,8 +159,8 @@ static constexpr bool systems_has_map_populate =
 static constexpr bool systems_has_physical_shm_ctl =
     (SYSTEMS_HAS_PHYSICAL_SHM_CTL != 0);
 
-#if __has_include(<stdbit.h>)
-#include <stdbit.h>
+#if __has_include(<stdbit.h>) && !defined(__cplusplus)
+#include <stdbit.h>  // IWYU pragma: export
 #else
 // NOLINTBEGIN(google-runtime-int,cppcoreguidelines-macro-usage)
 #ifdef __cplusplus
