@@ -29,9 +29,9 @@ jobs:
           persist-credentials: false
 
       - name: Setup Pixi
-        uses: prefix-dev/setup-pixi@9dabb60412d3d2d967a8d682f7ce01317af40514 # v0.11.0
+        uses: prefix-dev/setup-pixi@ad1da6449d9e506fd127fd67ab2d054a769f6a94 # v0.11.2
         with:
-          pixi-version: v0.81.0
+          pixi-version: v0.82.0
           cache: true
 
       - name: Run pre-commit hooks
@@ -56,9 +56,9 @@ jobs:
           persist-credentials: false
 
       - name: Setup Pixi
-        uses: prefix-dev/setup-pixi@9dabb60412d3d2d967a8d682f7ce01317af40514 # v0.11.0
+        uses: prefix-dev/setup-pixi@ad1da6449d9e506fd127fd67ab2d054a769f6a94 # v0.11.2
         with:
-          pixi-version: v0.81.0
+          pixi-version: v0.82.0
           cache: true
 
       - name: Run Python test suite with coverage (>= 85% gate in pyproject.toml)
@@ -91,9 +91,9 @@ jobs:
           persist-credentials: false
 
       - name: Setup Pixi
-        uses: prefix-dev/setup-pixi@9dabb60412d3d2d967a8d682f7ce01317af40514 # v0.11.0
+        uses: prefix-dev/setup-pixi@ad1da6449d9e506fd127fd67ab2d054a769f6a94 # v0.11.2
         with:
-          pixi-version: v0.81.0
+          pixi-version: v0.82.0
           cache: true
 
       - name: Configure, build, and test (release)
@@ -111,9 +111,9 @@ jobs:
           persist-credentials: false
 
       - name: Setup Pixi
-        uses: prefix-dev/setup-pixi@9dabb60412d3d2d967a8d682f7ce01317af40514 # v0.11.0
+        uses: prefix-dev/setup-pixi@ad1da6449d9e506fd127fd67ab2d054a769f6a94 # v0.11.2
         with:
-          pixi-version: v0.81.0
+          pixi-version: v0.82.0
           cache: true
 
       - name: Build, test, and enforce C++ line coverage (>= 85%)
@@ -138,9 +138,9 @@ jobs:
           persist-credentials: false
 
       - name: Setup Pixi
-        uses: prefix-dev/setup-pixi@9dabb60412d3d2d967a8d682f7ce01317af40514 # v0.11.0
+        uses: prefix-dev/setup-pixi@ad1da6449d9e506fd127fd67ab2d054a769f6a94 # v0.11.2
         with:
-          pixi-version: v0.81.0
+          pixi-version: v0.82.0
           cache: true
 
       - name: Run ${{ matrix.preset }} workflow
