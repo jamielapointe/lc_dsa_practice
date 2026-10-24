@@ -300,9 +300,37 @@ static inline void reset_tree(struct huffman_tree* const tree) {
   return HUFFMAN_OK;
 }
 
+[[nodiscard]] static inline struct huffman_node* alloc_internal_node(
+    struct huffman_node** const cursor, struct huffman_node* const parent) {
+  struct huffman_node* const node = *cursor;
+  *cursor = node + 1;
+  node->parent = parent;
+  node->left = nullptr;
+  node->right = nullptr;
+  node->symbol = 0U;
+  node->has_symbol = false;
+  node->is_full = false;
+  return node;
+}
+
+[[nodiscard]] static inline struct huffman_node* alloc_leaf_node(
+    struct huffman_node** const cursor, struct huffman_node* const parent,
+    const uint8_t symbol) {
+  struct huffman_node* const node = *cursor;
+  *cursor = node + 1;
+  node->parent = parent;
+  node->left = nullptr;
+  node->right = nullptr;
+  node->symbol = symbol;
+  node->has_symbol = true;
+  node->is_full = true;
+  return node;
+}
+
 [[nodiscard]] static enum huffman_error validate_and_bucket_sort_entries(
-    const struct huffman_symbol_length* const entries, const size_t count,
-    struct huffman_symbol_length* const sorted_entries) {
+    const struct huffman_symbol_length* const restrict entries,
+    const size_t count,
+    struct huffman_symbol_length* const restrict sorted_entries) {
   uint8_t symbol_lengths[HUFFMAN_MAX_SYMBOLS] = {};
   uint16_t length_offsets[HUFFMAN_MAX_CODE_LENGTH + 2U] = {};
   uint64_t used_capacity = 0ULL;
@@ -318,11 +346,11 @@ static inline void reset_tree(struct huffman_tree* const tree) {
     }
     symbol_lengths[symbol] = length;
     length_offsets[(size_t)length + 1U]++;
-    const uint64_t weight = 1ULL << (HUFFMAN_MAX_CODE_LENGTH - length);
-    if (ckd_add(&used_capacity, used_capacity, weight) ||
-        used_capacity > HUFFMAN_MAX_TREE_CAPACITY) {
-      return HUFFMAN_ERR_ILLEGAL_ENCODING;
-    }
+    used_capacity += 1ULL << (HUFFMAN_MAX_CODE_LENGTH - length);
+  }
+
+  if (used_capacity > HUFFMAN_MAX_TREE_CAPACITY) {
+    return HUFFMAN_ERR_ILLEGAL_ENCODING;
   }
 
   for (size_t len = 1U; len <= HUFFMAN_MAX_CODE_LENGTH; ++len) {
@@ -345,8 +373,9 @@ static inline void reset_tree(struct huffman_tree* const tree) {
 }
 
 [[nodiscard]] enum huffman_error huffman_tree_build_optimized(
-    struct huffman_tree* const tree,
-    const struct huffman_symbol_length* const entries, const size_t count) {
+    struct huffman_tree* const restrict tree,
+    const struct huffman_symbol_length* const restrict entries,
+    const size_t count) {
   if (tree == nullptr) {
     return HUFFMAN_ERR_NULL_PTR;
   }
@@ -365,65 +394,59 @@ static inline void reset_tree(struct huffman_tree* const tree) {
     return HUFFMAN_ERR_TOO_MANY_SYMBOLS;
   }
 
-  struct huffman_symbol_length sorted_entries[HUFFMAN_MAX_SYMBOLS] = {};
+  struct huffman_symbol_length sorted_entries[HUFFMAN_MAX_SYMBOLS];
   const enum huffman_error err =
       validate_and_bucket_sort_entries(entries, count, sorted_entries);
   if (err != HUFFMAN_OK) {
     return err;
   }
 
-  tree->root = allocate_node(tree, nullptr, false, 0U);
-  if (tree->root == nullptr) {
-    return reset_tree_error(tree, HUFFMAN_ERR_INVALID_NODE);
+  struct huffman_node* node_cursor = tree->nodes;
+  struct huffman_node* const root = alloc_internal_node(&node_cursor, nullptr);
+  tree->root = root;
+  struct huffman_node* curr = root;
+
+  // Insert first symbol along the pure-left spine from root.
+  const uint8_t first_len = sorted_entries[0].length;
+  const uint8_t first_sym = sorted_entries[0].symbol;
+  uint8_t curr_depth = (uint8_t)(first_len - 1U);
+  for (uint8_t d = 0U; d < curr_depth; ++d) {
+    struct huffman_node* const next = alloc_internal_node(&node_cursor, curr);
+    curr->left = next;
+    curr = next;
   }
+  curr->left = alloc_leaf_node(&node_cursor, curr, first_sym);
 
-  struct huffman_node* curr = tree->root;
-  uint8_t curr_depth = 0U;
-
-  for (size_t i = 0U; i < count; ++i) {
-    const uint8_t length = sorted_entries[i].length;
+  // For all remaining symbols (i >= 1), `curr` at `curr_depth` is guaranteed to
+  // have `curr->left` full and `curr->right == nullptr`.
+  for (size_t i = 1U; i < count; ++i) {
+    const uint8_t target_depth = (uint8_t)(sorted_entries[i].length - 1U);
     const uint8_t symbol = sorted_entries[i].symbol;
 
-    if (curr == nullptr || curr_depth >= length) {
-      return reset_tree_error(tree, HUFFMAN_ERR_ILLEGAL_ENCODING);
-    }
-
-    while (curr_depth < (uint8_t)(length - 1U)) {
-      struct huffman_node* const next = allocate_node(tree, curr, false, 0U);
-      if (next == nullptr) {
-        return reset_tree_error(tree, HUFFMAN_ERR_INVALID_NODE);
-      }
-      if (curr->left == nullptr) {
-        curr->left = next;
-      } else {
-        curr->right = next;
-      }
+    if (curr_depth == target_depth) {
+      curr->right = alloc_leaf_node(&node_cursor, curr, symbol);
+      do {
+        curr->is_full = true;
+        curr = curr->parent;
+        --curr_depth;
+      } while (curr != nullptr && curr->right != nullptr);
+    } else {
+      struct huffman_node* next = alloc_internal_node(&node_cursor, curr);
+      curr->right = next;
       curr = next;
       ++curr_depth;
-    }
-
-    struct huffman_node* const leaf = allocate_node(tree, curr, true, symbol);
-    if (leaf == nullptr) {
-      return reset_tree_error(tree, HUFFMAN_ERR_INVALID_NODE);
-    }
-    if (curr->left == nullptr) {
-      curr->left = leaf;
-    } else {
-      curr->right = leaf;
-    }
-
-    // Pop completed internal nodes along the rightmost spine in O(1) amortized
-    // time. Whenever `curr->right` is populated, both children of `curr` are
-    // guaranteed to be full by left-aligned pre-order construction.
-    while (curr != nullptr && curr->right != nullptr) {
-      curr->is_full = true;
-      curr = curr->parent;
-      if (curr != nullptr) {
-        --curr_depth;
+      while (curr_depth < target_depth) {
+        next = alloc_internal_node(&node_cursor, curr);
+        curr->left = next;
+        curr = next;
+        ++curr_depth;
       }
+      curr->left = alloc_leaf_node(&node_cursor, curr, symbol);
     }
   }
 
+  tree->node_count = (size_t)(node_cursor - tree->nodes);
+  tree->leaf_count = count;
   return HUFFMAN_OK;
 }
 
