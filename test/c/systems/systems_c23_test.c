@@ -11,6 +11,7 @@
 
 #include "systems/bitmap_flip.h"
 #include "systems/bounded_fifo.h"
+#include "systems/huffman_tree.h"
 #include "systems/platform.h"
 #include "systems/process_rendezvous.h"
 #include "systems/shm_pubsub.h"
@@ -19,6 +20,10 @@ static_assert(__STDC_VERSION__ == 202311L,
               "Must be compiled as strict ISO C23");
 static_assert(systems_cache_line_size >= 64U,
               "Cache line size must be at least 64 bytes");
+static_assert(HUFFMAN_MAX_SYMBOLS == 256U,
+              "Huffman alphabet must cover all 256 byte values");
+static_assert(HUFFMAN_MAX_CODE_LENGTH == 32U,
+              "Huffman max code length must be 32 bits");
 
 [[nodiscard]] static bool test_platform_c23() {
   const enum systems_os_family os = systems_get_os_family();
@@ -123,9 +128,40 @@ static_assert(systems_cache_line_size >= 64U,
   return shm_ok;
 }
 
+[[nodiscard]] static bool test_huffman_tree_c23() {
+  const struct huffman_symbol_length entries[3] = {
+      {.symbol = (uint8_t)'b', .length = 2U},
+      {.symbol = (uint8_t)'e', .length = 1U},
+      {.symbol = (uint8_t)'z', .length = 2U},
+  };
+  struct huffman_tree tree = {};
+  struct huffman_tree opt_tree = {};
+  if (huffman_tree_build(&tree, entries, 3U) != HUFFMAN_OK ||
+      huffman_tree_build_optimized(&opt_tree, entries, 3U) != HUFFMAN_OK) {
+    return false;
+  }
+  bool is_full = false;
+  bool opt_is_full = false;
+  if (huffman_node_is_full(tree.root, &is_full) != HUFFMAN_OK || !is_full ||
+      huffman_node_is_full(opt_tree.root, &opt_is_full) != HUFFMAN_OK ||
+      !opt_is_full) {
+    return false;
+  }
+  const uint8_t bitstream[1] = {0x58U};
+  uint8_t decoded[4] = {};
+  size_t written = 0U;
+  if (huffman_tree_decode(&opt_tree, bitstream, 6U, decoded, sizeof(decoded),
+                          &written) != HUFFMAN_OK) {
+    return false;
+  }
+  return (bool)(written == 4U && decoded[0] == (uint8_t)'e' &&
+                decoded[1] == (uint8_t)'b' && decoded[2] == (uint8_t)'z' &&
+                decoded[3] == (uint8_t)'e');
+}
+
 int main() {
   if (!test_platform_c23() || !test_bounded_fifo_c23() ||
-      !test_bitmap_flip_c23() ||
+      !test_bitmap_flip_c23() || !test_huffman_tree_c23() ||
       !test_process_rendezvous_and_shm_pubsub_c23()) {
     return 1;
   }

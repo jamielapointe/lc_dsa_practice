@@ -76,6 +76,15 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bitmap_flip_c_test.cpp")
     )
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/huffman_tree_c_test.cpp")
+    add_project_test(
+        huffman_tree_c_test
+        SOURCES huffman_tree_c_test.cpp
+        LIBS systems_c::huffman_tree systems::test_support
+        LABELS "systems"
+    )
+endif()
+
 # Pure-C23 test target: compiled strictly with C compiler under -std=c23, zero C++ linkage
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/systems_c23_test.c")
     set(SYSTEMS_C23_TEST_LIBS systems_c::platform)
@@ -90,6 +99,9 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/systems_c23_test.c")
     endif()
     if(TARGET systems_c::bitmap_flip)
         list(APPEND SYSTEMS_C23_TEST_LIBS systems_c::bitmap_flip)
+    endif()
+    if(TARGET systems_c::huffman_tree)
+        list(APPEND SYSTEMS_C23_TEST_LIBS systems_c::huffman_tree)
     endif()
 
     add_project_c_test(
