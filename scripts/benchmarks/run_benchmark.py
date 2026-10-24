@@ -121,11 +121,11 @@ def extract_paired_series(
     paired_samples: dict[str, dict[str, list[float]]] = {}
 
     for name, samples in raw_series.items():
-        if 'BM_FlipBitmap_Baseline/' in name:
-            geometry = name.replace('BM_FlipBitmap_Baseline/', '')
+        if '_Baseline/' in name:
+            geometry = name.split('_Baseline/', 1)[1]
             paired_samples.setdefault(geometry, {})['baseline'] = samples
-        elif 'BM_FlipBitmap_Candidate/' in name:
-            geometry = name.replace('BM_FlipBitmap_Candidate/', '')
+        elif '_Candidate/' in name:
+            geometry = name.split('_Candidate/', 1)[1]
             paired_samples.setdefault(geometry, {})['candidate'] = samples
 
     results: dict[str, BestResult] = {}
