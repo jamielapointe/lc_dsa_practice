@@ -95,3 +95,8 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bitmap_flip.c")
     systems_c_add_library(bitmap_flip SOURCES bitmap_flip.c)
 endif()
+
+# Zero-allocation canonical binary prefix tree (Huffman tree) reconstruction and decoding (C23).
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/huffman_tree.c")
+    systems_c_add_library(huffman_tree SOURCES huffman_tree.c)
+endif()

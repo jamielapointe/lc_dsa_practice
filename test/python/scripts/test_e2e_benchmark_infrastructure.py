@@ -268,7 +268,10 @@ class TestTier1FeatureCoverage:
         assert not spec_errors, f'Spec parsing errors found: {spec_errors}'
         assert len(spec_requirements) >= 20, 'Expected extensive ASPICE requirement spec (>= 20 requirements)'
 
-        report = trace.check(spec_dir, test_dir)
+        report = trace.check(
+            spec_dir,
+            [REPO_ROOT / 'test' / 'cpp' / 'systems', REPO_ROOT / 'test' / 'c' / 'systems'],
+        )
         assert not report.errors, f'Traceability errors found: {report.errors}'
 
     def test_feature08_google_benchmark_suite(self) -> None:
@@ -645,8 +648,8 @@ class TestTier3CrossFeatureCombinations:
     def test_traceability_compliance_cross_check(self) -> None:
         """Verify check_systems_traceability passes against the repository."""
         spec_dir = REPO_ROOT / 'docs' / 'systems'
-        test_dir = REPO_ROOT / 'test' / 'cpp' / 'systems'
-        report = trace.check(spec_dir, test_dir)
+        test_dirs = [REPO_ROOT / 'test' / 'cpp' / 'systems', REPO_ROOT / 'test' / 'c' / 'systems']
+        report = trace.check(spec_dir, test_dirs)
         assert not report.errors, f'check-traceability failed: {report.errors}'
 
 
