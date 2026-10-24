@@ -63,6 +63,21 @@
 ///          for a full tree) is allocated/pushed once and popped at most once,
 ///          giving strictly O(V) = O(N) post-sorting time and O(1) auxiliary
 ///          space with zero bit manipulation.
+///      - Pipeline & Load-Store Queue (LSQ) micro-optimizations:
+///        * Dual even/odd length histograms (`length_offsets` + `odd_counts`)
+///          in the 2x-unrolled validation pass eliminate 4-cycle LSQ
+///          store-to-load forwarding stalls when consecutive symbols share the
+///          same codeword length.
+///        * The 64-bit Kraft shift-add is hoisted out of the N-symbol pass into
+///          the 32-iteration prefix-sum loop (`cnt << (32 - len)`).
+///        * For full 256-symbol alphabets, a 2x-unrolled branchless scatter
+///          loop pre-loads both bucket offsets prior to storing and resolves
+///          same-length collisions with a 1-cycle conditional select (`csel`).
+///        * Arena allocation uses a register-resident `node_cursor` pointer and
+///          writes `tree->node_count` / `tree->leaf_count` once upon
+///          completion; after the first pure-left leaf insertion, the spine
+///          loop branches only on `curr_depth == target_depth` vs
+///          `curr_depth < target_depth`.
 
 #include "systems/huffman_tree.h"
 
@@ -333,12 +348,36 @@ static inline void reset_tree(struct huffman_tree* const tree) {
     struct huffman_symbol_length* const restrict sorted_entries) {
   uint8_t symbol_lengths[HUFFMAN_MAX_SYMBOLS] = {};
   uint16_t length_offsets[HUFFMAN_MAX_CODE_LENGTH + 2U] = {};
-  uint64_t used_capacity = 0ULL;
+  uint16_t odd_counts[HUFFMAN_MAX_CODE_LENGTH + 2U] = {};
 
-  for (size_t i = 0U; i < count; ++i) {
+  size_t i = 0U;
+  for (; i + 1U < count; i += 2U) {
+    const uint8_t len0 = entries[i].length;
+    const uint8_t sym0 = entries[i].symbol;
+    if ((uint8_t)(len0 - 1U) >= HUFFMAN_MAX_CODE_LENGTH) {
+      return HUFFMAN_ERR_INVALID_LENGTH;
+    }
+    if (symbol_lengths[sym0] != 0U) {
+      return HUFFMAN_ERR_DUPLICATE_SYMBOL;
+    }
+    symbol_lengths[sym0] = len0;
+    length_offsets[(size_t)len0 + 1U]++;
+
+    const uint8_t len1 = entries[i + 1U].length;
+    const uint8_t sym1 = entries[i + 1U].symbol;
+    if ((uint8_t)(len1 - 1U) >= HUFFMAN_MAX_CODE_LENGTH) {
+      return HUFFMAN_ERR_INVALID_LENGTH;
+    }
+    if (symbol_lengths[sym1] != 0U) {
+      return HUFFMAN_ERR_DUPLICATE_SYMBOL;
+    }
+    symbol_lengths[sym1] = len1;
+    odd_counts[(size_t)len1 + 1U]++;
+  }
+  for (; i < count; ++i) {
     const uint8_t length = entries[i].length;
     const uint8_t symbol = entries[i].symbol;
-    if (length < 1U || length > HUFFMAN_MAX_CODE_LENGTH) {
+    if ((uint8_t)(length - 1U) >= HUFFMAN_MAX_CODE_LENGTH) {
       return HUFFMAN_ERR_INVALID_LENGTH;
     }
     if (symbol_lengths[symbol] != 0U) {
@@ -346,26 +385,50 @@ static inline void reset_tree(struct huffman_tree* const tree) {
     }
     symbol_lengths[symbol] = length;
     length_offsets[(size_t)length + 1U]++;
-    used_capacity += 1ULL << (HUFFMAN_MAX_CODE_LENGTH - length);
+  }
+
+  uint64_t used_capacity = 0ULL;
+  uint16_t running_offset = 0U;
+  for (size_t len = 1U; len <= HUFFMAN_MAX_CODE_LENGTH; ++len) {
+    const uint16_t cnt =
+        (uint16_t)(length_offsets[len + 1U] + odd_counts[len + 1U]);
+    used_capacity += (uint64_t)cnt << (HUFFMAN_MAX_CODE_LENGTH - len);
+    length_offsets[len] = running_offset;
+    running_offset = (uint16_t)(running_offset + cnt);
   }
 
   if (used_capacity > HUFFMAN_MAX_TREE_CAPACITY) {
     return HUFFMAN_ERR_ILLEGAL_ENCODING;
   }
 
-  for (size_t len = 1U; len <= HUFFMAN_MAX_CODE_LENGTH; ++len) {
-    length_offsets[len] =
-        (uint16_t)(length_offsets[len] + length_offsets[len - 1U]);
-  }
-
-  for (size_t sym = 0U; sym < HUFFMAN_MAX_SYMBOLS; ++sym) {
-    const uint8_t length = symbol_lengths[sym];
-    if (length != 0U) {
-      const uint16_t dst_idx = length_offsets[length]++;
-      sorted_entries[dst_idx] = (struct huffman_symbol_length){
+  if (count == HUFFMAN_MAX_SYMBOLS) {
+    for (size_t sym = 0U; sym < HUFFMAN_MAX_SYMBOLS; sym += 2U) {
+      const uint8_t len0 = symbol_lengths[sym];
+      const uint8_t len1 = symbol_lengths[sym + 1U];
+      const uint16_t idx0 = length_offsets[len0];
+      const uint16_t raw_idx1 = length_offsets[len1];
+      const uint16_t idx1 = (len0 == len1) ? (uint16_t)(idx0 + 1U) : raw_idx1;
+      length_offsets[len0] = (uint16_t)(idx0 + 1U);
+      length_offsets[len1] = (uint16_t)(idx1 + 1U);
+      sorted_entries[idx0] = (struct huffman_symbol_length){
           .symbol = (uint8_t)sym,
-          .length = length,
+          .length = len0,
       };
+      sorted_entries[idx1] = (struct huffman_symbol_length){
+          .symbol = (uint8_t)(sym + 1U),
+          .length = len1,
+      };
+    }
+  } else {
+    for (size_t sym = 0U; sym < HUFFMAN_MAX_SYMBOLS; ++sym) {
+      const uint8_t length = symbol_lengths[sym];
+      if (length != 0U) {
+        const uint16_t dst_idx = length_offsets[length]++;
+        sorted_entries[dst_idx] = (struct huffman_symbol_length){
+            .symbol = (uint8_t)sym,
+            .length = length,
+        };
+      }
     }
   }
 
