@@ -100,3 +100,8 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/huffman_tree.c")
     systems_c_add_library(huffman_tree SOURCES huffman_tree.c)
 endif()
+
+# Zero-allocation MSB-first bit-stream pattern matching (byte-aligned, naive, and KMP) in C23.
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bit_pattern.c")
+    systems_c_add_library(bit_pattern SOURCES bit_pattern.c)
+endif()

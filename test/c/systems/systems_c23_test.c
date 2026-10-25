@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include "systems/bit_pattern.h"
 #include "systems/bitmap_flip.h"
 #include "systems/bounded_fifo.h"
 #include "systems/huffman_tree.h"
@@ -24,6 +25,12 @@ static_assert(HUFFMAN_MAX_SYMBOLS == 256U,
               "Huffman alphabet must cover all 256 byte values");
 static_assert(HUFFMAN_MAX_CODE_LENGTH == 32U,
               "Huffman max code length must be 32 bits");
+static_assert(BIT_PATTERN_BITS_PER_BYTE == 8U,
+              "Bit pattern bits per byte must be 8");
+static_assert(BIT_PATTERN_MAX_PATTERN_BITS == 1024U,
+              "Bit pattern max pattern bits must be 1024");
+static_assert(FOUND_PATTERN == 0, "FOUND_PATTERN must equal 0");
+static_assert(PATTERN_NOT_FOUND == 1, "PATTERN_NOT_FOUND must equal 1");
 
 [[nodiscard]] static bool test_platform_c23() {
   const enum systems_os_family os = systems_get_os_family();
@@ -159,9 +166,22 @@ static_assert(HUFFMAN_MAX_CODE_LENGTH == 32U,
                 decoded[3] == (uint8_t)'e');
 }
 
+[[nodiscard]] static bool test_bit_pattern_c23() {
+  const uint8_t data[2] = {0xAAU, 0x55U};
+  const uint8_t pattern[1] = {0xAAU};
+  const enum FoundError res = found(data, 16U, pattern, 8U);
+  const char* const msg = found_error_to_string(res);
+  return (bool)(msg != nullptr && res == FOUND_PATTERN &&
+                bit_pattern_find_byte_aligned(data, 16U, pattern, 8U) ==
+                    FOUND_PATTERN &&
+                bit_pattern_find_naive(data, 16U, pattern, 8U) ==
+                    FOUND_PATTERN);
+}
+
 int main() {
   if (!test_platform_c23() || !test_bounded_fifo_c23() ||
       !test_bitmap_flip_c23() || !test_huffman_tree_c23() ||
+      !test_bit_pattern_c23() ||
       !test_process_rendezvous_and_shm_pubsub_c23()) {
     return 1;
   }
