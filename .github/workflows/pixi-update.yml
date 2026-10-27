@@ -24,12 +24,12 @@ jobs:
       - name: Setup Pixi
         uses: prefix-dev/setup-pixi@ad1da6449d9e506fd127fd67ab2d054a769f6a94 # v0.11.2
         with:
-          pixi-version: v0.82.0
+          pixi-version: v0.83.0
           cache: true
 
       - name: Update Lockfile and Capture Diff
         id: pixi-update
-        uses: pavelzw/pixi-diff-to-markdown@541b1bc0e7283c56775c20be20ce7fe319ee721a # v0.3.10
+        uses: pavelzw/pixi-diff-to-markdown@f86919f8f9fc46399cb514554e3258ca1d540109 # v0.3.11
         with:
           commit-changes: false
 
