@@ -190,12 +190,7 @@ static void record_c23_task_tick(void* const user_data, const uint64_t now_ns) {
 
 [[nodiscard]] static bool test_priority_scheduler_c23() {
   struct priority_scheduler sched = {};
-  const enum priority_scheduler_error init_err =
-      priority_scheduler_init(&sched);
-  if (init_err == PRIORITY_SCHEDULER_ERR_NOT_IMPLEMENTED) {
-    return priority_scheduler_error_to_string(init_err) != nullptr;
-  }
-  if (init_err != PRIORITY_SCHEDULER_OK) {
+  if (priority_scheduler_init(&sched) != PRIORITY_SCHEDULER_OK) {
     return false;
   }
   uint64_t ran_at_ns = 0ULL;
@@ -208,8 +203,11 @@ static void record_c23_task_tick(void* const user_data, const uint64_t now_ns) {
       .user_data = &ran_at_ns,
   };
   struct priority_dispatch_result res = {};
+  const char* const ok_str =
+      priority_scheduler_error_to_string(PRIORITY_SCHEDULER_OK);
   const bool ok =
-      (bool)(priority_scheduler_schedule(&sched, &cfg) ==
+      (bool)(ok_str != nullptr &&
+             priority_scheduler_schedule(&sched, &cfg) ==
                  PRIORITY_SCHEDULER_OK &&
              priority_scheduler_step(&sched, 10'000'000ULL, &res) ==
                  PRIORITY_SCHEDULER_OK &&

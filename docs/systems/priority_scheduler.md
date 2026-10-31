@@ -4,7 +4,7 @@
 | --- | --- |
 | Component | `priority_scheduler` (`src/include/systems/priority_scheduler.h`, `src/c/systems/priority_scheduler.c`) |
 | Requirement prefix | `SCHED` |
-| Status | Draft (TDD red; implementation pending) |
+| Status | Implemented (ISO C23) |
 | Integrity context | Practice component written with ISO 26262 / MISRA C:2023 / NVIDIA Halos rigor; not a certified work product |
 | Target platforms | Linux, embedded Linux, QNX (production); macOS (development host) |
 

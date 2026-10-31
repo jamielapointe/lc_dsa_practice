@@ -135,6 +135,8 @@ typedef enum priority_scheduler_error : int32_t {
 
 static_assert(sizeof(enum priority_scheduler_error) == 4U,
               "ABI requires 32-bit priority_scheduler_error");
+static_assert(PRIORITY_SCHEDULER_MAX_TASKS > 0U,
+              "Scheduler capacity must be greater than zero");
 
 /// @brief Task callback invoked when a scheduled task is dispatched.
 /// @param user_data Caller-supplied context pointer from
@@ -225,9 +227,8 @@ struct priority_scheduler {
 /// @return `true` if `*a` should be ordered before `*b`.
 /// @par Requirements
 /// SCHED-REQ-001, SCHED-REQ-003, SCHED-REQ-013
-[[nodiscard]] bool scheduled_task_comes_before(
-    const struct scheduled_task* restrict a,
-    const struct scheduled_task* restrict b);
+[[nodiscard]] bool scheduled_task_comes_before(const struct scheduled_task* a,
+                                               const struct scheduled_task* b);
 
 /// @brief Initializes an empty binary min-heap priority queue (Follow-up 6).
 /// @param pq Pointer to the priority queue to initialize.
@@ -248,8 +249,7 @@ struct priority_scheduler {
 /// @par Requirements
 /// SCHED-REQ-001, SCHED-REQ-003, SCHED-REQ-010, SCHED-REQ-011, SCHED-REQ-013
 [[nodiscard]] enum priority_scheduler_error priority_queue_push(
-    struct priority_queue* restrict pq,
-    const struct scheduled_task* restrict task);
+    struct priority_queue* pq, const struct scheduled_task* task);
 
 /// @brief Copies the highest-precedence task at the root of the min-heap
 /// without removing it in O(1) time (Follow-up 6).
@@ -261,8 +261,7 @@ struct priority_scheduler {
 /// @par Requirements
 /// SCHED-REQ-001, SCHED-REQ-003, SCHED-REQ-013
 [[nodiscard]] enum priority_scheduler_error priority_queue_peek(
-    const struct priority_queue* restrict pq,
-    struct scheduled_task* restrict out_task);
+    const struct priority_queue* pq, struct scheduled_task* out_task);
 
 /// @brief Removes and copies the highest-precedence task from the root of the
 /// min-heap in O(log N) time (Follow-up 6).
@@ -274,8 +273,7 @@ struct priority_scheduler {
 /// @par Requirements
 /// SCHED-REQ-001, SCHED-REQ-003, SCHED-REQ-010, SCHED-REQ-011, SCHED-REQ-013
 [[nodiscard]] enum priority_scheduler_error priority_queue_pop(
-    struct priority_queue* restrict pq,
-    struct scheduled_task* restrict out_task);
+    struct priority_queue* pq, struct scheduled_task* out_task);
 
 /// @brief Returns the number of tasks currently in `pq` (or `0` if `pq` is
 /// `nullptr`).
@@ -322,8 +320,8 @@ void priority_scheduler_destroy(struct priority_scheduler* sched);
 /// SCHED-REQ-002, SCHED-REQ-003, SCHED-REQ-009, SCHED-REQ-010, SCHED-REQ-011,
 /// SCHED-REQ-013, SCHED-REQ-014
 [[nodiscard]] enum priority_scheduler_error priority_scheduler_schedule(
-    struct priority_scheduler* restrict sched,
-    const struct priority_task_config* restrict config);
+    struct priority_scheduler* sched,
+    const struct priority_task_config* config);
 
 /// @brief Cancels and removes a scheduled task by its `task_id`.
 /// @param sched Pointer to an initialized scheduler.
@@ -355,9 +353,9 @@ void priority_scheduler_destroy(struct priority_scheduler* sched);
 /// @par Requirements
 /// SCHED-REQ-005, SCHED-REQ-009, SCHED-REQ-013
 [[nodiscard]] enum priority_scheduler_error
-priority_scheduler_peek_next_deadline(struct priority_scheduler* restrict sched,
-                                      uint64_t* restrict out_deadline_ns,
-                                      uint32_t* restrict out_task_id);
+priority_scheduler_peek_next_deadline(struct priority_scheduler* sched,
+                                      uint64_t* out_deadline_ns,
+                                      uint32_t* out_task_id);
 
 /// @brief Dispatches at most one highest-precedence task that is due at or
 /// before `now_ns` (`next_deadline_ns <= now_ns`).
@@ -386,8 +384,8 @@ priority_scheduler_peek_next_deadline(struct priority_scheduler* restrict sched,
 /// SCHED-REQ-002, SCHED-REQ-003, SCHED-REQ-004, SCHED-REQ-005, SCHED-REQ-008,
 /// SCHED-REQ-009, SCHED-REQ-010, SCHED-REQ-011, SCHED-REQ-013, SCHED-REQ-014
 [[nodiscard]] enum priority_scheduler_error priority_scheduler_step(
-    struct priority_scheduler* restrict sched, uint64_t now_ns,
-    struct priority_dispatch_result* restrict out_result);
+    struct priority_scheduler* sched, uint64_t now_ns,
+    struct priority_dispatch_result* out_result);
 
 /// @brief Repeatedly dispatches due tasks (`next_deadline_ns <= now_ns`) up to
 /// `max_dispatches` times at timestamp `now_ns`.
@@ -408,9 +406,8 @@ priority_scheduler_peek_next_deadline(struct priority_scheduler* restrict sched,
 /// SCHED-REQ-002, SCHED-REQ-003, SCHED-REQ-004, SCHED-REQ-007, SCHED-REQ-008,
 /// SCHED-REQ-009, SCHED-REQ-010, SCHED-REQ-011, SCHED-REQ-013, SCHED-REQ-014
 [[nodiscard]] enum priority_scheduler_error priority_scheduler_run_until_idle(
-    struct priority_scheduler* restrict sched, uint64_t now_ns,
-    size_t max_dispatches, size_t* restrict out_dispatched,
-    size_t* restrict out_missed);
+    struct priority_scheduler* sched, uint64_t now_ns, size_t max_dispatches,
+    size_t* out_dispatched, size_t* out_missed);
 
 /// @brief Returns a thread-safe snapshot of the number of scheduled tasks in
 /// `sched` (or `0` if `sched == nullptr` or uninitialized).

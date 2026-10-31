@@ -102,6 +102,28 @@ TEST(PriorityQueueCTest, PushPeekPopMaintainsMinHeapOrder) {
 
   EXPECT_TRUE(priority_queue_is_empty(&pq));
   EXPECT_EQ(priority_queue_size(&pq), 0U);
+  EXPECT_EQ(priority_queue_peek(&pq, &peeked), PRIORITY_SCHEDULER_ERR_EMPTY);
+  EXPECT_EQ(priority_queue_pop(&pq, &peeked), PRIORITY_SCHEDULER_ERR_EMPTY);
+
+  // Verify null helpers and full-capacity boundary (64 tasks).
+  EXPECT_EQ(priority_queue_size(nullptr), 0U);
+  EXPECT_TRUE(priority_queue_is_empty(nullptr));
+  EXPECT_FALSE(priority_queue_is_full(nullptr));
+  for (size_t i = 0U; i < PRIORITY_SCHEDULER_MAX_TASKS; ++i) {
+    struct scheduled_task task = {};
+    task.task_id = static_cast<uint32_t>(i + 1U);
+    task.next_deadline_ns =
+        static_cast<uint64_t>(PRIORITY_SCHEDULER_MAX_TASKS - i);
+    task.period_ns = 10ULL;
+    task.callback = noop_task_callback;
+    ASSERT_EQ(priority_queue_push(&pq, &task), PRIORITY_SCHEDULER_OK);
+  }
+  EXPECT_TRUE(priority_queue_is_full(&pq));
+  struct scheduled_task extra = {};
+  extra.next_deadline_ns = 1ULL;
+  extra.task_id = 99U;
+  EXPECT_EQ(priority_queue_push(&pq, &extra),
+            PRIORITY_SCHEDULER_ERR_QUEUE_FULL);
 }
 
 TEST(PriorityQueueCTest, TieBreakingByPrioritySequenceAndTaskId) {
@@ -138,6 +160,12 @@ TEST(PriorityQueueCTest, TieBreakingByPrioritySequenceAndTaskId) {
   smaller_id.task_id = 2U;
   EXPECT_TRUE(scheduled_task_comes_before(&smaller_id, &early));
   EXPECT_FALSE(scheduled_task_comes_before(&early, &smaller_id));
+
+  // Irreflexivity and null-safety of strict weak ordering.
+  EXPECT_FALSE(scheduled_task_comes_before(&early, &early));
+  EXPECT_FALSE(scheduled_task_comes_before(nullptr, &early));
+  EXPECT_FALSE(scheduled_task_comes_before(&early, nullptr));
+  EXPECT_FALSE(scheduled_task_comes_before(nullptr, nullptr));
 }
 
 // ============================================================================
@@ -261,6 +289,27 @@ TEST(PrioritySchedulerCTest, SameDeadlineAndSamePriorityFifoTieBreaking) {
   EXPECT_EQ(log.task_ids[1], 10U);
   EXPECT_EQ(log.task_ids[2], 20U);
 
+  // Register a 4th task after stepping to verify `next_sequence_id` stays
+  // monotonically increasing across dispatches and preserves FIFO tie-breaking.
+  LoggedTaskContext ctx_d{.log = &log, .task_id = 5U};
+  const struct priority_task_config cfg_d = {
+      .task_id = ctx_d.task_id,
+      .priority = 5U,
+      .period_ns = 100ULL * kMsToNs,
+      .first_deadline_ns = 150ULL * kMsToNs,
+      .callback = record_dispatch_callback,
+      .user_data = &ctx_d,
+  };
+  ASSERT_EQ(priority_scheduler_schedule(&sched, &cfg_d), PRIORITY_SCHEDULER_OK);
+  ASSERT_EQ(priority_scheduler_run_until_idle(&sched, 150ULL * kMsToNs, 10U,
+                                              &dispatched, nullptr),
+            PRIORITY_SCHEDULER_OK);
+  ASSERT_EQ(dispatched, 4U);
+  EXPECT_EQ(log.task_ids[3], 30U);
+  EXPECT_EQ(log.task_ids[4], 10U);
+  EXPECT_EQ(log.task_ids[5], 20U);
+  EXPECT_EQ(log.task_ids[6], 5U);
+
   priority_scheduler_destroy(&sched);
 }
 
@@ -327,6 +376,102 @@ TEST(PrioritySchedulerCTest, CancelTaskRemovesFromHeapAndPreservesOrdering) {
               PRIORITY_SCHEDULER_OK);
     EXPECT_EQ(res.task_id, expected_id);
   }
+
+  priority_scheduler_destroy(&sched);
+}
+
+TEST(PrioritySchedulerCTest, CancelHandlesLastLeafSiftUpAndDrainToEmpty) {
+  RecordProperty("requirements", "SCHED-REQ-006");
+
+  struct priority_scheduler sched = {};
+  ASSERT_EQ(priority_scheduler_init(&sched), PRIORITY_SCHEDULER_OK);
+
+  // Build a 6-node heap where left subtree has deadlines (50, 60, 70) and right
+  // subtree has deadlines (15, 20):
+  //   idx 0: id 1 (10 ms)
+  //   idx 1: id 2 (50 ms)        idx 2: id 3 (15 ms)
+  //   idx 3: id 4 (60 ms)        idx 4: id 5 (70 ms)    idx 5: id 6 (20 ms)
+  const std::array<uint64_t, 6> deadlines_ms = {10ULL, 50ULL, 15ULL,
+                                                60ULL, 70ULL, 20ULL};
+  for (size_t i = 0U; i < deadlines_ms.size(); ++i) {
+    const struct priority_task_config cfg = {
+        .task_id = static_cast<uint32_t>(i + 1U),
+        .priority = 1U,
+        .period_ns = 1000ULL * kMsToNs,
+        .first_deadline_ns = deadlines_ms[i] * kMsToNs,
+        .callback = noop_task_callback,
+        .user_data = nullptr,
+    };
+    ASSERT_EQ(priority_scheduler_schedule(&sched, &cfg), PRIORITY_SCHEDULER_OK);
+  }
+
+  // Cancelling id 4 (idx 3, 60 ms) replaces it with last leaf id 6 (20 ms),
+  // which is < parent id 2 (50 ms) and MUST sift UP above id 2.
+  ASSERT_EQ(priority_scheduler_cancel(&sched, 4U), PRIORITY_SCHEDULER_OK);
+
+  // Cancelling current last leaf id 5 (70 ms, idx == size - 1) must not access
+  // out-of-bounds indices.
+  ASSERT_EQ(priority_scheduler_cancel(&sched, 5U), PRIORITY_SCHEDULER_OK);
+  EXPECT_EQ(priority_scheduler_size(&sched), 4U);
+
+  const std::array<uint32_t, 4> expected_order = {1U, 3U, 6U, 2U};
+  for (const uint32_t expected_id : expected_order) {
+    struct priority_dispatch_result res = {};
+    ASSERT_EQ(priority_scheduler_step(&sched, 100ULL * kMsToNs, &res),
+              PRIORITY_SCHEDULER_OK);
+    EXPECT_EQ(res.task_id, expected_id);
+  }
+
+  // Cancel all remaining tasks down to empty.
+  for (const uint32_t id : expected_order) {
+    ASSERT_EQ(priority_scheduler_cancel(&sched, id), PRIORITY_SCHEDULER_OK);
+  }
+  EXPECT_EQ(priority_scheduler_size(&sched), 0U);
+  EXPECT_EQ(priority_scheduler_step(&sched, 100ULL * kMsToNs, nullptr),
+            PRIORITY_SCHEDULER_ERR_EMPTY);
+
+  priority_scheduler_destroy(&sched);
+}
+
+TEST(PrioritySchedulerCTest, RunUntilIdleRespectsZeroAndBoundedMaxDispatches) {
+  RecordProperty("requirements", "SCHED-REQ-007,SCHED-REQ-014");
+
+  struct priority_scheduler sched = {};
+  ASSERT_EQ(priority_scheduler_init(&sched), PRIORITY_SCHEDULER_OK);
+
+  for (uint32_t id = 1U; id <= 3U; ++id) {
+    const struct priority_task_config cfg = {
+        .task_id = id,
+        .priority = static_cast<uint8_t>(id),
+        .period_ns = 100ULL * kMsToNs,
+        .first_deadline_ns = 10ULL * kMsToNs,
+        .callback = noop_task_callback,
+        .user_data = nullptr,
+    };
+    ASSERT_EQ(priority_scheduler_schedule(&sched, &cfg), PRIORITY_SCHEDULER_OK);
+  }
+
+  // `max_dispatches == 0` must zero output counts and execute zero tasks.
+  size_t dispatched = 99U;
+  size_t missed = 77U;
+  ASSERT_EQ(priority_scheduler_run_until_idle(&sched, 20ULL * kMsToNs, 0U,
+                                              &dispatched, &missed),
+            PRIORITY_SCHEDULER_OK);
+  EXPECT_EQ(dispatched, 0U);
+  EXPECT_EQ(missed, 0U);
+
+  // `max_dispatches == 2` must stop after 2 dispatches even though 3 are due.
+  ASSERT_EQ(priority_scheduler_run_until_idle(&sched, 20ULL * kMsToNs, 2U,
+                                              &dispatched, &missed),
+            PRIORITY_SCHEDULER_OK);
+  EXPECT_EQ(dispatched, 2U);
+  EXPECT_EQ(missed, 2U);
+
+  // Timestamp overflow inside `run_until_idle` propagates `ERR_TIME_OVERFLOW`.
+  EXPECT_EQ(priority_scheduler_run_until_idle(
+                &sched, std::numeric_limits<uint64_t>::max(), 4U, &dispatched,
+                &missed),
+            PRIORITY_SCHEDULER_ERR_TIME_OVERFLOW);
 
   priority_scheduler_destroy(&sched);
 }
@@ -478,15 +623,29 @@ TEST(PrioritySchedulerCTest, ValidationPrecedenceCapacityDuplicateAndOverflow) {
   // 2. Uninitialized scheduler rejection takes precedence over invalid config
   struct priority_scheduler uninit_sched = {};
   struct priority_task_config bad_cfg = {};
+  uint64_t dummy_dl = 0ULL;
+  size_t dummy_dispatched = 0U;
+  EXPECT_EQ(priority_scheduler_size(nullptr), 0U);
+  EXPECT_EQ(priority_scheduler_size(&uninit_sched), 0U);
   EXPECT_EQ(priority_scheduler_schedule(&uninit_sched, &bad_cfg),
             PRIORITY_SCHEDULER_ERR_UNINITIALIZED);
   EXPECT_EQ(priority_scheduler_cancel(&uninit_sched, 0U),
             PRIORITY_SCHEDULER_ERR_UNINITIALIZED);
+  EXPECT_EQ(
+      priority_scheduler_peek_next_deadline(&uninit_sched, &dummy_dl, nullptr),
+      PRIORITY_SCHEDULER_ERR_UNINITIALIZED);
   EXPECT_EQ(priority_scheduler_step(&uninit_sched, 0ULL, nullptr),
+            PRIORITY_SCHEDULER_ERR_UNINITIALIZED);
+  EXPECT_EQ(priority_scheduler_run_until_idle(&uninit_sched, 0ULL, 1U,
+                                              &dummy_dispatched, nullptr),
             PRIORITY_SCHEDULER_ERR_UNINITIALIZED);
 
   struct priority_scheduler sched = {};
   ASSERT_EQ(priority_scheduler_init(&sched), PRIORITY_SCHEDULER_OK);
+  EXPECT_EQ(priority_scheduler_peek_next_deadline(&sched, &dummy_dl, nullptr),
+            PRIORITY_SCHEDULER_ERR_EMPTY);
+  EXPECT_EQ(priority_scheduler_cancel(&sched, 0U),
+            PRIORITY_SCHEDULER_ERR_INVALID_TASK_ID);
 
   // 3. Config validation precedence: INVALID_TASK_ID -> INVALID_PERIOD ->
   //    NULL_CALLBACK
@@ -539,16 +698,33 @@ TEST(PrioritySchedulerCTest, ValidationPrecedenceCapacityDuplicateAndOverflow) {
                 &sched, std::numeric_limits<uint64_t>::max(), nullptr),
             PRIORITY_SCHEDULER_ERR_TIME_OVERFLOW);
 
-  // 6. Error strings are non-null for all enumerators
+  // 6. Error strings are non-null for all enumerators and unknown values
   EXPECT_STREQ(priority_scheduler_error_to_string(PRIORITY_SCHEDULER_OK), "ok");
+  const std::array<enum priority_scheduler_error, 13> all_errors = {
+      PRIORITY_SCHEDULER_OK,
+      PRIORITY_SCHEDULER_ERR_NOT_IMPLEMENTED,
+      PRIORITY_SCHEDULER_ERR_NULL_PTR,
+      PRIORITY_SCHEDULER_ERR_UNINITIALIZED,
+      PRIORITY_SCHEDULER_ERR_INVALID_TASK_ID,
+      PRIORITY_SCHEDULER_ERR_INVALID_PERIOD,
+      PRIORITY_SCHEDULER_ERR_NULL_CALLBACK,
+      PRIORITY_SCHEDULER_ERR_QUEUE_FULL,
+      PRIORITY_SCHEDULER_ERR_DUPLICATE_TASK_ID,
+      PRIORITY_SCHEDULER_ERR_TASK_NOT_FOUND,
+      PRIORITY_SCHEDULER_ERR_EMPTY,
+      PRIORITY_SCHEDULER_ERR_NO_TASK_READY,
+      PRIORITY_SCHEDULER_ERR_TIME_OVERFLOW,
+  };
+  for (const auto err : all_errors) {
+    EXPECT_NE(priority_scheduler_error_to_string(err), nullptr);
+  }
   EXPECT_NE(priority_scheduler_error_to_string(
-                PRIORITY_SCHEDULER_ERR_NOT_IMPLEMENTED),
+                static_cast<enum priority_scheduler_error>(999)),
             nullptr);
-  EXPECT_NE(
-      priority_scheduler_error_to_string(PRIORITY_SCHEDULER_ERR_TIME_OVERFLOW),
-      nullptr);
 
   priority_scheduler_destroy(&sched);
+  priority_scheduler_destroy(&sched);
+  priority_scheduler_destroy(nullptr);
 }
 
 // ============================================================================
