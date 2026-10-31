@@ -123,5 +123,5 @@ Confirm the existing suites (including `test_support_test` and `bounded_fifo_tes
 ### Step 7: Report
 
 Summarize the generated files, the assumptions you made, the requirement → test traceability table, platform skips (for example robust-mutex tests on macOS),
-and the verification output. Remind the user that the tests are intentionally red. Commit locally on the feature branch only if the user asks; do not
-implement the component and do not open a PR unless asked.
+and the verification output. Remind the user that the tests are intentionally red. Commit locally on the feature branch only if the user asks; never run
+`git push`, do not implement the component, and do not open a PR unless asked.
