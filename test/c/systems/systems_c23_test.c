@@ -14,6 +14,7 @@
 #include "systems/bounded_fifo.h"
 #include "systems/huffman_tree.h"
 #include "systems/platform.h"
+#include "systems/priority_scheduler.h"
 #include "systems/process_rendezvous.h"
 #include "systems/shm_pubsub.h"
 
@@ -31,6 +32,10 @@ static_assert(BIT_PATTERN_MAX_PATTERN_BITS == 1024U,
               "Bit pattern max pattern bits must be 1024");
 static_assert(FOUND_PATTERN == 0, "FOUND_PATTERN must equal 0");
 static_assert(PATTERN_NOT_FOUND == 1, "PATTERN_NOT_FOUND must equal 1");
+static_assert(PRIORITY_SCHEDULER_MAX_TASKS == 64U,
+              "Priority scheduler max tasks must be 64");
+static_assert(PRIORITY_HIGHEST == 0U, "Highest priority must be 0");
+static_assert(PRIORITY_LOWEST == 255U, "Lowest priority must be 255");
 
 [[nodiscard]] static bool test_platform_c23() {
   const enum systems_os_family os = systems_get_os_family();
@@ -178,10 +183,46 @@ static_assert(PATTERN_NOT_FOUND == 1, "PATTERN_NOT_FOUND must equal 1");
                     FOUND_PATTERN);
 }
 
+static void record_c23_task_tick(void* const user_data, const uint64_t now_ns) {
+  uint64_t* const last_tick_ns = (uint64_t*)user_data;
+  *last_tick_ns = now_ns;
+}
+
+[[nodiscard]] static bool test_priority_scheduler_c23() {
+  struct priority_scheduler sched = {};
+  const enum priority_scheduler_error init_err =
+      priority_scheduler_init(&sched);
+  if (init_err == PRIORITY_SCHEDULER_ERR_NOT_IMPLEMENTED) {
+    return priority_scheduler_error_to_string(init_err) != nullptr;
+  }
+  if (init_err != PRIORITY_SCHEDULER_OK) {
+    return false;
+  }
+  uint64_t ran_at_ns = 0ULL;
+  const struct priority_task_config cfg = {
+      .task_id = 1U,
+      .priority = PRIORITY_HIGHEST,
+      .period_ns = 10'000'000ULL,
+      .first_deadline_ns = 10'000'000ULL,
+      .callback = record_c23_task_tick,
+      .user_data = &ran_at_ns,
+  };
+  struct priority_dispatch_result res = {};
+  const bool ok =
+      (bool)(priority_scheduler_schedule(&sched, &cfg) ==
+                 PRIORITY_SCHEDULER_OK &&
+             priority_scheduler_step(&sched, 10'000'000ULL, &res) ==
+                 PRIORITY_SCHEDULER_OK &&
+             ran_at_ns == 10'000'000ULL && res.task_id == 1U &&
+             !res.missed_deadline && res.next_deadline_ns == 20'000'000ULL);
+  priority_scheduler_destroy(&sched);
+  return ok;
+}
+
 int main() {
   if (!test_platform_c23() || !test_bounded_fifo_c23() ||
       !test_bitmap_flip_c23() || !test_huffman_tree_c23() ||
-      !test_bit_pattern_c23() ||
+      !test_bit_pattern_c23() || !test_priority_scheduler_c23() ||
       !test_process_rendezvous_and_shm_pubsub_c23()) {
     return 1;
   }

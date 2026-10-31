@@ -94,6 +94,15 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bit_pattern_c_test.cpp")
     )
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/priority_scheduler_c_test.cpp")
+    add_project_test(
+        priority_scheduler_c_test
+        SOURCES priority_scheduler_c_test.cpp
+        LIBS systems_c::priority_scheduler systems::test_support
+        LABELS "systems"
+    )
+endif()
+
 # Pure-C23 test target: compiled strictly with C compiler under -std=c23, zero C++ linkage
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/systems_c23_test.c")
     set(SYSTEMS_C23_TEST_LIBS systems_c::platform)
@@ -114,6 +123,9 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/systems_c23_test.c")
     endif()
     if(TARGET systems_c::bit_pattern)
         list(APPEND SYSTEMS_C23_TEST_LIBS systems_c::bit_pattern)
+    endif()
+    if(TARGET systems_c::priority_scheduler)
+        list(APPEND SYSTEMS_C23_TEST_LIBS systems_c::priority_scheduler)
     endif()
 
     add_project_c_test(
