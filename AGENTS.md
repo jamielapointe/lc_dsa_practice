@@ -194,9 +194,10 @@ instead of suppressing; keep existing comments and docstrings that your change d
 
 ## Git and GitHub rules
 
-- Use the `github-mcp-server` MCP tools for **all** GitHub interactions (branches, files, issues, pull requests, reviews,
-  Actions status and logs). Do not use the `gh` CLI or `git push`.
-- Local `git` is for working-tree operations only: status, diff, add, mv, commit, local branches.
+- Use the `github-mcp-server` MCP tools for **all** GitHub platform interactions (branches, issues, pull requests, reviews,
+  Actions status and logs). Do not use the `gh` CLI.
+- Local `git` is for working-tree and branch operations: `status`, `diff`, `add`, `mv`, `commit`, local branches, and
+  `push` on feature branches (note: `/leetcode-setup` and `/systems-setup` explicitly forbid `git push` so TDD-red stubs stay local).
 - Work on a feature branch, never on `main`. Use `git mv` for moves so history is preserved.
 - CI (`.github/workflows/ci.yml`) runs lint/hygiene, Python tests on Linux x86-64, Linux arm64, and macOS, C++ release tests on
   the same matrix, C++ coverage, and the ASan/UBSan/TSan presets.

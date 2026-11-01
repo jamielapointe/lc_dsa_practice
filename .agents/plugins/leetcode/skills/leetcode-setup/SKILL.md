@@ -58,7 +58,7 @@ Before doing anything, verify the git workspace is clean (`git status`). If it i
 
 ### Step 2: Standard GitHub workflow
 
-All GitHub interactions MUST use the `github-mcp-server` tools. Before making code changes:
+All GitHub interactions MUST use the `github-mcp-server` tools (never `gh` or `git push`). Before making code changes:
 
 1. Update main locally: `git checkout main && git fetch --all --prune && git pull`.
 2. Use `github-mcp-server` to create a GitHub issue describing the problem (include the language).
@@ -101,5 +101,5 @@ Always run tools through `pixi run ...` so the hermetic toolchain is used. The e
 
 ### Step 6: Report
 
-Summarize the generated files, the verification output, and remind the user the tests are intentionally red. Do not implement the algorithm and do not open a PR
-unless asked.
+Summarize the generated files, the verification output, and remind the user the tests are intentionally red. Never run `git push`, do not implement the
+algorithm, and do not open a PR unless asked.

@@ -105,3 +105,12 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bit_pattern.c")
     systems_c_add_library(bit_pattern SOURCES bit_pattern.c)
 endif()
+
+# Deterministic priority-queue-based periodic task scheduler in C23 (spec: docs/systems/priority_scheduler.md).
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/priority_scheduler.c")
+    systems_c_add_library(
+        priority_scheduler
+        SOURCES priority_scheduler.c
+        LIBS Threads::Threads
+    )
+endif()
