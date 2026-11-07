@@ -44,6 +44,9 @@ compile_commands.json
 CTestTestfile.cmake
 Testing/
 
+# Cargo Build Artifacts
+target/
+
 # CMake User Presets (per Modern CMake standards, CMakeUserPresets.json is gitignored)
 CMakeUserPresets.json
 
@@ -70,6 +73,7 @@ uv.lock
 .coverage
 .coverage.*
 coverage.xml
+lcov.info
 htmlcov/
 
 # Teamwork Agent Working Directory

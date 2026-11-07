@@ -236,7 +236,7 @@ instead of suppressing; keep existing comments and docstrings that your change d
   `push` on feature branches (note: `/leetcode-setup` and `/systems-setup` explicitly forbid `git push` so TDD-red stubs stay local).
 - Work on a feature branch, never on `main`. Use `git mv` for moves so history is preserved.
 - CI (`.github/workflows/ci.yml`) runs lint/hygiene, Python tests on Linux x86-64, Linux arm64, and macOS, C++ release tests on
-  the same matrix, C++ coverage, and the ASan/UBSan/TSan presets.
+  the same matrix, C++ coverage, the ASan/UBSan/TSan presets, Rust tests on the same matrix, and Rust coverage.
 - Workflow `uses:` entries and remote pre-commit hooks must be pinned to full commit SHAs with a version comment. Look up
   SHAs with the GitHub MCP, never from memory.
 

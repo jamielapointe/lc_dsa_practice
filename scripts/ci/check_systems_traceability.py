@@ -3,6 +3,8 @@
 Requirements live in ``docs/systems/<name>.md`` as level-3 headings ``### <PREFIX>-REQ-NNN: Title`` followed (within the
 section) by a ``- **Verification:** <Test|Analysis|Review>`` line. GoogleTest cases in ``test/cpp/systems/*_test.cpp``
 and ``test/c/systems/*_test.cpp`` declare what they verify with ``RecordProperty("requirements", "<ID>[,<ID>...]")``.
+Rust test cases in ``test/rust/systems/*_test.rs`` declare requirements with comments (``// requirements: <ID>``) or
+``record_property!("requirements", "<ID>")``.
 
 The check fails when:
 
@@ -37,6 +39,12 @@ _ANY_HEADING_RE = re.compile(r'^#{1,3}\s')
 _VERIFICATION_RE = re.compile(r'^\s*[-*]\s+\*\*Verification:\*\*\s*([A-Za-z]+)')
 _TEST_RE = re.compile(r'\b(?:TEST|TEST_F|TEST_P|TYPED_TEST|TYPED_TEST_P)\s*\(\s*(\w+)\s*,\s*(\w+)\s*\)')
 _RECORD_RE = re.compile(r'RecordProperty\(\s*"requirements"\s*,\s*"([^"]*)"\s*\)')
+_RUST_TEST_RE = re.compile(
+    r'#\[(?:core::prelude::v[0-9]::)?test\]\s*(?:pub(?:\([^)]+\))?\s+)?(?:async\s+)?fn\s+([a-zA-Z0-9_]+)\s*\('
+)
+_RUST_TEST_ATTR_RE = re.compile(r'^#\[\s*(?:[a-zA-Z0-9_:]+::)?(?:test|rstest|test_case)\b')
+_RUST_COMMENT_REQ_RE = re.compile(r'(?://|///)\s*(?:requirements|REQ):\s*([^\n\r]+)', re.IGNORECASE)
+_RUST_MACRO_REQ_RE = re.compile(r'record_property!?\(\s*"requirements"\s*,\s*"([^"]*)"\s*\)')
 _VALID_ID_RE = re.compile(rf'^{REQ_ID_PATTERN}$')
 VERIFICATION_METHODS = frozenset({'Test', 'Analysis', 'Review'})
 
@@ -124,7 +132,7 @@ def parse_spec(path: Path) -> tuple[list[Requirement], list[str]]:
     return requirements, errors
 
 
-def parse_tests(path: Path) -> tuple[dict[str, list[str]], list[str]]:
+def _parse_cpp_tests(path: Path) -> tuple[dict[str, list[str]], list[str]]:
     """Collects requirement references from one GoogleTest source file.
 
     Args:
@@ -150,12 +158,97 @@ def parse_tests(path: Path) -> tuple[dict[str, list[str]], list[str]]:
     return refs, errors
 
 
+def _parse_rust_tests(path: Path) -> tuple[dict[str, list[str]], list[str]]:
+    """Collects requirement references from one Rust test source file.
+
+    Supports:
+    - ``#[test]`` or ``#[tokio::test]`` test functions (single-line or preceding lines).
+    - Stacked attributes (e.g. ``#[test]`` followed by ``#[ignore]``).
+    - Line annotations: ``// requirements: <ID>`` or ``// REQ: <ID>`` (including comma-separated IDs).
+    - Macro annotations: ``record_property!("requirements", "<ID>")``.
+
+    Args:
+        path: Rust test source path.
+
+    Returns:
+        Mapping of requirement ID to referencing tests, and any per-file errors.
+    """
+    refs: dict[str, list[str]] = {}
+    errors: list[str] = []
+    current_test: str | None = None
+    has_test_attr = False
+
+    for line_no, raw_line in enumerate(path.read_text(encoding='utf-8').splitlines(), start=1):
+        line = raw_line.strip()
+
+        # Check for same-line #[test] fn <name>(...
+        if match := _RUST_TEST_RE.search(line):
+            current_test = f'{path.stem}.{match.group(1)}'
+            has_test_attr = False
+        elif _RUST_TEST_ATTR_RE.match(line):
+            has_test_attr = True
+        elif has_test_attr:
+            if match := re.search(r'^(?:pub(?:\([^)]+\))?\s+)?(?:async\s+)?fn\s+([a-zA-Z0-9_]+)\s*\(', line):
+                current_test = f'{path.stem}.{match.group(1)}'
+                has_test_attr = False
+            elif line.startswith('#['):
+                # Stacked attribute (e.g. #[ignore])
+                pass
+            elif not line or line.startswith('//'):
+                # Comments (//, ///) or blank lines between #[test] and fn
+                pass
+            else:
+                has_test_attr = False
+        elif re.search(r'^(?:pub(?:\([^)]+\))?\s+)?(?:async\s+)?fn\s+([a-zA-Z0-9_]+)\s*\(', line):
+            current_test = None
+
+        # Extract requirements from comments (e.g. // requirements: FIFO-REQ-001)
+        for match in _RUST_COMMENT_REQ_RE.finditer(line):
+            owner = current_test or f'{path.name}:{line_no}'
+            for raw in match.group(1).split(','):
+                req_id = raw.strip()
+                if not req_id:
+                    continue
+                if not _VALID_ID_RE.match(req_id):
+                    errors.append(f'{path}:{line_no}: malformed requirement ID "{req_id}" in {owner}')
+                    continue
+                refs.setdefault(req_id, []).append(owner)
+
+        # Extract requirements from macro (e.g. record_property!("requirements", "FIFO-REQ-001"))
+        for match in _RUST_MACRO_REQ_RE.finditer(line):
+            owner = current_test or f'{path.name}:{line_no}'
+            for raw in match.group(1).split(','):
+                req_id = raw.strip()
+                if not req_id:
+                    continue
+                if not _VALID_ID_RE.match(req_id):
+                    errors.append(f'{path}:{line_no}: malformed requirement ID "{req_id}" in {owner}')
+                    continue
+                refs.setdefault(req_id, []).append(owner)
+
+    return refs, errors
+
+
+def parse_tests(path: Path) -> tuple[dict[str, list[str]], list[str]]:
+    """Collects requirement references from one test source file.
+
+    Args:
+        path: Test source path (C++ or Rust).
+
+    Returns:
+        Mapping of requirement ID to referencing tests, and any per-file errors.
+    """
+    if path.suffix == '.rs':
+        return _parse_rust_tests(path)
+    return _parse_cpp_tests(path)
+
+
 def check(spec_dir: Path, test_dir: Path | Sequence[Path]) -> TraceabilityReport:
     """Runs the bidirectional check over every spec and test file.
 
     Args:
         spec_dir: Directory containing ``*.md`` specs (missing directory means no specs).
-        test_dir: Directory or sequence of directories containing ``*_test.cpp`` files.
+        test_dir: Directory or sequence of directories containing test files.
 
     Returns:
         The populated report.
@@ -174,7 +267,10 @@ def check(spec_dir: Path, test_dir: Path | Sequence[Path]) -> TraceabilityReport
 
     test_dirs = [test_dir] if isinstance(test_dir, Path) else list(test_dir)
     for tdir in test_dirs:
-        for test_file in sorted(tdir.rglob('*_test.cpp')) if tdir.is_dir() else []:
+        if not tdir.is_dir():
+            continue
+        test_files = sorted(set(tdir.rglob('*_test.cpp')) | set(tdir.rglob('*_test.rs')) | set(tdir.rglob('*.rs')))
+        for test_file in test_files:
             refs, errors = parse_tests(test_file)
             report.errors.extend(errors)
             for req_id, tests in refs.items():
@@ -227,13 +323,21 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         nargs='*',
         default=None,
-        help='directories of GoogleTest sources (default: test/cpp/systems and test/c/systems)',
+        help='directories of test sources (default: test/cpp/systems, test/c/systems, test/rust/systems)',
     )
     parser.add_argument('--matrix', type=Path, default=None, help='print the matrix for this spec and exit')
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format='%(message)s')
 
-    test_dirs: list[Path] = args.tests if args.tests else [Path('test/cpp/systems'), Path('test/c/systems')]
+    test_dirs: list[Path] = (
+        args.tests
+        if args.tests
+        else [
+            Path('test/cpp/systems'),
+            Path('test/c/systems'),
+            Path('test/rust/systems'),
+        ]
+    )
     report = check(args.specs, test_dirs)
     if args.matrix is not None:
         sys.stdout.write(render_matrix(report, args.matrix))

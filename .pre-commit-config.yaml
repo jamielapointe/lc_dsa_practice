@@ -114,10 +114,24 @@ repos:
         language: system
         pass_filenames: false
 
+      - id: cargo-fmt
+        name: cargo fmt (pixi)
+        entry: pixi run cargo fmt --all
+        language: system
+        files: '(^rustfmt\.toml$|\.rs$)'
+        pass_filenames: false
+
+      - id: cargo-clippy
+        name: cargo clippy (pixi)
+        entry: pixi run cargo clippy --workspace --all-targets -- -D warnings
+        language: system
+        files: '((^|/)Cargo\.(toml|lock)$|^\.cargo/config\.toml$|^clippy\.toml$|\.rs$)'
+        pass_filenames: false
+
       - id: systems-traceability
         name: Systems requirement <-> test traceability
         entry: pixi run check-traceability
-        files: ^(docs/systems/.*\.md|test/(cpp|c)/systems/.*_test\.cpp|scripts/ci/check_systems_traceability\.py)$
+        files: ^(docs/systems/.*\.md|test/(cpp|c|rust)/systems/.*_test\.(cpp|rs)|scripts/ci/check_systems_traceability\.py)$
         language: system
         pass_filenames: false
 
