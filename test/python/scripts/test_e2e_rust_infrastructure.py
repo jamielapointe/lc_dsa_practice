@@ -545,15 +545,98 @@ class TestTier1FeatureCoverage:
 
         gitignore_lines = {line.strip() for line in (REPO_ROOT / '.gitignore').read_text(encoding='utf-8').splitlines()}
         expected_ephemeral_ignores = {
+            '.agents/scratch/',
+            '.agents/swarm/',
             '.agents/teamwork/',
+            '.agents/tmp/',
+            '.agents/workflows/',
+            '/.agent/',
+            '/_agents/',
+            '/_agent/',
             '.gemini/',
+            '/BRIEFING.md',
+            '/DISPATCH.md',
+            '/HANDOFF.md',
+            '/ORIGINAL_REQUEST.md',
+            '/PLAN.md',
+            '/PROGRESS.md',
+            '/PROJECT.md',
+            '/SCOPE.md',
+            '/TASK.md',
             '/TEST_INFRA.md',
             '/TEST_READY.md',
-            '/ORIGINAL_REQUEST.md',
-            '/PROJECT.md',
+            '/WALKTHROUGH.md',
+            '/handoff.md',
+            '/implementation_plan.md',
+            '/progress.md',
+            '/task.md',
+            '/walkthrough.md',
+            '.claude/',
+            '.codex/',
+            '.cursor/',
+            '.mcp.json',
+            '/CLAUDE.md',
+            'dist/',
+            '*.profraw',
+            '*.profdata',
+            '*.dSYM/',
         }
         for pattern in expected_ephemeral_ignores:
             assert pattern in gitignore_lines, f'.gitignore must ignore ephemeral path {pattern}'
+        assert '.agents/teamwork/**' not in gitignore_lines, 'Redundant .agents/teamwork/** pattern must be removed'
+
+        # Verify no ephemeral agentic files are tracked in Git
+        git_bin = shutil.which('git')
+        assert git_bin is not None
+        tracked_res = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+            [git_bin, 'ls-files'],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        tracked_files = set(tracked_res.stdout.splitlines())
+        forbidden_tracked_prefixes = (
+            '.agents/teamwork/',
+            '.agents/scratch/',
+            '.agents/swarm/',
+            '.agents/tmp/',
+            '.agents/workflows/',
+            '.agent/',
+            '_agents/',
+            '_agent/',
+            '.gemini/',
+            '.claude/',
+            '.codex/',
+            '.cursor/',
+            '.windsurf/',
+        )
+        forbidden_tracked_exact = {
+            'BRIEFING.md',
+            'CLAUDE.md',
+            'DISPATCH.md',
+            'HANDOFF.md',
+            'ORIGINAL_REQUEST.md',
+            'PLAN.md',
+            'PROGRESS.md',
+            'PROJECT.md',
+            'SCOPE.md',
+            'TASK.md',
+            'TEST_INFRA.md',
+            'TEST_READY.md',
+            'WALKTHROUGH.md',
+            'handoff.md',
+            'implementation_plan.md',
+            'progress.md',
+            'task.md',
+            'walkthrough.md',
+            '.mcp.json',
+        }
+        for tracked in tracked_files:
+            assert not tracked.startswith(forbidden_tracked_prefixes), (
+                f'Ephemeral agentic directory file must not be tracked: {tracked}'
+            )
+            assert tracked not in forbidden_tracked_exact, f'Ephemeral root agentic file must not be tracked: {tracked}'
 
 
 # ===========================================================================

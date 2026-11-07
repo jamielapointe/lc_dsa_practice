@@ -4,7 +4,7 @@
 # Hooks either come from pinned upstream repos or call `pixi run ...` so that
 # every tool version is governed by pixi.lock.
 # =============================================================================
-exclude: '^(\.agents/teamwork/|\.gemini/|\.pixi/|\.rumdl_cache/|build/|data/|dist/|pixi\.lock$|PROJECT\.md$|TEST_INFRA\.md$|TEST_READY\.md$|ORIGINAL_REQUEST\.md$|BRIEFING\.md$|SCOPE\.md$)'
+exclude: '^(\.agents/(scratch|swarm|teamwork|tmp|workflows)/|\.agent/|_agents/|_agent/|\.claude/|\.codex/|\.cursor/|\.gemini/|\.pixi/|\.rumdl_cache/|\.windsurf/|build/|data/|dist/|pixi\.lock$|\.mcp\.json$|CLAUDE\.md$|BRIEFING\.md$|DISPATCH\.md$|HANDOFF\.md$|ORIGINAL_REQUEST\.md$|PLAN\.md$|PROGRESS\.md$|PROJECT\.md$|SCOPE\.md$|TASK\.md$|TEST_INFRA\.md$|TEST_READY\.md$|WALKTHROUGH\.md$|handoff\.md$|implementation_plan\.md$|progress\.md$|task\.md$|walkthrough\.md$)'
 
 repos:
   # ---------------------------------------------------------------------------
