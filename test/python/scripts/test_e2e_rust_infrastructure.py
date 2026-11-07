@@ -2,7 +2,7 @@
 
 Validates the integrated deliverables of the Rust track across LeetCode DSA
 and Systems practice modules according to the 4-tier testing architecture:
-- Tier 1: Feature Coverage (Features 27-37 in PROJECT.md Feature Inventory)
+- Tier 1: Feature Coverage (Features 27-37 of the Rust track)
 - Tier 2: Boundary & Corner Cases (invalid skill inputs, target directory isolation,
   traceability parser edge cases, component boundary contracts)
 - Tier 3: Cross-Feature Combinations (traceability cross-check, formatting/linting gate,
@@ -258,7 +258,7 @@ def parse_rust_test_attributes(content: str) -> tuple[dict[str, list[str]], list
 
 @pytest.mark.unit
 class TestTier1FeatureCoverage:
-    """Verifies all 11 Rust track features specified in PROJECT.md Feature Inventory."""
+    """Verifies all 11 Rust track features."""
 
     def test_feature27_cargo_workspace_manifests(self) -> None:
         """Feature 27: Verify Cargo root workspace manifest, members, and lints."""
@@ -539,21 +539,21 @@ class TestTier1FeatureCoverage:
         )
 
     def test_feature37_opaque_box_rust_e2e_suite(self) -> None:
-        """Feature 37: Verify presence of E2E test suite, TEST_INFRA.md, and TEST_READY.md."""
+        """Feature 37: Verify presence of E2E test suite and agentic gitignore rules."""
         test_file = REPO_ROOT / 'test' / 'python' / 'scripts' / 'test_e2e_rust_infrastructure.py'
         assert test_file.exists(), 'test_e2e_rust_infrastructure.py must exist'
 
-        infra_doc = REPO_ROOT / '.agents' / 'teamwork' / 'TEST_INFRA.md'
-        if infra_doc.exists():
-            infra_content = infra_doc.read_text(encoding='utf-8')
-            assert 'Rust' in infra_content, 'TEST_INFRA.md must document the Rust track test infrastructure'
-
-        ready_doc = REPO_ROOT / '.agents' / 'teamwork' / 'TEST_READY.md'
-        if ready_doc.exists():
-            ready_content = ready_doc.read_text(encoding='utf-8')
-            assert 'Rust' in ready_content or 'READY' in ready_content, (
-                'TEST_READY.md must declare readiness for verification'
-            )
+        gitignore_lines = {line.strip() for line in (REPO_ROOT / '.gitignore').read_text(encoding='utf-8').splitlines()}
+        expected_ephemeral_ignores = {
+            '.agents/teamwork/',
+            '.gemini/',
+            '/TEST_INFRA.md',
+            '/TEST_READY.md',
+            '/ORIGINAL_REQUEST.md',
+            '/PROJECT.md',
+        }
+        for pattern in expected_ephemeral_ignores:
+            assert pattern in gitignore_lines, f'.gitignore must ignore ephemeral path {pattern}'
 
 
 # ===========================================================================

@@ -12,6 +12,7 @@ name = "Jamie LaPointe"
 [tool.ruff]
 exclude = [
     ".agents/teamwork",
+    ".gemini",
     ".git",
     ".pixi",
     ".venv",
@@ -297,9 +298,16 @@ platforms = [
 [tool.rumdl]
 exclude = [
     ".agents/teamwork",
+    ".gemini",
     ".git",
     ".pixi",
     ".venv",
+    "BRIEFING.md",
+    "ORIGINAL_REQUEST.md",
+    "PROJECT.md",
+    "SCOPE.md",
+    "TEST_INFRA.md",
+    "TEST_READY.md",
     "build",
     "data",
     "dist",

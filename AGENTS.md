@@ -20,7 +20,7 @@ A personal practice repository with independent tracks that share one Pixi works
 
 ```text
 .
-├── AGENTS.md, README.md, CONTRIBUTING.md, PROJECT.md
+├── AGENTS.md, README.md, CONTRIBUTING.md
 ├── Cargo.toml, rustfmt.toml, clippy.toml, .cargo/config.toml # Cargo workspace config
 ├── CMakeLists.txt, CMakePresets.json, cmake/      # options: BUILD_LEET_CODE, BUILD_SYSTEMS, BUILD_BENCHMARKS
 ├── pyproject.toml, pixi.lock                      # Pixi workspace and ALL tool config
@@ -53,7 +53,6 @@ A personal practice repository with independent tracks that share one Pixi works
 ```
 
 Do not recreate the old top-level `include/`, `src/*.cpp`, or `tests/` paths, and do not use the old `lc_dsa` namespace.
-`PROJECT.md` holds the plugin architecture and file contracts; read it before changing the plugin or generated-file formats.
 
 ## Toolchain rules (Pixi only)
 
@@ -200,7 +199,7 @@ Intent: empirical microbenchmarking and statistical performance evaluation for s
 - Each test starts with `RecordProperty("requirements", "<IDs>")` (C++) or `// requirements: <PREFIX>-REQ-NNN` (Rust);
   `pixi run check-traceability` (also a pre-commit hook) enforces requirement <-> test traceability in both directions.
 - References: `skills/systems-setup/references/{spec,safety,cpp,testing,rust}.md`. Layout changes must be mirrored there, in the
-  plugin README, and in `PROJECT.md`.
+  plugin README, and in this file.
 
 ## LeetCode plugin (`.agents/plugins/leetcode`)
 
@@ -210,7 +209,7 @@ Intent: empirical microbenchmarking and statistical performance evaluation for s
   missing.** Language details are in `skills/leetcode-setup/references/cpp.md`, `references/python.md`, and `references/rust.md`.
 - The server's own tests are in `.agents/plugins/leetcode/tests/` and run under the root pytest config
   (`pixi run test-python`). Live-network tests are marked `live` and skipped by default.
-- Layout changes must be mirrored in `SKILL.md`, the reference files, the plugin README, and `PROJECT.md`.
+- Layout changes must be mirrored in `SKILL.md`, the reference files, the plugin README, and this file.
 
 ## Quality gates
 
@@ -244,5 +243,5 @@ instead of suppressing; keep existing comments and docstrings that your change d
 
 1. Update CMake registration, Cargo workspace members, `pyproject.toml` path settings (pytest `testpaths`/`pythonpath`, mypy `files`, coverage
    `source`), and CI if paths change.
-2. Update `README.md`, `PROJECT.md`, `CONTRIBUTING.md`, the plugin docs and skill, and this file.
+2. Update `README.md`, `CONTRIBUTING.md`, the plugin docs and skill, and this file.
 3. Keep this file under 24 KB (Antigravity truncates larger rule files); check with `wc -c AGENTS.md`.

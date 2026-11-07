@@ -76,8 +76,16 @@ coverage.xml
 lcov.info
 htmlcov/
 
-# Teamwork Agent Working Directory
+# Antigravity ephemeral runtime / teamwork scratch directories
+.agents/teamwork/
 .agents/teamwork/**
+.gemini/
+/TEST_INFRA.md
+/TEST_READY.md
+/ORIGINAL_REQUEST.md
+/BRIEFING.md
+/SCOPE.md
+/PROJECT.md
 
 # Benchmark Telemetry and Reports
 data/

@@ -2,7 +2,7 @@
 
 Validates the integrated deliverables of the C++23 Google Benchmark and Bayesian
 performance analysis infrastructure across 4 tiers of testing:
-- Tier 1: Feature Coverage (Features 1-19 in PROJECT.md Feature Inventory)
+- Tier 1: Feature Coverage (Features 1-19 of the benchmark infrastructure)
 - Tier 2: Boundary & Corner Cases (empty data, zero/large ROPE, extreme geometries, outliers)
 - Tier 3: Cross-Feature Combinations (runner + host tuning + Bayesian BEST + reporting + hygiene)
 - Tier 4: Real-World Application Scenarios (regression rejection and optimization promotion cycles)
@@ -131,7 +131,7 @@ def compute_reference_best(
 
 @pytest.mark.unit
 class TestTier1FeatureCoverage:
-    """Verifies all 19 features specified in PROJECT.md Feature Inventory."""
+    """Verifies all 19 benchmark infrastructure features."""
 
     def test_feature01_cmake_benchmarking_infrastructure(self) -> None:
         """Feature 1: Verify C++ Google Benchmark CMake infrastructure."""
@@ -388,16 +388,13 @@ class TestTier1FeatureCoverage:
             assert (refs_dir / ref_name).exists(), f'Missing expected skill reference: {ref_name}'
 
     def test_feature17_documentation_updates(self) -> None:
-        """Feature 17: Verify AGENTS.md and PROJECT.md documentation updates."""
+        """Feature 17: Verify AGENTS.md and CONTRIBUTING.md documentation updates."""
         agents_md = (REPO_ROOT / 'AGENTS.md').read_text(encoding='utf-8')
         # Check AGENTS.md rules and benchmarks references
         assert 'benchmarks' in agents_md or 'systems' in agents_md
 
-        project_md = REPO_ROOT / 'PROJECT.md'
-        if project_md.exists():
-            p_content = project_md.read_text(encoding='utf-8')
-            if 'benchmarks' not in p_content:
-                pytest.skip('Feature 17 (Documentation updates) pending Milestone 3 implementation')
+        contributing_md = (REPO_ROOT / 'CONTRIBUTING.md').read_text(encoding='utf-8')
+        assert 'benchmarks' in contributing_md
 
     def test_feature18_quality_gates_verification(self) -> None:
         """Feature 18: Verify AGENTS.md byte budget and pyproject ordering."""

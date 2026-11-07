@@ -114,7 +114,7 @@ pixi run pre-commit           # all hooks over the whole tree
 Use the `leetcode` agent plugin and **always name the language**, for example "Set up LeetCode #1 in Python" or "Set up
 LeetCode #2 in C++". It fetches the problem, generates documented stubs and a 4-tier test suite that starts red, and
 verifies the build. See [`.agents/plugins/leetcode/README.md`](.agents/plugins/leetcode/README.md) and
-[`PROJECT.md`](PROJECT.md) for the file contracts.
+[`AGENTS.md`](AGENTS.md) for the file contracts.
 
 ## Adding a systems problem
 
