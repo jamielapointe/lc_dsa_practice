@@ -1,0 +1,25 @@
+[package]
+name = "leet_code"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[test]]
+name = "two_sum_test"
+path = "../../../test/rust/leet_code/two_sum_test.rs"
+
+[[test]]
+name = "lru_cache_test"
+path = "../../../test/rust/leet_code/lru_cache_test.rs"
+
+[dependencies]
+thiserror = { workspace = true }
+
+[lints]
+workspace = true

@@ -3,7 +3,7 @@
  * @brief Comprehensive 4-Tier Google Test suite for ListNode and
  * ScopedLinkedList.
  *
- * Conforms to PROJECT.md and TEST_INFRA standards:
+ * Conforms to AGENTS.md standards:
  * - Tier 1: Canonical Feature Coverage (Struct layout, constexpr constructors,
  * conversions)
  * - Tier 2: Boundary, Corner & Edge Cases (Empty lists, single elements,

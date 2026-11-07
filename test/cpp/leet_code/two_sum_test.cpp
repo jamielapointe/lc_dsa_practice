@@ -3,7 +3,7 @@
  * @brief Comprehensive 4-Tier Google Test suite for C++23 Two Sum practice
  * library.
  *
- * Conforms to TEST_INFRA.md and PROJECT.md specifications:
+ * Conforms to AGENTS.md specifications:
  * - Tier 1: Canonical Feature Coverage (Standard pairs, spans, wrapper)
  * - Tier 2: Boundary, Corner & Arithmetic Overflow Edge Cases
  * - Tier 3: Cross-Feature and Sanitizer Invariants

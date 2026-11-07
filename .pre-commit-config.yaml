@@ -4,7 +4,7 @@
 # Hooks either come from pinned upstream repos or call `pixi run ...` so that
 # every tool version is governed by pixi.lock.
 # =============================================================================
-exclude: '^(\.agents/teamwork/|\.pixi/|\.rumdl_cache/|build/|data/|dist/|pixi\.lock$)'
+exclude: '^(\.agents/teamwork/|\.gemini/|\.pixi/|\.rumdl_cache/|build/|data/|dist/|pixi\.lock$|PROJECT\.md$|TEST_INFRA\.md$|TEST_READY\.md$|ORIGINAL_REQUEST\.md$|BRIEFING\.md$|SCOPE\.md$)'
 
 repos:
   # ---------------------------------------------------------------------------
@@ -114,10 +114,24 @@ repos:
         language: system
         pass_filenames: false
 
+      - id: cargo-fmt
+        name: cargo fmt (pixi)
+        entry: pixi run cargo fmt --all
+        language: system
+        files: '(^rustfmt\.toml$|\.rs$)'
+        pass_filenames: false
+
+      - id: cargo-clippy
+        name: cargo clippy (pixi)
+        entry: pixi run cargo clippy --workspace --all-targets -- -D warnings
+        language: system
+        files: '((^|/)Cargo\.(toml|lock)$|^\.cargo/config\.toml$|^clippy\.toml$|\.rs$)'
+        pass_filenames: false
+
       - id: systems-traceability
         name: Systems requirement <-> test traceability
         entry: pixi run check-traceability
-        files: ^(docs/systems/.*\.md|test/(cpp|c)/systems/.*_test\.cpp|scripts/ci/check_systems_traceability\.py)$
+        files: ^(docs/systems/.*\.md|test/(cpp|c|rust)/systems/.*_test\.(cpp|rs)|scripts/ci/check_systems_traceability\.py)$
         language: system
         pass_filenames: false
 

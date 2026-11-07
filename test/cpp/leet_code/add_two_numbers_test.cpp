@@ -3,7 +3,7 @@
  * @brief Comprehensive 4-Tier Google Test suite for C++23 Add Two Numbers
  * practice library.
  *
- * Conforms to TEST_INFRA.md and PROJECT.md specifications:
+ * Conforms to AGENTS.md specifications:
  * - Tier 1: Canonical Feature Coverage (Official LeetCode Examples 1, 2, 3 &
  * Solution wrapper)
  * - Tier 2: Boundary, Corner & Carry Propagation Edge Cases

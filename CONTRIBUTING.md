@@ -54,7 +54,7 @@ This guide covers the development workflow, security policies, and dependency ma
 ## Commits and pull requests
 
 - Create a feature branch and open a pull request against `main`; CI must be green on every matrix job.
-- Keep commits focused. Update `README.md`, `PROJECT.md`, and `AGENTS.md` whenever layout, tasks, or conventions change.
+- Keep commits focused. Update `README.md`, `CONTRIBUTING.md`, and `AGENTS.md` whenever layout, tasks, or conventions change.
 
 ## GitHub Actions and security pinning
 

@@ -1,0 +1,7 @@
+[build]
+target-dir = "build/cargo"
+
+[target.'cfg(target_os = "linux")']
+rustflags = [
+    "-C", "link-arg=-Wl,-z,relro,-z,now",
+]

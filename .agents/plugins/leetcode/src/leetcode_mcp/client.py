@@ -411,6 +411,7 @@ class LeetCodeClient:
         }
         cpp_code = snippets_by_lang.get('cpp', '')
         python_code = snippets_by_lang.get('python3', '')
+        rust_code = snippets_by_lang.get('rust', '')
 
         constraints = self._extract_constraints(html_content)
         topic_tags = [str(t['name']) for t in (q.get('topicTags') or []) if 'name' in t]
@@ -425,6 +426,7 @@ class LeetCodeClient:
             description_markdown=markdown_desc,
             cpp_snippet=cpp_code,
             python_snippet=python_code,
+            rust_snippet=rust_code,
             sample_test_case=str(q.get('sampleTestCase') or ''),
             example_test_cases=[str(tc) for tc in (q.get('exampleTestcaseList') or [])],
             constraints=constraints,

@@ -1,50 +1,54 @@
 ---
 name: leetcode-setup
-description: Sets up LeetCode DSA practice problems in either modern C++23 (CMake + Google Test) or Python 3.14 (pytest) in this repository. The user MUST specify the language (cpp or python); ask if it is missing. Fetches problem data via the leetcode MCP server (tool get_problem), then generates documented headers/modules, stub implementations that build cleanly, and comprehensive 4-tier test suites that start in the TDD red state.
+description: Sets up LeetCode DSA practice problems in modern C++23 (CMake + Google Test), Python 3.14 (pytest), or Rust 1.99.1+ (cargo test) in this repository. The user MUST specify the language (cpp, python, or rust); ask if it is missing. Fetches problem data via the leetcode MCP server (tool get_problem), then generates documented headers/modules, stub implementations that build cleanly, and comprehensive 4-tier test suites that start in the TDD red state.
 ---
 
-# LeetCode Setup Skill (C++23 and Python)
+# LeetCode Setup Skill (C++23, Python, and Rust)
 
 ## 🔗 Related Skills
 
 - **cpp-pro**: Modern C++23, RAII, memory safety, strict compiler conformance (C++ path).
 - **cmake-pro**: Target-based CMake 4.4.3+, presets, modular architecture, CTest (C++ path).
 - **python-pro**: Python 3.14, Pixi, ruff, mypy, pytest (Python path and MCP server).
+- **rust-pro**: Modern Rust 1.99.1+, zero-allocation, Google Rust Styleguide, strict clippy, cargo (Rust path).
 
 ---
 
 ## Use this skill when
 
-- The user asks to "set up", "initialize", "add", or "scaffold" a LeetCode problem, e.g. "Set up LeetCode #2 in C++" or "Scaffold LeetCode two-sum in Python".
-- A developer wants to start the Test-Driven Development (TDD) cycle for a LeetCode problem in C++23 or Python.
+- The user asks to "set up", "initialize", "add", or "scaffold" a LeetCode problem, e.g. "Set up LeetCode #2 in C++", "Scaffold LeetCode two-sum in Python", or
+  "Set up LeetCode #1 in Rust".
+- A developer wants to start the Test-Driven Development (TDD) cycle for a LeetCode problem in C++23, Python, or Rust.
 
 ## Do not use this skill when
 
 - Implementing the actual algorithm (this skill produces stubs that return dummy values to establish the TDD red state).
-- Working on low-level / systems C++ (`src/cpp/systems`; use `systems-setup` to scaffold those), the plugin itself, or general project configuration.
+- Working on low-level / systems C++ or Rust (`src/cpp/systems` or `src/rust/systems`; use `systems-setup` to scaffold those), the plugin itself, or general
+  project configuration.
 
 ---
 
 ## Step 0: Determine the language (REQUIRED)
 
-The user MUST specify the language: **`cpp`** (also "C++", "c++23") or **`python`** (also "py", "python3").
+The user MUST specify the language: **`cpp`** (also "C++", "c++23"), **`python`** (also "py", "python3"), or **`rust`** (also "rs").
 
 - If the language is missing or ambiguous, STOP and ask the user which one they want. Never guess or default.
-- If the user wants both, run the whole workflow once per language, reusing the same issue/branch.
+- If the user wants multiple languages, run the whole workflow once per language, reusing the same issue/branch.
 
 Language-specific templates and conventions live in the reference files; read the one that matches before generating files:
 
 - C++23: [references/cpp.md](references/cpp.md)
 - Python: [references/python.md](references/python.md)
+- Rust: [references/rust.md](references/rust.md)
 
-## Repository layout (both languages)
+## Repository layout (all languages)
 
-| Purpose | C++ | Python |
-| --- | --- | --- |
-| Public API | `src/include/leet_code/<slug_snake>.hpp` | `src/python/leet_code/<slug_snake>.py` |
-| Implementation | `src/cpp/leet_code/<slug_snake>.cpp` | (same module) |
-| Tests | `test/cpp/leet_code/<slug_snake>_test.cpp` | `test/python/leet_code/test_<slug_snake>.py` |
-| Build registration | `src/cpp/leet_code/CMakeLists.txt`, `test/cpp/leet_code/CMakeLists.txt` | none (package auto-discovered via `PYTHONPATH`) |
+| Purpose | C++ | Python | Rust |
+| --- | --- | --- | --- |
+| Public API | `src/include/leet_code/<slug_snake>.hpp` | `src/python/leet_code/<slug_snake>.py` | `src/rust/leet_code/src/<slug_snake>.rs` |
+| Implementation | `src/cpp/leet_code/<slug_snake>.cpp` | (same module) | (same module) |
+| Tests | `test/cpp/leet_code/<slug_snake>_test.cpp` | `test/python/leet_code/test_<slug_snake>.py` | `test/rust/leet_code/<slug_snake>_test.rs` |
+| Build registration | `src/cpp/leet_code/CMakeLists.txt`, `test/cpp/leet_code/CMakeLists.txt` | none (package auto-discovered via `PYTHONPATH`) | `src/rust/leet_code/src/lib.rs` (`pub mod <slug_snake>;`) |
 
 `slug_snake` is the LeetCode slug with hyphens replaced by underscores (`add-two-numbers` -> `add_two_numbers`).
 
@@ -79,13 +83,14 @@ The tool accepts a numeric ID (`2`, `#2`), URL slug (`add-two-numbers`), title, 
 - `description_markdown`: clean Markdown description
 - `cpp_snippet`: official C++ starter code (use for `cpp`)
 - `python_snippet`: official Python 3 starter code (use for `python`; may be empty, then derive the signature from the C++ snippet and the description)
+- `rust_snippet`: official Rust starter code (use for `rust`; may be empty, then derive the signature from the C++ snippet and the description)
 - `sample_test_case`, `example_test_cases`, `constraints` (math notation preserved, e.g. `10^4`), `topic_tags`, `hints`
 
 If the problem is premium-only the tool returns an error; report it and stop.
 
 ### Step 4: Generate files for the chosen language
 
-Follow [references/cpp.md](references/cpp.md) or [references/python.md](references/python.md) exactly. Both produce:
+Follow [references/cpp.md](references/cpp.md), [references/python.md](references/python.md), or [references/rust.md](references/rust.md) exactly. All produce:
 
 1. A fully documented public API with an idiomatic modern interface **and** a LeetCode compatibility wrapper that matches the official signature.
 2. A stub implementation that returns clean dummy values (never crashes).
@@ -96,8 +101,8 @@ Follow [references/cpp.md](references/cpp.md) or [references/python.md](referenc
 
 Always run tools through `pixi run ...` so the hermetic toolchain is used. The exact commands are in the language reference. Verify that:
 
-- everything builds / imports and static checks pass with zero warnings,
-- the new tests fail cleanly on assertions (no segfaults, sanitizer reports, or collection errors).
+- everything builds / imports and static checks pass with zero warnings (`pixi run test-rust`, `pixi run clippy`),
+- the new tests fail cleanly on assertions (no segfaults, sanitizer reports, panics, or collection errors).
 
 ### Step 6: Report
 

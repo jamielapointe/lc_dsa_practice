@@ -102,6 +102,8 @@ class TestProblemMetadata:
         assert meta.test_filename == 'two_sum_test.cpp'
         assert meta.python_module_filename == 'two_sum.py'
         assert meta.python_test_filename == 'test_two_sum.py'
+        assert meta.rust_module_filename == 'two_sum.rs'
+        assert meta.rust_test_filename == 'two_sum_test.rs'
 
 
 class TestProblemDetails:
@@ -130,6 +132,7 @@ class TestProblemDetails:
             sample_test_case='[2,7,11,15]\n9',
         )
         assert p.python_snippet == ''
+        assert p.rust_snippet == ''
         assert p.example_test_cases == []
         assert p.constraints == []
         assert p.topic_tags == []
@@ -141,6 +144,8 @@ class TestProblemDetails:
         assert sample_problem_details.header_filename == 'add_two_numbers.hpp'
         assert sample_problem_details.source_filename == 'add_two_numbers.cpp'
         assert sample_problem_details.test_filename == 'add_two_numbers_test.cpp'
+        assert sample_problem_details.rust_module_filename == 'add_two_numbers.rs'
+        assert sample_problem_details.rust_test_filename == 'add_two_numbers_test.rs'
 
     def test_roundtrip_serialization(self, sample_problem_details: ProblemDetails) -> None:
         """Verify dict and JSON round-trip serialization maintains full fidelity."""

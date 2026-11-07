@@ -45,6 +45,29 @@ TEST_F(DemoFixture, AlsoCreates) {
 }
 """
 
+RUST_TESTS = """
+#[test]
+fn test_creates() {
+    // requirements: DEMO-REQ-001
+}
+
+#[test]
+#[ignore]
+fn test_stacked() {
+    // requirements: DEMO-REQ-001, DEMO-REQ-002
+}
+
+#[tokio::test]
+async fn test_async_runner() {
+    // REQ: DEMO-REQ-001
+}
+
+#[test]
+fn test_macro() {
+    record_property!("requirements", "DEMO-REQ-002");
+}
+"""
+
 
 def _write_tree(tmp_path: Path, *, spec: str = SPEC, tests: str = TESTS) -> tuple[Path, Path]:
     """Creates a spec directory and a test directory.
@@ -96,6 +119,123 @@ def test_main_returns_zero_and_prints_matrix(tmp_path: Path, capsys: pytest.Capt
     assert capsys.readouterr().out.startswith('| Requirement |')
 
 
+def test_rust_tests_parsed_successfully(tmp_path: Path) -> None:
+    """A Rust test suite references requirements via comments and macros."""
+    spec_dir = tmp_path / 'docs'
+    test_dir = tmp_path / 'tests'
+    spec_dir.mkdir()
+    test_dir.mkdir()
+    (spec_dir / 'demo.md').write_text(SPEC, encoding='utf-8')
+    (test_dir / 'demo_test.rs').write_text(RUST_TESTS, encoding='utf-8')
+
+    report = trace.check(spec_dir, test_dir)
+    assert report.errors == []
+    assert set(report.requirements) == {'DEMO-REQ-001', 'DEMO-REQ-002'}
+    assert sorted(report.tests_by_req['DEMO-REQ-001']) == [
+        'demo_test.test_async_runner',
+        'demo_test.test_creates',
+        'demo_test.test_stacked',
+    ]
+    assert sorted(report.tests_by_req['DEMO-REQ-002']) == [
+        'demo_test.test_macro',
+        'demo_test.test_stacked',
+    ]
+
+
+def test_mixed_cpp_and_rust_test_suite(tmp_path: Path) -> None:
+    """Both C++ and Rust test files in test directories are parsed and merged."""
+    spec_dir = tmp_path / 'docs'
+    cpp_dir = tmp_path / 'test_cpp'
+    rust_dir = tmp_path / 'test_rust'
+    spec_dir.mkdir()
+    cpp_dir.mkdir()
+    rust_dir.mkdir()
+    (spec_dir / 'demo.md').write_text(SPEC, encoding='utf-8')
+    (cpp_dir / 'demo_test.cpp').write_text(TESTS, encoding='utf-8')
+    (rust_dir / 'demo_test.rs').write_text(
+        '#[test]\nfn test_rust() {\n    // requirements: DEMO-REQ-001\n}\n',
+        encoding='utf-8',
+    )
+
+    report = trace.check(spec_dir, [cpp_dir, rust_dir])
+    assert report.errors == []
+    assert 'demo_test.test_rust' in report.tests_by_req['DEMO-REQ-001']
+    assert 'DemoTest.Creates' in report.tests_by_req['DEMO-REQ-001']
+
+
+def test_rust_tests_interstitial_comments_and_blank_lines(tmp_path: Path) -> None:
+    """Rust tests with doc comments, blank lines, and pub qualifiers are correctly attributed."""
+    spec_dir = tmp_path / 'docs'
+    test_dir = tmp_path / 'tests'
+    spec_dir.mkdir()
+    test_dir.mkdir()
+    (spec_dir / 'demo.md').write_text(SPEC, encoding='utf-8')
+
+    rust_source = """
+#[test]
+/// Verifies nominal behavior with doc comment.
+// Regular interstitial comment.
+fn test_with_doc_comments() {
+    // requirements: DEMO-REQ-001
+}
+
+#[test]
+
+fn test_with_blank_lines() {
+    // requirements: DEMO-REQ-001
+}
+
+#[test] pub fn test_single_line_pub() {
+    // requirements: DEMO-REQ-002
+}
+
+#[test]
+pub(crate) fn test_multiline_pub_crate() {
+    // requirements: DEMO-REQ-002
+}
+"""
+    (test_dir / 'demo_test.rs').write_text(rust_source, encoding='utf-8')
+
+    report = trace.check(spec_dir, test_dir)
+    assert report.errors == []
+    assert sorted(report.tests_by_req['DEMO-REQ-001']) == [
+        'demo_test.test_with_blank_lines',
+        'demo_test.test_with_doc_comments',
+    ]
+    assert sorted(report.tests_by_req['DEMO-REQ-002']) == [
+        'demo_test.test_multiline_pub_crate',
+        'demo_test.test_single_line_pub',
+    ]
+
+
+def test_rust_cfg_test_helper_not_marked_as_test(tmp_path: Path) -> None:
+    """#[cfg(test)] on helper functions does not register them as test functions."""
+    spec_dir = tmp_path / 'docs'
+    test_dir = tmp_path / 'tests'
+    spec_dir.mkdir()
+    test_dir.mkdir()
+    (spec_dir / 'demo.md').write_text(SPEC, encoding='utf-8')
+
+    rust_source = """
+#[cfg(test)]
+fn helper_setup() {
+    // requirements: DEMO-REQ-001
+}
+
+#[test]
+fn test_actual() {
+    // requirements: DEMO-REQ-002
+}
+"""
+    (test_dir / 'demo_test.rs').write_text(rust_source, encoding='utf-8')
+
+    report = trace.check(spec_dir, test_dir)
+    assert report.errors == []
+    # DEMO-REQ-001 inside helper_setup is attributed to file:line, not demo_test.helper_setup
+    assert report.tests_by_req['DEMO-REQ-001'] == ['demo_test.rs:4']
+    assert report.tests_by_req['DEMO-REQ-002'] == ['demo_test.test_actual']
+
+
 # Tier 2: boundary / error cases
 
 
@@ -145,6 +285,37 @@ def test_record_outside_a_test_is_attributed_to_file(tmp_path: Path) -> None:
     spec_dir, test_dir = _write_tree(tmp_path, tests='RecordProperty("requirements", "DEMO-REQ-001");\n')
     report = trace.check(spec_dir, test_dir)
     assert report.tests_by_req['DEMO-REQ-001'] == ['demo_test.cpp:1']
+
+
+def test_rust_malformed_and_unknown_ids_fail(tmp_path: Path) -> None:
+    """Rust tests referencing unknown or malformed IDs produce errors."""
+    spec_dir = tmp_path / 'docs'
+    test_dir = tmp_path / 'tests'
+    spec_dir.mkdir()
+    test_dir.mkdir()
+    (spec_dir / 'demo.md').write_text(SPEC, encoding='utf-8')
+    bad_rust = """
+#[test]
+fn test_bad() {
+    // requirements: DEMO-REQ-404, bad-prefix-1
+}
+"""
+    (test_dir / 'demo_test.rs').write_text(bad_rust, encoding='utf-8')
+    report = trace.check(spec_dir, test_dir)
+    assert any('unknown requirement DEMO-REQ-404 referenced by demo_test.test_bad' in e for e in report.errors)
+    assert any('malformed requirement ID "bad-prefix-1"' in e for e in report.errors)
+
+
+def test_rust_record_outside_a_test_is_attributed_to_file(tmp_path: Path) -> None:
+    """A requirement comment before any test function is attributed to file:line."""
+    spec_dir = tmp_path / 'docs'
+    test_dir = tmp_path / 'tests'
+    spec_dir.mkdir()
+    test_dir.mkdir()
+    (spec_dir / 'demo.md').write_text(SPEC, encoding='utf-8')
+    (test_dir / 'demo_test.rs').write_text('// requirements: DEMO-REQ-001\n', encoding='utf-8')
+    report = trace.check(spec_dir, test_dir)
+    assert report.tests_by_req['DEMO-REQ-001'] == ['demo_test.rs:1']
 
 
 # Tier 3: invariants

@@ -1,23 +1,26 @@
 ---
 name: systems-setup
-description: Scaffolds a low-level / embedded-style C++23 practice component in the systems track from a free-form problem statement (no website lookup). Produces an ASPICE-style requirements spec with traceable IDs, a documented header and stub implementation that outline the work (no solution), CMake registration, and a GoogleTest suite (functional, boundary, resource, multi-thread, multi-process, fault-injection tiers) that starts in the TDD red state. Applies automotive / robotics constraints (ISO 26262 mindset, MISRA C++:2023 and AUTOSAR C++14 guidance, no steady-state heap, no exceptions or RTTI) targeting POSIX (Linux, embedded Linux, QNX).
+description: Scaffolds a low-level / embedded-style C++23 or Rust 1.99.1+ practice component in the systems track from a free-form problem statement (no website lookup). Produces an ASPICE-style requirements spec with traceable IDs, a documented header or module and stub implementation that outline the work (no solution), CMake/Cargo registration, and a comprehensive test suite (functional, boundary, resource, multi-thread, multi-process, fault-injection tiers) that starts in the TDD red state. Applies automotive / robotics constraints (ISO 26262 mindset, MISRA C++:2023 and AUTOSAR C++14 guidance, zero steady-state heap, no panics/exceptions or RTTI) targeting POSIX (Linux, embedded Linux, QNX).
 ---
 
-# Systems Setup Skill (safety-oriented C++23)
+# Systems Setup Skill (safety-oriented C++23 & Rust)
 
 ## 🔗 Related Skills
 
-- **cpp-pro**: Modern C++23, RAII, concurrency, sanitizer-clean code.
-- **cmake-pro**: Target-based CMake 4.4.3+, presets, CTest labels, gersemi.
+- **cpp-pro**: Modern C++23, RAII, concurrency, sanitizer-clean code (C++ path).
+- **cmake-pro**: Target-based CMake 4.4.3+, presets, CTest labels, gersemi (C++ path).
+- **rust-pro**: Modern Rust 1.99.1+ safety-critical systems software, zero-allocation real-time paths, lock-free concurrency, Google Rust Styleguide (Rust
+  path).
 - **python-pro**: Only for the traceability checker (`scripts/ci/check_systems_traceability.py`).
 
 ---
 
 ## Use this skill when
 
-- The user asks to "set up", "scaffold", or "start" a **systems**, embedded, real-time, robotics, or automotive-style C++ problem and describes it in prose,
-  e.g. "Set up a systems problem: a pub/sub interface over a shared-memory ring buffer, safe across processes and threads".
-- A developer wants to begin the TDD cycle for a component that lives in `src/include/systems/` and `src/cpp/systems/`.
+- The user asks to "set up", "scaffold", or "start" a **systems**, embedded, real-time, robotics, or automotive-style C++ or Rust problem and describes it in
+  prose, e.g. "Set up a systems problem: a pub/sub interface over a shared-memory ring buffer, safe across processes and threads" or "Set up a systems problem
+  in Rust: a bounded FIFO queue".
+- A developer wants to begin the TDD cycle for a component that lives in `src/{cpp,rust}/systems/` and `src/include/systems/`.
 
 ## Do not use this skill when
 
@@ -29,7 +32,7 @@ description: Scaffolds a low-level / embedded-style C++23 practice component in 
 
 ## Inputs
 
-There is no lookup service: **the user's prompt is the problem statement.** Only C++ is supported (no language question). Extract:
+There is no lookup service: **the user's prompt is the problem statement.** Supported languages: C++23 (default) and Rust 1.99.1+. Extract:
 
 | Item | Example (shared-memory pub/sub) |
 | --- | --- |
@@ -41,8 +44,9 @@ There is no lookup service: **the user's prompt is the problem statement.** Only
 | Failure model | What happens when a process dies mid-operation |
 | Timing | Latency or wake-up bounds, if any |
 
-### Step 0: Resolve ambiguity (ask only what changes the API or the test oracle)
+### Step 0: Resolve ambiguity & determine language
 
+- **Language detection**: If the user mentions "Rust" (e.g. "Set up a systems problem in Rust: ..."), select the Rust systems track. Otherwise default to C++23.
 - If an item above has several reasonable answers **and** the choice changes the public API or what a test would assert, ask the user (use `ask_question` with
   concrete options and a recommended default). Ask at most once, batching all questions.
 - Everything else: choose the conventional automotive / robotics default, and record it in the spec's **Assumptions** section so the user can push back.
@@ -51,22 +55,23 @@ There is no lookup service: **the user's prompt is the problem statement.** Only
 
 ## Repository layout
 
-| Purpose | Path |
-| --- | --- |
-| Requirements spec | `docs/systems/<name>.md` |
-| Public API (+ outline) | `src/include/systems/<name>.hpp` (included as `<systems/<name>.hpp>` or `"systems/<name>.hpp"`) |
-| Portable logic stub | `src/cpp/systems/<name>.cpp` |
-| OS adapter stub (only if the component calls OS APIs) | `src/cpp/systems/<name>_posix.cpp` |
-| Tests | `test/cpp/systems/<name>_test.cpp` |
-| Build registration | `src/cpp/systems/CMakeLists.txt` (`systems_add_library`), `test/cpp/systems/CMakeLists.txt` (`add_project_test`) |
-| Shared test harness (reuse, do not copy) | `test/cpp/systems/support/systems_test/*.hpp` (`systems::test_support`) |
-| OS capability flags (reuse) | `src/include/systems/platform.hpp` (`systems::platform`) |
+| Purpose | C++ | Rust |
+| --- | --- | --- |
+| Requirements spec | `docs/systems/<name>.md` | `docs/systems/<name>.md` |
+| Public API (+ outline) | `src/include/systems/<name>.hpp` | `src/rust/systems/src/<name>.rs` |
+| Portable logic stub | `src/cpp/systems/<name>.cpp` | (same module) |
+| OS adapter stub (if calling OS APIs) | `src/cpp/systems/<name>_posix.cpp` | `src/rust/systems/src/<name>_posix.rs` (or submodule) |
+| Tests | `test/cpp/systems/<name>_test.cpp` | `test/rust/systems/<name>_test.rs` |
+| Build registration | `src/cpp/systems/CMakeLists.txt`, `test/cpp/systems/CMakeLists.txt` | `src/rust/systems/src/lib.rs` (`pub mod <name>;`) |
+| Shared test harness | `test/cpp/systems/support/systems_test/*.hpp` (`systems::test_support`) | standard library / test modules |
+| OS capability flags | `src/include/systems/platform.hpp` (`systems::platform`) | `systems` crate / target cfgs |
 
 Read every reference before generating files:
 
 - [references/spec.md](references/spec.md): requirements spec template, ID scheme, traceability.
 - [references/safety.md](references/safety.md): coding constraints, standards guidance, portability and the OS-adapter rule.
 - [references/cpp.md](references/cpp.md): header outline, stub rules, CMake registration.
+- [references/rust.md](references/rust.md): Rust header/module, const generics, zero steady-state heap, 6-tier test architecture.
 - [references/testing.md](references/testing.md): test tiers, harness API, concurrency / multi-process / fault-injection patterns, red-state safety.
 
 ---
@@ -90,23 +95,26 @@ All GitHub interactions MUST use the `github-mcp-server` tools (never `gh` or `g
 Create `docs/systems/<name>.md` following [references/spec.md](references/spec.md). Every requirement gets a stable ID `<PREFIX>-REQ-NNN`, a verification
 method, and (for safety-relevant ones) a rationale. This document is the *problem statement* the user works against.
 
-### Step 4: Generate the header, stubs, and CMake registration
+### Step 4: Generate the header/module, stubs, and build registration
 
-Follow [references/cpp.md](references/cpp.md) and [references/safety.md](references/safety.md):
+Follow [references/cpp.md](references/cpp.md) and [references/safety.md](references/safety.md) for C++, or [references/rust.md](references/rust.md) for Rust:
 
-1. The header declares the **complete public API** (types, error enum, functions, documented contracts, thread-safety, blocking behavior) so tests compile,
-   plus an `Implementation outline` section that describes *what* the user must build and the pitfalls, **without** giving the solution.
-2. Stubs compile cleanly under `-Werror` and clang-tidy, never block, never crash, never allocate, and return `std::unexpected(<Error>::kNotImplemented)` (or
-   the documented "nothing happened" value). Each stub body carries a numbered `TODO(<PREFIX>-REQ-NNN)` checklist.
-3. Register the library with `systems_add_library` and the test with `add_project_test(... LABELS ...)`.
+1. The header/module declares the **complete public API** (types, error enum, functions, documented contracts, thread-safety, blocking behavior) so tests
+   compile, plus an `Implementation outline` section that describes *what* the user must build and the pitfalls, **without** giving the solution.
+2. Stubs compile cleanly under `-Werror` / clippy, never block, never crash, never allocate, and return `std::unexpected(<Error>::kNotImplemented)` in C++ or
+   `Err(<Name>Error::NotImplemented)` in Rust (or the documented "nothing happened" value). Each stub body carries a numbered `TODO(<PREFIX>-REQ-NNN)`
+   checklist.
+3. Register the library in CMake or Cargo (`src/rust/systems/src/lib.rs`).
 
 ### Step 5: Generate the test suite
 
-Follow [references/testing.md](references/testing.md). Tests assert the **correct** behavior from the spec (never the stub's dummy value), tag requirement IDs
-with `RecordProperty("requirements", "...")`, reuse `systems::test_support`, and are bounded in time so the red state is clean: failed assertions, no hangs, no
-crashes, no sanitizer reports.
+Follow [references/testing.md](references/testing.md) (C++) or [references/rust.md](references/rust.md) (Rust). Tests assert the **correct** behavior from the
+spec (never the stub's dummy value), tag requirement IDs with `RecordProperty("requirements", "...")` (C++) or `// requirements: <PREFIX>-REQ-NNN` /
+`record_property!` (Rust), and are bounded in time so the red state is clean: failed assertions, no hangs, no crashes, no sanitizer reports, no panics.
 
 ### Step 6: Verify (Pixi and presets only)
+
+For C++:
 
 ```bash
 pixi run cmake --preset dev-debug
@@ -117,8 +125,17 @@ pixi run check-traceability                                           # every re
 pixi run format-cpp && pixi run format-cmake && pixi run lint-md      # clang-format, gersemi, rumdl
 ```
 
-Confirm the existing suites (including `test_support_test` and `bounded_fifo_test`) still pass. Expected red: every `<Name>` test fails on an assertion or a
-`GTEST_SKIP` with a platform reason; none time out, segfault, or hang.
+For Rust:
+
+```bash
+pixi run cargo test --test <name>_test                                # FAILS cleanly (red)
+pixi run clippy                                                       # zero warnings
+pixi run format-rust-check                                            # formatted
+pixi run check-traceability                                           # every requirement has a test and vice versa
+```
+
+Confirm the existing suites still pass. Expected red: every `<Name>` test fails on an assertion or a skip with a platform reason; none time out, segfault,
+panic, or hang.
 
 ### Step 7: Report
 
