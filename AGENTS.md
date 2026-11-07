@@ -4,33 +4,36 @@ Guidance for AI agents working in `lc_dsa_practice`. Humans: see [README.md](REA
 
 ## Project overview
 
-A personal practice repository with four independent tracks that share one Pixi workspace, one CMake build, and one CI:
+A personal practice repository with independent tracks that share one Pixi workspace, unified toolchain, and CI:
 
-| Track | Purpose | Sources | Tests | Namespace / Prefix |
+| Track | Purpose | Sources | Tests | Namespace / Prefix / Crate |
 | :--- | :--- | :--- | :--- | :--- |
 | C++ LeetCode | Data-structure and algorithm problems in modern C++23 | `src/cpp/leet_code/`, `src/include/leet_code/` | `test/cpp/leet_code/` | `leet_code` |
 | C LeetCode | Data-structure and algorithm problems in strict ISO C23 | `src/c/leet_code/`, `src/include/leet_code/` | `test/c/leet_code/` | `leet_code_c` |
 | Python LeetCode | The same problems in typed Python 3.14 | `src/python/leet_code/` | `test/python/leet_code/` | package `leet_code` |
-| Systems C++ & C23 | Reusable low-level, system-level, and embedded-style components in C++23 and ISO C23 (fixed capacity, no heap, no STL containers, explicit concurrency) | `src/{cpp,c}/systems/`, `src/include/systems/` | `test/{cpp,c}/systems/` | `systems` / `systems_c` |
+| Rust LeetCode | The same problems in idiomatic Rust 1.99.1+ | `src/rust/leet_code/` | `test/rust/leet_code/` | crate `leet_code` |
+| Systems C++, C23 & Rust | Reusable low-level, system-level, and embedded-style components (fixed capacity, no heap, explicit concurrency) | `src/{cpp,c,rust}/systems/`, `src/include/systems/` | `test/{cpp,c,rust}/systems/` | `systems` / `systems_c` / `systems` |
 
-`systems::BoundedFifo<T, Capacity>` (and its C23 counterpart `bounded_fifo`) is the first systems component and
-the style reference for new ones.
+`systems::BoundedFifo<T, Capacity>` (and its C23 and Rust counterparts) is the primary systems component and the style reference for new ones.
 
 ## Directory layout
 
 ```text
 .
 ├── AGENTS.md, README.md, CONTRIBUTING.md, PROJECT.md
+├── Cargo.toml, rustfmt.toml, clippy.toml, .cargo/config.toml # Cargo workspace config
 ├── CMakeLists.txt, CMakePresets.json, cmake/      # options: BUILD_LEET_CODE, BUILD_SYSTEMS, BUILD_BENCHMARKS
-├── pyproject.toml, pixi.lock                      # Pixi workspace and ALL Python tool config
+├── pyproject.toml, pixi.lock                      # Pixi workspace and ALL tool config
 ├── src/
 │   ├── include/{leet_code,systems}/               # public C (.h) and C++ (.hpp) headers
 │   ├── cpp/{leet_code,systems}/                   # .cpp files and the track's CMakeLists.txt
 │   ├── c/{leet_code,systems}/                     # ISO C23 .c files and the track's CMakeLists.txt
+│   ├── rust/{leet_code,systems}/                  # Rust crates (src/lib.rs, modules, Cargo.toml)
 │   └── python/leet_code/                          # __init__.py, py.typed, one module per problem
 ├── test/
 │   ├── cpp/{leet_code,systems}/                   # GoogleTest, one <name>_test.cpp per target
 │   ├── c/{leet_code,systems}/                     # GoogleTest (<name>_c_test.cpp) + pure C23 (*_c23_test.c)
+│   ├── rust/{leet_code,systems}/                  # Rust integration test suites (*_test.rs)
 │   └── python/{leet_code,scripts}/                # pytest, test_<name>.py
 ├── examples/
 │   ├── cpp/systems/                               # standalone multi-process C++ systems examples
@@ -54,10 +57,11 @@ Do not recreate the old top-level `include/`, `src/*.cpp`, or `tests/` paths, an
 
 ## Toolchain rules (Pixi only)
 
-- Run every tool through `pixi run`. Never `pip install`, `uv`, a global `cmake`, or a system compiler. The conda-forge
-  Clang 23 toolchain, CMake 4.4, Ninja, GoogleTest, ruff, mypy, pytest, gersemi, and rumdl are pinned in `pixi.lock`.
+- Run every tool through `pixi run`. Never `pip install`, `uv`, a global `cmake`, a global `cargo`, or a system compiler. The conda-forge
+  Clang 23 toolchain, CMake 4.4, Ninja, GoogleTest, rustc/cargo 1.99.1, rustfmt, clippy, ruff, mypy, pytest, gersemi, and rumdl are pinned in `pixi.lock`.
 - CMake is driven only by presets: `pixi run cmake --workflow --preset <name>`. Do not hand-configure build directories.
   Configuring with a non-Pixi compiler fails by design (`ALLOW_NON_PIXI_TOOLCHAIN` overrides; avoid it).
+- Cargo build artifacts are isolated to `build/cargo/` via `.cargo/config.toml` and `CARGO_TARGET_DIR`.
 - Add Python or conda dependencies in `pyproject.toml` (`pixi add ...` or edit), then run `pixi run reorder-pyproject`.
   Never hand-edit `pixi.lock`.
 - `pyproject.toml` is the single config file for Pixi, ruff, mypy, pytest, coverage, and rumdl. It is auto-sorted, so
@@ -66,9 +70,13 @@ Do not recreate the old top-level `include/`, `src/*.cpp`, or `tests/` paths, an
 ### Common tasks
 
 ```bash
-pixi run test            # C++ (dev-debug workflow) + Python
+pixi run test            # C++ (dev-debug workflow) + Python + Rust
 pixi run test-cpp        # dev-debug: ASan + UBSan + clang-tidy, build and ctest
 pixi run test-python     # pytest, live-network tests deselected
+pixi run test-rust       # cargo test --workspace (all 4 tiers)
+pixi run clippy | clippy-fix # cargo clippy --all-targets -- -D warnings
+pixi run format-rust | format-rust-check # cargo fmt
+pixi run cov-rust        # cargo-llvm-cov, gate >= 85%
 pixi run cpp-release     # IPO build + tests
 pixi run cpp-asan | cpp-ubsan | cpp-tsan
 pixi run cpp-benchmark   # Google Benchmark suite workflow
@@ -143,6 +151,31 @@ Intent: portable building blocks that could move to a small target without redes
 - Deliberate NOLINTs (for example a C array backing the FIFO) must carry a one-line justification.
 - Avoid `std::chrono` literals (`10ms`); `misc-include-cleaner` cannot attribute them. Include public POSIX headers.
 
+## Track 4: Rust LeetCode
+
+- Crates live in `src/rust/leet_code/` with `Cargo.toml`, `src/lib.rs`, and one module per problem `src/<slug_snake>.rs`.
+- Integration tests live in `test/rust/leet_code/<slug_snake>_test.rs`.
+- Each module exposes:
+  - An idiomatic, safe function (`&[i32]`, `Result<T, <Name>Error>` or `Option<T>`, `#[must_use]`, arithmetic overflow protection).
+  - The LeetCode compatibility wrapper `pub struct Solution;` with `impl Solution { pub fn <method>(...) -> ... }`.
+- Shared structures live in `src/rust/leet_code/src/list_node.rs` (`ListNode`, `create_linked_list`, `linked_list_to_vec`).
+- Tests follow the 4-tier model: canonical examples, boundary & corner cases, invariants & ownership, and stress/simulation.
+
+## Track 5: Systems Rust
+
+Intent: portable, safe, and deterministic low-level building blocks implemented in idiomatic Rust (edition 2024, rust-version 1.99.1).
+
+- Crates live in `src/rust/systems/` with `Cargo.toml`, `src/lib.rs`, and components in `src/<name>.rs`.
+- Integration tests live in `test/rust/systems/<name>_test.rs`.
+- Style and safety rules:
+  - Compile-time capacity and storage inline inside the struct using const generics (e.g., `BoundedFifo<T, const CAPACITY: usize>`).
+  - Zero heap allocation in steady-state operations; no dynamic collections (`Vec`, `VecDeque`) after initialization.
+  - Public operations are safe, deterministic, and report errors via `Result<T, <Name>Error>`.
+  - Provide try, timed (`push_timeout`, `pop_timeout`), and blocking variants, with a `close()` path that unblocks all waiters.
+  - Concurrency uses standard synchronization (`std::sync::{Mutex, Condvar}`) without `unsafe` blocks.
+- Tests cover 4 tiers (canonical FIFO, boundary/timeouts/drainage, RAII/drop invariants, multi-threaded MPMC stress).
+- Requirements traceability: tests declare traceability tags (`// requirements: <PREFIX>-REQ-NNN`), verified by `pixi run check-traceability`.
+
 ## Systems benchmarks and Bayesian optimization
 
 Intent: empirical microbenchmarking and statistical performance evaluation for systems components.
@@ -161,19 +194,20 @@ Intent: empirical microbenchmarking and statistical performance evaluation for s
 ## Systems plugin (`.agents/plugins/systems`)
 
 - No MCP server: the user's prompt is the problem statement. The `systems-setup` skill asks only about choices that change
-  the API or the test oracle, records other decisions as assumptions, and generates `docs/systems/<name>.md` (requirements
-  `### <PREFIX>-REQ-NNN: Title` with a `- **Verification:**` line), an outline header, stubs, CMake registration, and red tests.
-- Each test starts with `RecordProperty("requirements", "<IDs>")`; `pixi run check-traceability` (also a pre-commit hook)
-  enforces requirement <-> test traceability in both directions.
-- References: `skills/systems-setup/references/{spec,safety,cpp,testing}.md`. Layout changes must be mirrored there, in the
+  the API or the test oracle (including target language: `cpp`, `c`, or `rust`), records other decisions as assumptions, and generates
+  `docs/systems/<name>.md` (requirements `### <PREFIX>-REQ-NNN: Title` with a `- **Verification:**` line), an outline header or module,
+  stubs, build registration, and red tests.
+- Each test starts with `RecordProperty("requirements", "<IDs>")` (C++) or `// requirements: <PREFIX>-REQ-NNN` (Rust);
+  `pixi run check-traceability` (also a pre-commit hook) enforces requirement <-> test traceability in both directions.
+- References: `skills/systems-setup/references/{spec,safety,cpp,testing,rust}.md`. Layout changes must be mirrored there, in the
   plugin README, and in `PROJECT.md`.
 
 ## LeetCode plugin (`.agents/plugins/leetcode`)
 
 - One MCP server (`leetcode`, started with `pixi run --quiet leetcode-mcp`) exposes `get_problem(problem_query)`, returning
-  statement, constraints, examples, and the starter snippets (`cpp_snippet`, `python_snippet`).
-- The `leetcode-setup` skill scaffolds one problem. **The user must specify the language (`cpp` or `python`); ask if it is
-  missing.** Language details are in `skills/leetcode-setup/references/cpp.md` and `references/python.md`.
+  statement, constraints, examples, and starter snippets (`cpp_snippet`, `python_snippet`, `rust_snippet`).
+- The `leetcode-setup` skill scaffolds one problem. **The user must specify the language (`cpp`, `python`, or `rust`); ask if it is
+  missing.** Language details are in `skills/leetcode-setup/references/cpp.md`, `references/python.md`, and `references/rust.md`.
 - The server's own tests are in `.agents/plugins/leetcode/tests/` and run under the root pytest config
   (`pixi run test-python`). Live-network tests are marked `live` and skipped by default.
 - Layout changes must be mirrored in `SKILL.md`, the reference files, the plugin README, and `PROJECT.md`.
@@ -185,6 +219,8 @@ Intent: empirical microbenchmarking and statistical performance evaluation for s
 | C++ format and lint | clang-format (Google), clang-tidy with `WarningsAsErrors: "*"` (enabled in `dev-debug`) |
 | C++ runtime | ASan, UBSan, TSan presets; 85% line coverage (`cov-cpp`) |
 | Python | `ruff check`, `ruff format`, `mypy` strict, pytest, 85% coverage |
+| Rust format and lint | `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` |
+| Rust runtime | `cargo test --workspace` (all 4 tiers), coverage >= 85% (`cov-rust`) |
 | CMake | `gersemi` (config `.gersemirc`: 100 columns, 4-space indent); run `pixi run format-cmake` |
 | Markdown | `rumdl` (160 columns) |
 | Repo hygiene | gitleaks, actionlint, zizmor, Renovate validator, sorted `pyproject.toml` |
@@ -200,13 +236,13 @@ instead of suppressing; keep existing comments and docstrings that your change d
   `push` on feature branches (note: `/leetcode-setup` and `/systems-setup` explicitly forbid `git push` so TDD-red stubs stay local).
 - Work on a feature branch, never on `main`. Use `git mv` for moves so history is preserved.
 - CI (`.github/workflows/ci.yml`) runs lint/hygiene, Python tests on Linux x86-64, Linux arm64, and macOS, C++ release tests on
-  the same matrix, C++ coverage, and the ASan/UBSan/TSan presets.
+  the same matrix, C++ coverage, the ASan/UBSan/TSan presets, Rust tests on the same matrix, and Rust coverage.
 - Workflow `uses:` entries and remote pre-commit hooks must be pinned to full commit SHAs with a version comment. Look up
   SHAs with the GitHub MCP, never from memory.
 
 ## Checklist when changing structure
 
-1. Update CMake registration, `pyproject.toml` path settings (pytest `testpaths`/`pythonpath`, mypy `files`, coverage
+1. Update CMake registration, Cargo workspace members, `pyproject.toml` path settings (pytest `testpaths`/`pythonpath`, mypy `files`, coverage
    `source`), and CI if paths change.
 2. Update `README.md`, `PROJECT.md`, `CONTRIBUTING.md`, the plugin docs and skill, and this file.
 3. Keep this file under 24 KB (Antigravity truncates larger rule files); check with `wc -c AGENTS.md`.

@@ -1,11 +1,13 @@
-# Project: LeetCode DSA Practice (C++23, Python 3.14, Systems C++) with an Antigravity Plugin
+# Project: LeetCode DSA Practice (C++23, ISO C23, Python 3.14, Rust 1.99, Systems) with Antigravity Plugins
 
 ## Architecture
 
-The project delivers an Antigravity Plugin in `.agents/plugins/leetcode` that automates the setup of LeetCode DSA practice problems in modern C++23 (CMake +
-GoogleTest) or Python 3.14 (pytest); the user must name the language. The repository also hosts a `systems` C++ tree for low-level, embedded-style components,
-with a second plugin in `.agents/plugins/systems` (skill only, no MCP server) that scaffolds safety-oriented systems problems from a free-form prompt. The whole
-workspace (toolchain, dependencies, tasks, CI) is a single Pixi workspace defined in `pyproject.toml`.
+The project delivers Antigravity Plugins in `.agents/plugins/leetcode` and `.agents/plugins/systems` that automate setup and practice across modern C++23,
+ISO C23, Python 3.14, and Rust 1.99.1+; the user must name the language. The repository also hosts low-level, embedded-style `systems` components in C++23,
+ISO C23, and Rust, with skills that scaffold safety-oriented systems problems from a free-form prompt. The Rust track integrates seamlessly into the
+existing Pixi workspace (`rustc 1.99.1`, `cargo 1.99.1`, `rustfmt`, `clippy` via conda-forge) with a Cargo workspace rooted at `Cargo.toml` and members
+`src/rust/leet_code` and `src/rust/systems` (build artifacts directed to `build/cargo/`). The whole workspace (toolchain, dependencies, tasks, CI) is a
+single Pixi workspace defined in `pyproject.toml`.
 
 ```text
                       +------------------------------------------+
@@ -64,6 +66,17 @@ workspace (toolchain, dependencies, tasks, CI) is a single Pixi workspace define
 | 24 | Bayesian BEST + ROPE Engine & Host Tuning | SciPy/NumPy Student-t posterior analysis (`P(better)`, `P(same)`, `P(worse)`), host tuning (Darwin/Linux), Plotly reports | M7 | R3 |
 | 25 | Agentic Optimization Loop Skill | `.agents/skills/optimization-loop/SKILL.md` (preloop, two-stage fast-screen/full BEST benchmark, git rollbacks, Academic Scribe) | M7 | R4 |
 | 26 | ISO C23 Track & Systems Translation | Parallel `c/` directories (`src/c`, `test/c`, `examples/c`, `benchmarks/c`), strict `-std=c23` CMake integration, C23 translation of all 5 `systems` components, GoogleTest + pure C23 test suites | M8 | #42 |
+| 27 | Rust Workspace & Cargo Manifests | Root `Cargo.toml`, `.cargo/config.toml`, `rustfmt.toml`, `clippy.toml`, `.gitignore` (`target/`) | M1-Rust | Toolchain Survey |
+| 28 | Pixi Rust Tasks & Environment | `test-rust`, `clippy`, `clippy-fix`, `format-rust`, `format-rust-check`, `cov-rust`, `CARGO_TARGET_DIR` | M1-Rust | Toolchain Survey |
+| 29 | Pre-Commit Rust Quality Gates | `cargo-fmt` and `cargo-clippy` hooks under local repo; `systems-traceability` regex update | M1-Rust | Toolchain Survey |
+| 30 | LeetCode MCP Rust Snippet Support | `models.py` and `client.py` extracting `rust_snippet` from LeetCode GraphQL `codeSnippets` | M2-Rust | Skills Survey |
+| 31 | `/leetcode-setup` Rust Support | `SKILL.md` language gate, `references/rust.md`, crate registration in `src/rust/leet_code/src/lib.rs` | M2-Rust | Skills Survey |
+| 32 | `/systems-setup` Rust Support | `SKILL.md` language gate, `references/rust.md`, safety/no-heap rules, `src/rust/systems/src/lib.rs` | M2-Rust | Skills Survey |
+| 33 | Systems Traceability Rust Parser | `scripts/ci/check_systems_traceability.py` scanning `test/rust/systems/*_test.rs` and requirement tags | M2-Rust | Skills Survey |
+| 34 | Representative LeetCode Rust Practice | `list_node`, `two_sum`, `lru_cache` + 4-tier test suites (`test/rust/leet_code/`) | M3-Rust | Examples Survey |
+| 35 | Representative Systems Rust Practice | `bounded_fifo` (`BoundedFifo<T, CAPACITY>`, const generics, inline ring buffer, MPMC) + 4-tier tests | M3-Rust | Examples Survey |
+| 36 | GitHub Actions Rust CI Matrix | `rust-tests` across `ubuntu-latest`, `ubuntu-24.04-arm`, `macos-latest`, and `rust-coverage` (>=85%) | M4-Rust | Toolchain Survey |
+| 37 | Opaque-Box Rust E2E Test Suite | Requirement-driven test suite (`test_e2e_rust_infrastructure.py`) published with `TEST_READY.md` | E2E-Rust | Dual Track |
 
 ## Milestones
 
@@ -78,6 +91,12 @@ workspace (toolchain, dependencies, tasks, CI) is a single Pixi workspace define
 | M5 | Multi-Language & Pixi Refactor | `src/`+`test/` split by language, Python and systems tracks, Pixi workspace, CI, plugin supports C++ and Python | M4 | DONE |
 | M7 | Systems Benchmark & Bayesian Optimization | Benchmark infrastructure, baseline function, host tuner, Bayesian BEST engine, optimization loop skill | M6 | DONE |
 | M8 | ISO C23 Track Extension & Systems Translation | Parallel `c/` directories, C23 compiler warnings & clang-tidy, C23 `systems` components (`platform`, `bounded_fifo`, `shm_pubsub`, `process_rendezvous`, `bitmap_flip`), examples, benchmarks, and tests | M7 | DONE |
+| M0 | GitHub Flow Initialization (Rust) | Create tracking GitHub issue #56 and checkout `feat/56-integrate-rust-support` | None | IN PROGRESS |
+| E2E-Rust | Rust E2E Testing Track | Requirement-driven opaque-box test suite (`test_e2e_rust_infrastructure.py`) & `TEST_READY.md` | M0 | PLANNED |
+| M1-Rust | Rust Toolchain & Pixi Integration | Root `Cargo.toml`, `.cargo/`, `rustfmt.toml`, `clippy.toml`, crates manifests, `pyproject.toml` tasks, pre-commit hooks | M0 | PLANNED |
+| M2-Rust | Skill Integration & Traceability | `/leetcode-setup`, `/systems-setup`, LeetCode MCP `rust_snippet`, `check_systems_traceability.py` | M1-Rust | PLANNED |
+| M3-Rust | Representative Examples & Unit Tests | `list_node`, `two_sum`, `lru_cache`, `bounded_fifo`, comprehensive 4-tier tests | M1-Rust, M2-Rust | PLANNED |
+| M4-Rust | CI Workflows & Final Acceptance | `.github/workflows/ci.yml`, full pre-commit gate, 100% E2E test pass, PR creation & CI monitoring | M3-Rust, E2E-Rust | PLANNED |
 
 ## Interface Contracts
 
@@ -197,11 +216,37 @@ workspace (toolchain, dependencies, tasks, CI) is a single Pixi workspace define
     validation (`pixi run test-cpp`), atomic git commit + baseline promotion or clean git revert.
   - **Post Loop**: Clickable browser link (`file://.../report.html`), multi-regime anomaly verification, workspace cleanup, Academic Scribe report synthesis.
 
+### 9. Cargo Workspace Contract
+
+- Root `Cargo.toml`:
+  - `resolver = "3"`
+  - `members = ["src/rust/leet_code", "src/rust/systems"]`
+  - `edition = "2024"`, `rust-version = "1.99.1"`
+  - `target-dir = "build/cargo"` configured via `.cargo/config.toml` and `CARGO_TARGET_DIR`
+
+### 10. LeetCode Rust Module Contract
+
+- Module: `src/rust/leet_code/src/<slug_snake>.rs`
+  - Idiomatic function: accepts borrowed slices `&[i32]`, returns `Result<T, <Name>Error>` or `Option<T>` with `#[must_use]`
+  - LeetCode wrapper: `pub struct Solution;` with `impl Solution { pub fn <method>(...) -> ... }`
+- Test: `test/rust/leet_code/<slug_snake>_test.rs` declared via `[[test]]` or test harness
+
+### 11. Systems Rust Component Contract
+
+- Module: `src/rust/systems/src/<name>.rs`
+  - Zero steady-state heap allocations, `#![no_std]` compatible or `std` with no heap
+  - Const generics for capacity: `<T, const CAPACITY: usize>`
+  - Error enum: `pub enum <Name>Error` with `#[must_use]` `Result<T, <Name>Error>`
+  - Deterministic triad: `try_*`, `*_timeout`, and blocking `*`, plus waking `close()`
+- Test: `test/rust/systems/<name>_test.rs` with `// requirements: <PREFIX>-REQ-NNN` or `record_property!`
+
 ## Code Layout
 
 - C++ LeetCode: `src/include/leet_code/`, `src/cpp/leet_code/`, `test/cpp/leet_code/`
 - C LeetCode: `src/include/leet_code/`, `src/c/leet_code/`, `test/c/leet_code/`
+- Rust LeetCode: `src/rust/leet_code/src/`, `test/rust/leet_code/`
 - Systems C++ & C23: `src/include/systems/`, `src/{cpp,c}/systems/`, `test/{cpp,c}/systems/`, `examples/{cpp,c}/systems/`
+- Systems Rust: `src/rust/systems/src/`, `test/rust/systems/`
 - Systems Benchmarks: `benchmarks/{cpp,c}/systems/` (Google Benchmark targets, `CMakeLists.txt`)
 - Python LeetCode: `src/python/leet_code/`, `test/python/leet_code/`
 - Systems specs: `docs/systems/`; systems test support: `test/cpp/systems/support/`
@@ -215,6 +260,10 @@ workspace (toolchain, dependencies, tasks, CI) is a single Pixi workspace define
   - `.agents/plugins/systems/` (`systems-setup` skill plus references)
   - `.agents/skills/optimization-loop/` (`SKILL.md` plus `references/` for Bayesian BEST, hardware tuning, subagent coordination, and scribe guidelines)
 - Benchmark Telemetry: `data/` (local telemetry and reports, strictly gitignored)
-- Infrastructure: `pyproject.toml` (Pixi), `CMakePresets.json`, `cmake/`, `.pre-commit-config.yaml`, `.github/workflows/`, `renovate.jsonc`
+- Infrastructure:
+  - Pixi: `pyproject.toml`
+  - Cargo: `Cargo.toml`, `.cargo/config.toml`, `rustfmt.toml`, `clippy.toml`
+  - CMake: `CMakePresets.json`, `cmake/`
+  - CI & Hygiene: `.pre-commit-config.yaml`, `.github/workflows/`, `renovate.jsonc`
 - Multi-Agent Metadata:
   - `.agents/teamwork/`

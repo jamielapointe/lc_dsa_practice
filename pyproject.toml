@@ -196,14 +196,18 @@ source = [
 ]
 
 [tool.pixi.activation.env]
+CARGO_TARGET_DIR = "$PIXI_PROJECT_ROOT/build/cargo"
 CC = "$CONDA_PREFIX/bin/clang"
 CCACHE_DIR = "$PIXI_PROJECT_ROOT/build/.ccache"
 CXX = "$CONDA_PREFIX/bin/clang++"
+LLVM_COV = "$CONDA_PREFIX/bin/llvm-cov"
+LLVM_PROFDATA = "$CONDA_PREFIX/bin/llvm-profdata"
 PYTHONPATH = "$PIXI_PROJECT_ROOT/src/python:$PIXI_PROJECT_ROOT/.agents/plugins/leetcode/src:$PIXI_PROJECT_ROOT"
 
 [tool.pixi.dependencies]
 actionlint = ">=1.7.12"
 benchmark = ">=1.10.0"
+cargo-llvm-cov = ">=0.9.1"
 ccache = ">=4.14.1"
 clang = ">=23.1.4"
 clang-tools = ">=23.1.4"
@@ -238,9 +242,13 @@ rumdl = ">=0.3.2"
 
 [tool.pixi.tasks]
 check-pyproject = "python scripts/ci/reorder_pyproject.py --check pyproject.toml"
+check-rust = "cargo check --workspace --all-targets"
 check-traceability = "python scripts/ci/check_systems_traceability.py"
+clippy = "cargo clippy --workspace --all-targets -- -D warnings"
+clippy-fix = "cargo clippy --fix --allow-dirty --allow-staged --workspace --all-targets -- -D warnings"
 cov-cpp = "cmake --workflow --preset coverage && python scripts/ci/cpp_coverage.py --build-dir build/coverage --fail-under 85"
 cov-python = "pytest --cov --cov-report=term-missing --cov-report=xml"
+cov-rust = "cargo llvm-cov --workspace --all-targets --fail-under-lines 85"
 cpp-asan = "cmake --workflow --preset asan"
 cpp-benchmark = "cmake --workflow --preset benchmark"
 cpp-benchmark-build = "cmake --build --preset benchmark"
@@ -255,6 +263,8 @@ format-cmake = "gersemi -i CMakeLists.txt cmake src/cpp src/c test/cpp test/c be
 format-cmake-check = "gersemi --check CMakeLists.txt cmake src/cpp src/c test/cpp test/c benchmarks/cpp benchmarks/c examples/cpp examples/c"
 format-cpp = "cmake --build --preset dev-debug --target format"
 format-cpp-check = "cmake --build --preset dev-debug --target format-check"
+format-rust = "cargo fmt --all"
+format-rust-check = "cargo fmt --all -- --check"
 leetcode-mcp = "python -m leetcode_mcp"
 lint = "ruff check"
 lint-fix = "ruff check --fix --exit-non-zero-on-fix"
@@ -264,12 +274,14 @@ reorder-pyproject = "python scripts/ci/reorder_pyproject.py pyproject.toml"
 shm-pubsub-example = "python scripts/examples/run_shm_pubsub_example.py"
 test-cpp = "cmake --workflow --preset dev-debug"
 test-python = "pytest"
+test-rust = "cargo test --workspace --all-targets"
 typecheck = "mypy"
 
 [tool.pixi.tasks.test]
 depends-on = [
     "test-cpp",
     "test-python",
+    "test-rust",
 ]
 
 [tool.pixi.workspace]

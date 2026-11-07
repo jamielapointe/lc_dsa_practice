@@ -32,7 +32,7 @@ class ProblemMetadata(BaseModel):
 
     @property
     def slug_snake(self) -> str:
-        """Slug converted to snake_case for C++/Python file and target naming."""
+        """Slug converted to snake_case for C++/Python/Rust file and target naming."""
         return self.slug.replace('-', '_')
 
     @property
@@ -60,14 +60,25 @@ class ProblemMetadata(BaseModel):
         """Canonical pytest filename (e.g. 'test_add_two_numbers.py')."""
         return f'test_{self.slug_snake}.py'
 
+    @property
+    def rust_module_filename(self) -> str:
+        """Canonical Rust module filename (e.g. 'add_two_numbers.rs')."""
+        return f'{self.slug_snake}.rs'
+
+    @property
+    def rust_test_filename(self) -> str:
+        """Canonical Rust test filename (e.g. 'add_two_numbers_test.rs')."""
+        return f'{self.slug_snake}_test.rs'
+
 
 class ProblemDetails(ProblemMetadata):
-    """Full problem data including Markdown description, C++/Python snippets, and test cases.
+    """Full problem data including Markdown description, C++/Python/Rust snippets, and test cases.
 
     Attributes:
         description_markdown: Clean Markdown converted from HTML problem description.
         cpp_snippet: Official LeetCode C++ starter code snippet.
         python_snippet: Official LeetCode Python 3 starter code snippet (empty if unavailable).
+        rust_snippet: Official LeetCode Rust starter code snippet (empty if unavailable).
         sample_test_case: Raw default sample test case string.
         example_test_cases: Parsed example input test cases.
         constraints: Extracted problem constraints preserving mathematical formatting.
@@ -76,6 +87,7 @@ class ProblemDetails(ProblemMetadata):
     description_markdown: str = Field(description='Clean Markdown converted from HTML problem description')
     cpp_snippet: str = Field(description='Official LeetCode C++ starter code snippet')
     python_snippet: str = Field(default='', description='Official LeetCode Python 3 starter code snippet')
+    rust_snippet: str = Field(default='', description='Official LeetCode Rust starter code snippet')
     sample_test_case: str = Field(description='Raw default sample test case string')
     example_test_cases: list[str] = Field(default_factory=list, description='Parsed example input test cases')
     constraints: list[str] = Field(default_factory=list, description='Extracted problem constraints')
