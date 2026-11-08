@@ -1,0 +1,67 @@
+#pragma once
+
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "rust/cxx.h"
+
+namespace systems::interop {
+
+// Forward declarations from generated Rust bridge:
+struct TelemetryFrame;
+struct TelemetryDispatcher;
+
+/// @brief Modern C++23 SensorController class bridged to Rust via CXX.
+///
+/// Demonstrates non-relocatable C++ object semantics where address identity (`this`)
+/// is preserved across the FFI boundary using `Pin<&mut SensorController>`.
+class SensorController {
+public:
+    explicit SensorController(uint32_t sample_rate_hz)
+        : sample_rate_hz_(sample_rate_hz), calibration_offset_(0.0) {
+        samples_.reserve(128);
+    }
+
+    // Address-sensitive: disable copying to maintain strict address identity
+    SensorController(const SensorController&) = delete;
+    auto operator=(const SensorController&) -> SensorController& = delete;
+
+    SensorController(SensorController&&) noexcept = default;
+    auto operator=(SensorController&&) noexcept -> SensorController& = default;
+    ~SensorController() = default;
+
+    /// @brief Queries the configured sample rate in Hz.
+    [[nodiscard]] auto sample_rate() const noexcept -> uint32_t {
+        return sample_rate_hz_;
+    }
+
+    /// @brief Mutates internal calibration offset. Must be called via Pin<&mut T> from Rust.
+    auto calibrate(double offset) noexcept -> bool {
+        calibration_offset_ = offset;
+        return true;
+    }
+
+    /// @brief Returns buffered samples transferred as a CxxVector across FFI.
+    [[nodiscard]] auto read_samples() -> std::unique_ptr<std::vector<double>> {
+        auto vec = std::make_unique<std::vector<double>>();
+        vec->push_back(1.0 + calibration_offset_);
+        vec->push_back(2.0 + calibration_offset_);
+        vec->push_back(3.0 + calibration_offset_);
+        return vec;
+    }
+
+private:
+    uint32_t sample_rate_hz_{0};
+    double calibration_offset_{0.0};
+    std::vector<double> samples_{};
+};
+
+/// @brief Factory function creating a heap-allocated SensorController wrapped in std::unique_ptr.
+[[nodiscard]] inline auto make_sensor_controller(uint32_t sample_rate_hz)
+    -> std::unique_ptr<SensorController> {
+    return std::make_unique<SensorController>(sample_rate_hz);
+}
+
+}  // namespace systems::interop

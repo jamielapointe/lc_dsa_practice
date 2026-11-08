@@ -1,0 +1,95 @@
+//! # `{{COMPONENT_NAME}}`
+//!
+//! An intensive systems component scaffolded for test-driven development.
+//! This module provides strict zero-allocation, bounded-capacity abstractions
+//! calibrated for low-level systems architectures under Rust Edition 2024.
+
+#![deny(unsafe_op_in_unsafe_fn)]
+#![warn(missing_docs)]
+
+/// Domain error types for [`{{COMPONENT}}`].
+#[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
+pub enum {{COMPONENT}}Error {
+    /// Provided capacity is invalid (e.g. zero or non-power-of-two).
+    #[error("invalid capacity specified: {0}")]
+    InvalidCapacity(usize),
+
+    /// Operation failed because the buffer is at maximum capacity.
+    #[error("buffer capacity exceeded")]
+    CapacityExceeded,
+
+    /// Operation failed because the buffer is empty.
+    #[error("buffer is empty")]
+    Empty,
+
+    /// Operation failed because the resource has been closed.
+    #[error("resource has been closed")]
+    Closed,
+
+    /// Operation timed out before completion.
+    #[error("operation timed out")]
+    Timeout,
+}
+
+/// A high-performance systems component representing [`{{COMPONENT}}`].
+pub struct {{COMPONENT}}<T, const CAPACITY: usize> {
+    _marker: core::marker::PhantomData<T>,
+}
+
+impl<T, const CAPACITY: usize> {{COMPONENT}}<T, CAPACITY> {
+    /// Creates a new instance of [`{{COMPONENT}}`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`{{COMPONENT}}Error::InvalidCapacity`] if `CAPACITY` is zero or exceeds limits.
+    pub fn new() -> Result<Self, {{COMPONENT}}Error> {
+        todo!("Implement {{COMPONENT}}::new")
+    }
+
+    /// Returns the maximum capacity of [`{{COMPONENT}}`].
+    #[must_use]
+    pub fn capacity(&self) -> usize {
+        todo!("Implement {{COMPONENT}}::capacity")
+    }
+
+    /// Returns the current number of elements stored in [`{{COMPONENT}}`].
+    #[must_use]
+    pub fn len(&self) -> usize {
+        todo!("Implement {{COMPONENT}}::len")
+    }
+
+    /// Returns `true` if [`{{COMPONENT}}`] contains no elements.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        todo!("Implement {{COMPONENT}}::is_empty")
+    }
+
+    /// Pushes an item into [`{{COMPONENT}}`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`{{COMPONENT}}Error::CapacityExceeded`] if the buffer is at maximum capacity,
+    /// or [`{{COMPONENT}}Error::Closed`] if the channel has been shut down.
+    pub fn push(&self, _item: T) -> Result<(), {{COMPONENT}}Error> {
+        todo!("Implement {{COMPONENT}}::push")
+    }
+
+    /// Pops an item from [`{{COMPONENT}}`].
+    ///
+    /// Returns `None` if the component is empty.
+    #[must_use]
+    pub fn pop(&self) -> Option<T> {
+        todo!("Implement {{COMPONENT}}::pop")
+    }
+
+    /// Closes [`{{COMPONENT}}`], waking any blocked waiters and preventing subsequent pushes.
+    pub fn close(&self) {
+        todo!("Implement {{COMPONENT}}::close")
+    }
+}
+
+impl<T, const CAPACITY: usize> Default for {{COMPONENT}}<T, CAPACITY> {
+    fn default() -> Self {
+        todo!("Implement {{COMPONENT}}::default")
+    }
+}

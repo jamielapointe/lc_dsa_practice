@@ -1,0 +1,115 @@
+//! # CXX Bidirectional Interoperability Bridge Template
+//!
+//! Illustrates compile-time verified bidirectional bridging between Rust 1.99.1
+//! (Edition 2024) and ISO C++23 using the `cxx` crate.
+//!
+//! Key invariants demonstrated:
+//! - Safe smart pointer exchange: `cxx::UniquePtr<T>` and `cxx::CxxVector<T>`
+//! - Opaque C++ class encapsulation
+//! - In-place C++ mutation via `Pin<&mut T>` guaranteeing address stability (`this`)
+//! - Exporting Rust types and methods to foreign C++ callers
+
+#![allow(clippy::must_use_candidate, clippy::unnecessary_box_returns)]
+
+#[cxx::bridge(namespace = "systems::interop")]
+pub mod ffi {
+    // Foreign C++ declarations imported into Rust:
+    unsafe extern "C++" {
+        include!("cxx_bridge.hpp");
+
+        /// Opaque foreign C++ class. Rust knows its pointer, but cannot inspect
+        /// or mutate internal bytes directly without bridging methods.
+        type SensorController;
+
+        /// Factory function constructing a heap-allocated C++ object returned as UniquePtr.
+        fn make_sensor_controller(sample_rate_hz: u32) -> UniquePtr<SensorController>;
+
+        /// Const inspection method borrowing C++ object.
+        fn sample_rate(&self) -> u32;
+
+        /// Address-sensitive mutation: C++ objects have address identity (`this`).
+        /// Mutating methods MUST take `self: Pin<&mut SensorController>` to prevent
+        /// bitwise relocation (destructive move) in Rust memory.
+        fn calibrate(self: Pin<&mut SensorController>, offset: f64) -> bool;
+
+        /// Cross-language vector transfer: returns a C++ std::vector<double> wrapped in UniquePtr.
+        fn read_samples(self: Pin<&mut SensorController>) -> UniquePtr<CxxVector<f64>>;
+    }
+
+    /// Shared POD data structure with identical binary layout in C++ and Rust.
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    struct TelemetryFrame {
+        timestamp_ns: u64,
+        temperature_c: f32,
+        voltage: f32,
+        error_flags: u32,
+    }
+
+    // Exported Rust types and functions callable from foreign C++:
+    extern "Rust" {
+        type TelemetryDispatcher;
+
+        fn create_dispatcher() -> Box<TelemetryDispatcher>;
+        fn dispatch_frame(self: &mut TelemetryDispatcher, frame: TelemetryFrame) -> bool;
+        fn frame_count(&self) -> usize;
+    }
+}
+
+/// Safe idiomatic Rust wrapper around the bridged C++ `SensorController`.
+pub struct SensorControllerBridge {
+    inner: cxx::UniquePtr<ffi::SensorController>,
+}
+
+impl SensorControllerBridge {
+    /// Constructs a new bridged sensor controller.
+    #[must_use]
+    pub fn new(sample_rate_hz: u32) -> Self {
+        Self {
+            inner: ffi::make_sensor_controller(sample_rate_hz),
+        }
+    }
+
+    /// Queries the controller's sample rate.
+    #[must_use]
+    pub fn sample_rate(&self) -> u32 {
+        self.inner.sample_rate()
+    }
+
+    /// Calibrates the sensor controller using a pinned mutable reference.
+    pub fn calibrate(&mut self, offset: f64) -> bool {
+        self.inner.pin_mut().calibrate(offset)
+    }
+
+    /// Reads buffered samples as a zero-copy slice from the C++ vector.
+    pub fn with_samples<R>(&mut self, f: impl FnOnce(&[f64]) -> R) -> R {
+        let samples = self.inner.pin_mut().read_samples();
+        f(samples.as_slice())
+    }
+}
+
+/// Rust telemetry dispatcher exported across the bridge.
+#[derive(Default)]
+pub struct TelemetryDispatcher {
+    count: usize,
+    last_frame: Option<ffi::TelemetryFrame>,
+}
+
+impl TelemetryDispatcher {
+    /// Ingests a telemetry frame.
+    pub fn dispatch_frame(&mut self, frame: ffi::TelemetryFrame) -> bool {
+        self.count += 1;
+        self.last_frame = Some(frame);
+        true
+    }
+
+    /// Returns the number of frames processed.
+    #[must_use]
+    pub fn frame_count(&self) -> usize {
+        self.count
+    }
+}
+
+/// CXX bridge trampoline for constructing `TelemetryDispatcher`.
+pub fn create_dispatcher() -> Box<TelemetryDispatcher> {
+    Box::new(TelemetryDispatcher::default())
+}

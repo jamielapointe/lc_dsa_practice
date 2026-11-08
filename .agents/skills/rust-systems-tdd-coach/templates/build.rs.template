@@ -1,0 +1,23 @@
+//! Hermetic build script for CXX interoperability micro-projects.
+//!
+//! Enforces modern C++23 standards, strict warning flags, and exception/RTTI
+//! elimination to guarantee zero-unwind FFI safety matching Rust's `panic = "abort"`.
+
+fn main() {
+    // Compile the CXX bridge and companion C++23 translation unit:
+    cxx_build::bridge("src/bridge.rs")
+        .file("cxx_bridge/cxx_bridge.cpp")
+        .include("cxx_bridge")
+        .std("c++23")
+        .flag_if_supported("-Wall")
+        .flag_if_supported("-Wextra")
+        .flag_if_supported("-Wpedantic")
+        .flag_if_supported("-fno-exceptions")
+        .flag_if_supported("-fno-rtti")
+        .compile("{{EXERCISE_SLUG}}_bridge");
+
+    // Re-run this build script only if bridge source files or headers change:
+    println!("cargo:rerun-if-changed=src/bridge.rs");
+    println!("cargo:rerun-if-changed=cxx_bridge/cxx_bridge.cpp");
+    println!("cargo:rerun-if-changed=cxx_bridge/cxx_bridge.hpp");
+}
