@@ -1,5 +1,5 @@
 # ==============================================================================
-# Git Ignore - C++23 LeetCode DSA Practice Project
+# Git Ignore - Multi-Language (C++23, C23, Python 3.14+, Rust 1.99.1+) Practice
 # ==============================================================================
 
 # Prerequisites & Object files
@@ -14,7 +14,7 @@
 *.pdb
 *.dwo
 
-# Libraries and Executables
+# Libraries, Executables & Debug Symbol Bundles
 *.so
 *.so.*
 *.dylib
@@ -26,6 +26,7 @@
 *.exe
 *.out
 *.app
+*.dSYM/
 
 # Fortran modules
 *.mod
@@ -59,10 +60,12 @@ _deps/
 *.orig
 *.rej
 
-# Python & Pixi Environment
+# Python, Pixi & Coverage Environment
 .pixi/
 .venv/
 __pycache__/
+dist/
+*.egg-info/
 uv.lock
 *.py[cod]
 *$py.class
@@ -74,18 +77,50 @@ uv.lock
 .coverage.*
 coverage.xml
 lcov.info
+*.profraw
+*.profdata
 htmlcov/
 
-# Antigravity ephemeral runtime / teamwork scratch directories
+# Antigravity 2.29.0 ephemeral runtime, teamwork & scratch directories
+.agents/scratch/
+.agents/swarm/
 .agents/teamwork/
-.agents/teamwork/**
+.agents/tmp/
+.agents/workflows/
+/.agent/
+/_agents/
+/_agent/
 .gemini/
+*.md.bak
+
+# Agentic root scratch & handoff documents
+/BRIEFING.md
+/DISPATCH.md
+/HANDOFF.md
+/ORIGINAL_REQUEST.md
+/PLAN.md
+/PROGRESS.md
+/PROJECT.md
+/SCOPE.md
+/TASK.md
 /TEST_INFRA.md
 /TEST_READY.md
-/ORIGINAL_REQUEST.md
-/BRIEFING.md
-/SCOPE.md
-/PROJECT.md
+/WALKTHROUGH.md
+/handoff.md
+/implementation_plan.md
+/progress.md
+/task.md
+/walkthrough.md
+
+# Third-party coding agent local configs & state
+.aider*
+.claude/
+.codex/
+.cursor/
+.cursorrules
+.mcp.json
+.windsurf/
+/CLAUDE.md
 
 # Benchmark Telemetry and Reports
 data/
