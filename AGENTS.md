@@ -28,7 +28,7 @@ A personal practice repository with independent tracks that share one Pixi works
 │   ├── include/{leet_code,systems}/               # public C (.h) and C++ (.hpp) headers
 │   ├── cpp/{leet_code,systems}/                   # .cpp files and the track's CMakeLists.txt
 │   ├── c/{leet_code,systems}/                     # ISO C23 .c files and the track's CMakeLists.txt
-│   ├── rust/{leet_code,systems}/                  # Rust crates (src/lib.rs, modules, Cargo.toml)
+│   ├── rust/{crash_course,leet_code,systems}/     # Rust crates and isolated crash_course sub-workspace
 │   └── python/leet_code/                          # __init__.py, py.typed, one module per problem
 ├── test/
 │   ├── cpp/{leet_code,systems}/                   # GoogleTest, one <name>_test.cpp per target
@@ -48,7 +48,7 @@ A personal practice repository with independent tracks that share one Pixi works
 │   └── examples/                                  # run_shm_pubsub_example.py runner and log verifier
 ├── .agents/
 │   ├── plugins/{leetcode,systems}/                # track plugins and skills
-│   └── skills/optimization-loop/                  # workspace optimization-loop skill & references
+│   └── skills/{optimization-loop,rust-systems-tdd-coach}/ # workspace skills & references
 └── .github/workflows/                             # ci.yml, pixi-update.yml, scorecard.yml
 ```
 
@@ -189,6 +189,19 @@ Intent: empirical microbenchmarking and statistical performance evaluation for s
   then full 30-rep BEST benchmark, unit test gate, atomic git commits, and Academic Scribe report).
 - Baseline promotion requires Bayesian BEST $P(\text{better}) \ge 0.95$ with ROPE (e.g. 2%), zero unit-test regressions,
   and clean pre-commit.
+
+## Rust systems TDD coach (`.agents/skills/rust-systems-tdd-coach`)
+
+Intent: intensive, TDD-driven Rust crash course and senior interview preparation for veteran systems architects.
+
+- Exercises live in `src/rust/crash_course/<exercise_slug>/` as isolated sub-workspaces.
+- **Root workspace exclusion**: `src/rust/crash_course` is excluded from root `Cargo.toml` so active red-phase `todo!()`
+  stubs and failing tests do not break root CI gates (`clippy`, `test-rust`, `cov-rust`).
+- Enforces Rust 1.99.1 and Edition 2024 (`edition = "2024"`, `resolver = "3"` in `Cargo.toml`),
+  `#![deny(unsafe_op_in_unsafe_fn)]`, and bidirectional C++/Rust interop (`cxx`, raw C ABI, `Pin<&mut T>`).
+- Strict red-green-refactor TDD protocol: target methods stubbed solely with `todo!()` (anti-solution leakage); automated
+  red-phase verification (`cargo test --no-run` -> `cargo clippy --no-deps` -> `cargo test` confirming failure strictly on
+  `todo!()` panics); green/refactor critique mode evaluated against a 4-pillar interview rubric.
 
 ## Systems plugin (`.agents/plugins/systems`)
 

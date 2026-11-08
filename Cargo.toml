@@ -4,6 +4,9 @@ members = [
     "src/rust/leet_code",
     "src/rust/systems",
 ]
+exclude = [
+    "src/rust/crash_course",
+]
 
 [workspace.package]
 version = "0.1.0"
