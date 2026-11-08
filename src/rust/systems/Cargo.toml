@@ -14,7 +14,12 @@ path = "src/lib.rs"
 name = "bounded_fifo_test"
 path = "../../../test/rust/systems/bounded_fifo_test.rs"
 
+[[test]]
+name = "shm_pubsub_test"
+path = "../../../test/rust/systems/shm_pubsub_test.rs"
+
 [dependencies]
+libc = { workspace = true }
 thiserror = { workspace = true }
 
 [lints]
