@@ -1,0 +1,153 @@
+//! Integration test suite for `{{COMPONENT}}` demonstrating the 4-tier TDD testing architecture.
+//!
+//! All tests invoke target methods on `{{COMPONENT}}` and are designed to fail on
+//! `todo!()` panics during the TDD red phase.
+
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+use {{EXERCISE_SLUG}}::{{{COMPONENT}}, {{COMPONENT}}Error};
+
+// =========================================================================
+// TIER 1: CANONICAL FUNCTIONAL TESTS
+// =========================================================================
+
+#[test]
+fn test_canonical_push_pop_lifecycle() {
+    let component: {{COMPONENT}}<u32, 4> = {{COMPONENT}}::new().expect("failed to construct component");
+    assert!(component.is_empty());
+    assert_eq!(component.len(), 0);
+
+    assert!(component.push(42).is_ok());
+    assert_eq!(component.len(), 1);
+    assert!(!component.is_empty());
+
+    assert_eq!(component.pop(), Some(42));
+    assert_eq!(component.len(), 0);
+    assert!(component.is_empty());
+    assert_eq!(component.pop(), None);
+}
+
+#[test]
+fn test_canonical_capacity_query() {
+    let component: {{COMPONENT}}<u64, 8> = {{COMPONENT}}::new().expect("failed to construct component");
+    assert_eq!(component.capacity(), 8);
+}
+
+// =========================================================================
+// TIER 2: BOUNDARY & CORNER CASES
+// =========================================================================
+
+#[test]
+fn test_boundary_zero_capacity_rejected() {
+    let result = {{COMPONENT}}::<u32, 0>::new();
+    assert!(matches!(result, Err({{COMPONENT}}Error::InvalidCapacity(0))));
+}
+
+#[test]
+fn test_boundary_full_buffer_rejection() {
+    let component: {{COMPONENT}}<u32, 2> = {{COMPONENT}}::new().expect("failed to construct component");
+    assert!(component.push(10).is_ok());
+    assert!(component.push(20).is_ok());
+
+    // Buffer is full: third push must return CapacityExceeded
+    let overflow_result = component.push(30);
+    assert!(matches!(
+        overflow_result,
+        Err({{COMPONENT}}Error::CapacityExceeded)
+    ));
+
+    assert_eq!(component.pop(), Some(10));
+    assert_eq!(component.pop(), Some(20));
+    assert_eq!(component.pop(), None);
+}
+
+#[test]
+fn test_boundary_empty_pop_returns_none() {
+    let component: {{COMPONENT}}<String, 4> = {{COMPONENT}}::new().expect("failed to construct component");
+    assert_eq!(component.pop(), None);
+}
+
+// =========================================================================
+// TIER 3: INVARIANTS, RAII & DROP VERIFICATION
+// =========================================================================
+
+#[test]
+fn test_invariants_raii_drop_reclamation() {
+    static DROP_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+    struct DropDetector(#[allow(dead_code)] u32);
+    impl Drop for DropDetector {
+        fn drop(&mut self) {
+            DROP_COUNTER.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    DROP_COUNTER.store(0, Ordering::SeqCst);
+    {
+        let component: {{COMPONENT}}<DropDetector, 4> =
+            {{COMPONENT}}::new().expect("failed to construct component");
+        assert!(component.push(DropDetector(1)).is_ok());
+        assert!(component.push(DropDetector(2)).is_ok());
+        // Component goes out of scope here; unpopped items must run Drop
+    }
+
+    assert_eq!(
+        DROP_COUNTER.load(Ordering::SeqCst),
+        2,
+        "All unpopped elements must be dropped during RAII reclamation"
+    );
+}
+
+#[test]
+fn test_invariants_post_close_drain_behavior() {
+    let component: {{COMPONENT}}<u32, 4> = {{COMPONENT}}::new().expect("failed to construct component");
+    assert!(component.push(100).is_ok());
+    assert!(component.push(200).is_ok());
+
+    component.close();
+
+    // After close, push must fail with Closed error:
+    let push_result = component.push(300);
+    assert!(matches!(push_result, Err({{COMPONENT}}Error::Closed)));
+
+    // But existing items must still drain successfully:
+    assert_eq!(component.pop(), Some(100));
+    assert_eq!(component.pop(), Some(200));
+    assert_eq!(component.pop(), None);
+}
+
+// =========================================================================
+// TIER 4: CONCURRENCY & CONTENTION TESTS
+// =========================================================================
+
+#[test]
+fn test_concurrency_threaded_producer_consumer() {
+    let component: {{COMPONENT}}<u64, 64> = {{COMPONENT}}::new().expect("failed to construct component");
+    const TOTAL_ITEMS: u64 = 1_000;
+
+    std::thread::scope(|s| {
+        // Producer thread
+        s.spawn(|| {
+            for i in 0..TOTAL_ITEMS {
+                while component.push(i).is_err() {
+                    std::hint::spin_loop();
+                }
+            }
+        });
+
+        // Consumer thread
+        s.spawn(|| {
+            for expected in 0..TOTAL_ITEMS {
+                loop {
+                    if let Some(val) = component.pop() {
+                        assert_eq!(val, expected);
+                        break;
+                    }
+                    std::hint::spin_loop();
+                }
+            }
+        });
+    });
+
+    assert!(component.is_empty());
+}

@@ -1,0 +1,5 @@
+#include "cxx_bridge.hpp"
+
+namespace systems::interop {
+// Companion translation unit for out-of-line implementations if needed.
+}  // namespace systems::interop
