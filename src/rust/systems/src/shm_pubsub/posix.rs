@@ -386,23 +386,24 @@ fn is_zombie(pid: i64) -> bool {
     #[cfg(target_os = "linux")]
     {
         let path = format!("/proc/{pid}/stat");
-        let mut file = match File::open(&path) {
-            Ok(f) => f,
-            Err(_) => return false,
+        let Ok(mut file) = File::open(&path) else {
+            return false;
         };
         let mut buf = [0u8; 512];
-        let bytes_read = match file.read(&mut buf) {
-            Ok(n) if n > 0 => n,
-            _ => return false,
+        let Ok(bytes_read) = file.read(&mut buf) else {
+            return false;
         };
+        if bytes_read == 0 {
+            return false;
+        }
 
         // Format is: "<pid> (<comm>) <state> ...". Look for the last ')' to skip any spaces/parens in comm.
         let slice = &buf[..bytes_read];
-        if let Some(pos) = slice.iter().rposition(|&b| b == b')') {
-            if pos + 2 < slice.len() {
-                let state = slice[pos + 2];
-                return state == b'Z' || state == b'X';
-            }
+        if let Some(pos) = slice.iter().rposition(|&b| b == b')')
+            && pos + 2 < slice.len()
+        {
+            let state = slice[pos + 2];
+            return state == b'Z' || state == b'X';
         }
         false
     }
