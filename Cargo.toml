@@ -6,6 +6,9 @@ members = [
 ]
 exclude = [
     "src/rust/crash_course",
+    "src/rust/interop",
+    "examples/interop",
+    "test/rust/interop",
 ]
 
 [workspace.package]

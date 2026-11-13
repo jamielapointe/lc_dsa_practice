@@ -28,6 +28,11 @@ This guide covers the development workflow, security policies, and dependency ma
    pixi run cpp-benchmark   # Google Benchmark suite workflow (local only, never on CI)
    pixi run cpp-benchmark-build # build benchmark executable
    pixi run shm-pubsub-example  # run multi-process SPMC shared-memory camera example + verifier
+   pixi run crubit-bootstrap    # clone pinned Crubit, verify Rust 1.99.1 sysroot, build generators
+   pixi run test-interop        # build and test Crubit C++23 <-> Rust 2024 interop suite (Debug)
+   pixi run interop-release     # build and test Crubit C++23 <-> Rust 2024 interop suite (Release/LTO)
+   pixi run examples-interop    # build C++23 and Rust 2024 Crubit showcase demo executables
+   pixi run clippy-interop      # run cargo clippy (-D warnings) across interop Rust crates
    pixi run check-traceability  # systems specs (docs/systems) <-> GoogleTest RecordProperty IDs
    pixi run typecheck
    pixi run lint
@@ -44,6 +49,8 @@ This guide covers the development workflow, security policies, and dependency ma
 - Python 3.14, single quotes, 120 columns, Google-style docstrings, fully typed (`mypy` strict).
 - C++ LeetCode code lives in namespace `leet_code`; C++ systems code lives in namespace `systems`; ISO C23 systems code lives in `src/c/systems` with public
   headers in `src/include/systems/*.h`.
+- Crubit C++23 <-> Rust 2024 interop code lives under `src/{include,cpp,rust}/interop/crubit`, `examples/interop/crubit`, and `test/{cpp,rust}/interop/crubit`
+  (see [`docs/interop/crubit.md`](docs/interop/crubit.md) for `-stdlib=libc++` isolation and public-header purity rules).
 - New problems start in a TDD-red state: stubs compile and tests assert the correct answers.
 - Systems code follows `.agents/plugins/systems/skills/systems-setup/references/safety.md`: no heap after initialization,
   `noexcept` APIs returning `std::expected` (or `[[nodiscard]] enum <name>_error` in C23), no RTTI, OS calls isolated in an adapter, POSIX portability.
