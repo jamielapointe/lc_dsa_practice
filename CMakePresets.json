@@ -85,6 +85,31 @@
         "BUILD_TESTING": "OFF",
         "BUILD_BENCHMARKS": "ON"
       }
+    },
+    {
+      "name": "interop-debug",
+      "inherits": "base",
+      "displayName": "Crubit Interop Debug (C++23 libc++ <-> Rust 2024)",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BUILD_LEET_CODE": "OFF",
+        "BUILD_SYSTEMS": "OFF",
+        "BUILD_INTEROP": "ON",
+        "BUILD_EXAMPLES": "ON"
+      }
+    },
+    {
+      "name": "interop-release",
+      "inherits": "base",
+      "displayName": "Crubit Interop Release (C++23 libc++ <-> Rust 2024, LTO)",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_IPO": "ON",
+        "BUILD_LEET_CODE": "OFF",
+        "BUILD_SYSTEMS": "OFF",
+        "BUILD_INTEROP": "ON",
+        "BUILD_EXAMPLES": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -122,6 +147,16 @@
       "name": "benchmark",
       "configurePreset": "benchmark",
       "displayName": "Build Google Benchmark (Release, Optimized, Local Only)"
+    },
+    {
+      "name": "interop-debug",
+      "configurePreset": "interop-debug",
+      "displayName": "Build Crubit Interop Debug"
+    },
+    {
+      "name": "interop-release",
+      "configurePreset": "interop-release",
+      "displayName": "Build Crubit Interop Release"
     }
   ],
   "testPresets": [
@@ -203,6 +238,30 @@
       },
       "environment": {
         "LLVM_PROFILE_FILE": "${sourceDir}/build/coverage/profraw/%p-%m.profraw"
+      }
+    },
+    {
+      "name": "interop-debug",
+      "configurePreset": "interop-debug",
+      "displayName": "Run Crubit Interop Tests (Debug)",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "ignore",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "interop-release",
+      "configurePreset": "interop-release",
+      "displayName": "Run Crubit Interop Tests (Release)",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "ignore",
+        "stopOnFailure": false
       }
     }
   ],
@@ -326,6 +385,42 @@
         {
           "type": "build",
           "name": "benchmark"
+        }
+      ]
+    },
+    {
+      "name": "interop-debug",
+      "displayName": "Crubit Interop Debug Workflow (Configure, Build, Test)",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "interop-debug"
+        },
+        {
+          "type": "build",
+          "name": "interop-debug"
+        },
+        {
+          "type": "test",
+          "name": "interop-debug"
+        }
+      ]
+    },
+    {
+      "name": "interop-release",
+      "displayName": "Crubit Interop Release Workflow (Configure, Build, Test)",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "interop-release"
+        },
+        {
+          "type": "build",
+          "name": "interop-release"
+        },
+        {
+          "type": "test",
+          "name": "interop-release"
         }
       ]
     }
