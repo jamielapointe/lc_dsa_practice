@@ -495,6 +495,14 @@ function(crubit_add_rust_binary_or_test target_name)
 
     string(ASCII 31 _unit_sep)
     set(rustflags_list "-C" "linker=${CMAKE_CXX_COMPILER}" "-C" "link-arg=-stdlib=libc++")
+    if(UNIX AND NOT APPLE)
+        if(CMAKE_LINKER_TYPE STREQUAL "LLD")
+            list(APPEND rustflags_list "-C" "link-arg=-fuse-ld=lld")
+        endif()
+        if(CMAKE_INTERPROCEDURAL_OPTIMIZATION AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+            list(APPEND rustflags_list "-C" "link-arg=-flto=thin")
+        endif()
+    endif()
     if(UNIX AND NOT APPLE AND cpp_link_targets)
         list(APPEND rustflags_list "-C" "link-arg=-Wl,--start-group")
     endif()
@@ -511,11 +519,23 @@ function(crubit_add_rust_binary_or_test target_name)
             "link-arg=-L$ENV{CONDA_PREFIX}/lib"
             "-C"
             "link-arg=-Wl,-rpath,$ENV{CONDA_PREFIX}/lib"
-            "-C"
-            "link-arg=-lc++abi"
         )
     endif()
     list(APPEND rustflags_list "-C" "link-arg=-lc++")
+    if(UNIX AND NOT APPLE)
+        if(DEFINED ENV{CONDA_PREFIX})
+            list(APPEND rustflags_list "-C" "link-arg=-lc++abi")
+        endif()
+        list(
+            APPEND rustflags_list
+            "-C"
+            "link-arg=-lm"
+            "-C"
+            "link-arg=-lpthread"
+            "-C"
+            "link-arg=-ldl"
+        )
+    endif()
     list(JOIN rustflags_list "${_unit_sep}" encoded_rustflags)
 
     set(cargo_common_args --manifest-path "${manifest_path}" --target-dir "${cargo_target_dir}")
