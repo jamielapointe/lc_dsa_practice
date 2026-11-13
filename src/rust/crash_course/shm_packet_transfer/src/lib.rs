@@ -36,6 +36,12 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![warn(missing_docs)]
 
+use core::cell::UnsafeCell;
+use core::mem::MaybeUninit;
+use core::sync::atomic::AtomicBool;
+use core::sync::atomic::Ordering;
+use std::sync::Arc;
+
 /// Maximum inline payload capacity in bytes (standard Ethernet MTU frame payload).
 pub const PACKET_CAPACITY: usize = 1500;
 
@@ -93,13 +99,77 @@ pub enum PacketError {
 #[derive(Debug, Default)]
 pub struct ShmHandoffChannel;
 
+/// 64-byte cache-line wrapper preventing MESI false sharing between atomic control
+/// state and inline packet payload storage.
+#[repr(align(64))]
+#[derive(Debug)]
+struct CachePadded<T>(T);
+
+/// Private single-slot SPSC shared state backing PacketProducer & Packet Consumer.
+///
+/// State protocol (`occupied`):
+/// - `false` → empty; producer can write
+///    - `slot` is uninitialized (undefined behavior if read)
+/// - `true` → occupied; consumer can read
+///    - `slot` holds a valid, initialized `PacketBuffer`
+#[repr(C)]
+#[derive(Debug)]
+struct SharedSlot {
+    occupied: CachePadded<AtomicBool>,
+    slot: UnsafeCell<MaybeUninit<PacketBuffer>>,
+}
+
+// SAFETY:
+// 1. `PacketBuffer` is `Send` (plain `#[repr(C)]` integers and `[u8; 1500]`).
+// 2. `ShmHandoffChannel::new` creates at most one `PacketProducer` and one
+//    `PacketConsumer` per `SharedSlot`, and neither endpoint implements `Clone`.
+// 3. `PacketProducer::send(&mut self, ...)` and `PacketConsumer::receive(&mut self)`
+//    require `&mut self`, statically serializing all producer accesses and all
+//    consumer accesses without locks.
+// 4. Shared `&self` queries (`is_ready`, `has_data`) access only `occupied` via
+//    `AtomicBool::load(Ordering::Acquire)` and never dereference `slot`.
+// 5. Ownership of `slot` transfers strictly via `Release`/`Acquire` synchronization
+//    on `occupied`: producer writes `slot` only when `occupied == false` before a
+//    `Release` store of `true`; consumer reads `slot` only when `occupied == true`
+//    before a `Release` store of `false`.
+unsafe impl Sync for SharedSlot {}
+
+impl SharedSlot {
+    fn new() -> Self {
+        Self {
+            occupied: CachePadded(AtomicBool::new(false)),
+            slot: UnsafeCell::new(MaybeUninit::uninit()),
+        }
+    }
+}
+
+impl Drop for SharedSlot {
+    fn drop(&mut self) {
+        if *self.occupied.0.get_mut() {
+            // SAFETY:
+            // 1. `&mut self` in `Drop::drop` guarantees the enclosing `Arc<SharedSlot>`
+            //     has reached zero strong/weak references, giving exclusive access with
+            //     no concurrent threads.
+            // 2. `*self.occupied.0.get_mut()` is `true`, proving a `PacketBuffer` was
+            //     written by `send` and never moved out by `receive`.
+            unsafe {
+                self.slot.get_mut().assume_init_drop();
+            }
+        }
+    }
+}
+
 /// Producer endpoint for transferring packet buffers into the shared memory channel.
 #[derive(Debug)]
-pub struct PacketProducer;
+pub struct PacketProducer {
+    shared_mem: Arc<SharedSlot>,
+}
 
 /// Consumer endpoint for receiving packet buffers from the shared memory channel.
 #[derive(Debug)]
-pub struct PacketConsumer;
+pub struct PacketConsumer {
+    shared_mem: Arc<SharedSlot>,
+}
 
 impl PacketBuffer {
     /// Constructs a new packet buffer with the given channel ID, sequence number, and payload.
@@ -172,7 +242,12 @@ impl ShmHandoffChannel {
         reason = "Factory method creates connected producer and consumer channel endpoints"
     )]
     pub fn new() -> (PacketProducer, PacketConsumer) {
-        todo!("Implement ShmHandoffChannel::new")
+        let shared_mem = Arc::new(SharedSlot::new());
+        let producer = PacketProducer {
+            shared_mem: Arc::clone(&shared_mem),
+        };
+        let consumer = PacketConsumer { shared_mem };
+        (producer, consumer)
     }
 }
 
@@ -189,14 +264,32 @@ impl PacketProducer {
         clippy::result_large_err,
         reason = "Zero-allocation affine handoff returns unconsumed buffer on error"
     )]
-    pub fn send(&mut self, _packet: PacketBuffer) -> Result<(), PacketBuffer> {
-        todo!("Implement PacketProducer::send")
+    pub fn send(&mut self, packet: PacketBuffer) -> Result<(), PacketBuffer> {
+        if !self.is_ready() {
+            return Err(packet);
+        }
+
+        // SAFETY:
+        // 1. `&mut self` guarantess no concurrent `PacketProducer` call exists, and only
+        //    `PacketProducer::sent` transitions `occupied` from `false` to `true`.
+        // 2. Observing `occupied == false` with `Ordering::Acquire` synchronizes-with
+        //    any prior `Release` store of `false` in `PacketConsumer::receive` (or
+        //    initial construction), proving the consumer has finished reading `slot`
+        //   and will not access `slot` again until `occupied` becomes `true`.
+        // 3. `self.shared.slot.get()` is non-null, properly aligned for
+        //    `MaybeUninit<PacketBuffer>`, and uniquely accessed by this thread.
+        unsafe {
+            (*self.shared_mem.slot.get()).write(packet);
+        }
+
+        self.shared_mem.occupied.0.store(true, Ordering::Release);
+        Ok(())
     }
 
     /// Returns `true` if the channel slot is vacant and ready to accept a packet.
     #[must_use]
     pub fn is_ready(&self) -> bool {
-        todo!("Implement PacketProducer::is_ready")
+        !self.shared_mem.occupied.0.load(Ordering::Acquire)
     }
 }
 
@@ -207,12 +300,29 @@ impl PacketConsumer {
     /// or [`None`] if the slot is empty.
     #[must_use]
     pub fn receive(&mut self) -> Option<PacketBuffer> {
-        todo!("Implement PacketConsumer::receive")
+        if !self.has_data() {
+            return None;
+        }
+
+        // SAFETY:
+        // 1. `&mut self` guarantees no concurrent `PacketConsumer` call exists, and only
+        //    `PacketConsumer::receive` transitions `occupied` from `true` to `false`.
+        // 2. Observing `occupied == true` with `Ordering::Acquire` synchronizes-with
+        //    the `Release` store of `true` in `PacketProducer::send`, proving `slot`
+        //    contains a fully initialized `PacketBuffer` and the producer will not
+        //    access `slot` until `occupied` becomes `false`.
+        // 3. `assume_init_read` performs a bitwise destructive move out of `slot`;
+        //    clearing `occupied` to `false` below logically marks `slot` uninitialized,
+        //    preventing double-reads or double-drops in `SharedSlot::drop`.
+        let packet = unsafe { (*self.shared_mem.slot.get()).assume_init_read() };
+
+        self.shared_mem.occupied.0.store(false, Ordering::Release);
+        Some(packet)
     }
 
     /// Returns `true` if a packet is currently waiting in the channel slot.
     #[must_use]
     pub fn has_data(&self) -> bool {
-        todo!("Implement PacketConsumer::has_data")
+        self.shared_mem.occupied.0.load(Ordering::Acquire)
     }
 }
