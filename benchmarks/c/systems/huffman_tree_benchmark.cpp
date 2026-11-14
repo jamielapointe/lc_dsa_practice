@@ -21,9 +21,9 @@ extern "C" {
 
 namespace {
 
-constexpr std::uint64_t kDeterministicBenchmarkSeed = 0x5EED'B17A'F119'2026ULL;
+constexpr uint64_t kDeterministicBenchmarkSeed = 0x5EED'B17A'F119'2026ULL;
 
-enum class WorkloadKind : std::uint8_t {
+enum class WorkloadKind : uint8_t {
   kUniform8BitShuffled = 0U,
   kDeflateSkewedShuffled = 1U,
   kDeepSpine32Shuffled = 2U,
@@ -34,8 +34,8 @@ enum class WorkloadKind : std::uint8_t {
     -> std::array<struct huffman_symbol_length, HUFFMAN_MAX_SYMBOLS> {
   std::array<struct huffman_symbol_length, HUFFMAN_MAX_SYMBOLS> entries{};
 
-  for (std::size_t i = 0U; i < HUFFMAN_MAX_SYMBOLS; ++i) {
-    entries[i].symbol = static_cast<std::uint8_t>(i);
+  for (size_t i = 0U; i < HUFFMAN_MAX_SYMBOLS; ++i) {
+    entries[i].symbol = static_cast<uint8_t>(i);
     entries[i].length = 8U;
   }
 
@@ -49,11 +49,11 @@ enum class WorkloadKind : std::uint8_t {
       // Full 256-symbol canonical Huffman tree with depths 5..10:
       // 4x len 5 + 12x len 6 + 32x len 7 + 48x len 8 + 96x len 9 + 64x len 10
       // Kraft sum = (4*32 + 12*16 + 32*8 + 48*4 + 96*2 + 64*1) / 1024 = 1.0
-      std::size_t idx = 0U;
-      constexpr std::array<std::pair<std::size_t, std::uint8_t>, 6> kBuckets = {
+      size_t idx = 0U;
+      constexpr std::array<std::pair<size_t, uint8_t>, 6> kBuckets = {
           {{4U, 5U}, {12U, 6U}, {32U, 7U}, {48U, 8U}, {96U, 9U}, {64U, 10U}}};
       for (const auto& [bucket_count, len] : kBuckets) {
-        for (std::size_t k = 0U; k < bucket_count; ++k) {
+        for (size_t k = 0U; k < bucket_count; ++k) {
           entries[idx].length = len;
           ++idx;
         }
@@ -64,11 +64,11 @@ enum class WorkloadKind : std::uint8_t {
     }
     case WorkloadKind::kDeepSpine32Shuffled: {
       // 231 symbols at length 8, plus 25 symbols descending to max depth 32
-      for (std::size_t i = 0U; i < 231U; ++i) {
+      for (size_t i = 0U; i < 231U; ++i) {
         entries[i].length = 8U;
       }
-      for (std::size_t i = 0U; i < 23U; ++i) {
-        entries[231U + i].length = static_cast<std::uint8_t>(9U + i);
+      for (size_t i = 0U; i < 23U; ++i) {
+        entries[231U + i].length = static_cast<uint8_t>(9U + i);
       }
       entries[254U].length = 32U;
       entries[255U].length = 32U;
@@ -77,8 +77,8 @@ enum class WorkloadKind : std::uint8_t {
       break;
     }
     case WorkloadKind::kReverseSorted8Bit: {
-      for (std::size_t i = 0U; i < HUFFMAN_MAX_SYMBOLS; ++i) {
-        entries[i].symbol = static_cast<std::uint8_t>(255U - i);
+      for (size_t i = 0U; i < HUFFMAN_MAX_SYMBOLS; ++i) {
+        entries[i].symbol = static_cast<uint8_t>(255U - i);
         entries[i].length = 8U;
       }
       break;
@@ -104,10 +104,10 @@ void BM_HuffmanTree_C_Baseline(benchmark::State& state,
     benchmark::ClobberMemory();
   }
 
-  state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()) *
-                          static_cast<std::int64_t>(entries.size()));
-  state.SetBytesProcessed(static_cast<std::int64_t>(state.iterations()) *
-                          static_cast<std::int64_t>(sizeof(entries)));
+  state.SetItemsProcessed(static_cast<int64_t>(state.iterations()) *
+                          static_cast<int64_t>(entries.size()));
+  state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) *
+                          static_cast<int64_t>(sizeof(entries)));
 }
 
 void BM_HuffmanTree_C_Candidate(benchmark::State& state,
@@ -127,10 +127,10 @@ void BM_HuffmanTree_C_Candidate(benchmark::State& state,
     benchmark::ClobberMemory();
   }
 
-  state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()) *
-                          static_cast<std::int64_t>(entries.size()));
-  state.SetBytesProcessed(static_cast<std::int64_t>(state.iterations()) *
-                          static_cast<std::int64_t>(sizeof(entries)));
+  state.SetItemsProcessed(static_cast<int64_t>(state.iterations()) *
+                          static_cast<int64_t>(entries.size()));
+  state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) *
+                          static_cast<int64_t>(sizeof(entries)));
 }
 
 #define REGISTER_HUFFMAN_C_BENCHMARK(label, kind)            \
@@ -153,16 +153,16 @@ REGISTER_HUFFMAN_C_BENCHMARK(256_ReverseSorted8Bit,
 #if defined(__APPLE__)
 auto sysctl_string(const char* name) -> std::string {
   std::array<char, 256> buffer{};
-  std::size_t size = buffer.size();
+  size_t size = buffer.size();
   if (sysctlbyname(name, buffer.data(), &size, nullptr, 0) == 0 && size > 0U) {
     return std::string{buffer.data()};
   }
   return {};
 }
 
-auto sysctl_int64(const char* name) -> std::int64_t {
-  std::int64_t value = 0;
-  std::size_t size = sizeof(value);
+auto sysctl_int64(const char* name) -> int64_t {
+  int64_t value = 0;
+  size_t size = sizeof(value);
   if (sysctlbyname(name, &value, &size, nullptr, 0) == 0) {
     return value;
   }
@@ -175,7 +175,7 @@ void configure_darwin_benchmark_environment() {
 
   const auto warmup_deadline =
       std::chrono::steady_clock::now() + std::chrono::milliseconds(150);
-  std::uint64_t accumulator = 1U;
+  uint64_t accumulator = 1U;
   while (std::chrono::steady_clock::now() < warmup_deadline) {
     for (int i = 0; i < 4096; ++i) {
       accumulator = (accumulator * 6364136223846793005ULL) + 1ULL;
@@ -190,8 +190,8 @@ void configure_darwin_benchmark_environment() {
   benchmark::AddCustomContext("darwin_thread_qos",
                               "QOS_CLASS_USER_INTERACTIVE");
 
-  const std::int64_t p_cores = sysctl_int64("hw.perflevel0.physicalcpu");
-  const std::int64_t e_cores = sysctl_int64("hw.perflevel1.physicalcpu");
+  const int64_t p_cores = sysctl_int64("hw.perflevel0.physicalcpu");
+  const int64_t e_cores = sysctl_int64("hw.perflevel1.physicalcpu");
   if (p_cores > 0) {
     benchmark::AddCustomContext("apple_perflevel0_p_cores",
                                 std::to_string(p_cores));
@@ -209,7 +209,7 @@ void configure_darwin_benchmark_environment() {
     benchmark::AddCustomContext("apple_perflevel1_e_cores",
                                 std::to_string(e_cores));
   }
-  const std::int64_t cacheline = sysctl_int64("hw.cachelinesize");
+  const int64_t cacheline = sysctl_int64("hw.cachelinesize");
   if (cacheline > 0) {
     benchmark::AddCustomContext("apple_cacheline_bytes",
                                 std::to_string(cacheline));

@@ -4,12 +4,12 @@
 /// @brief C++23 POD structs, scoped enums, and pure functions exported to Rust
 /// 2024 via Crubit.
 
+#include <cstdint>
+
 namespace interop::crubit {
 
 /// @brief Flight phase state used across the C++23 <-> Rust 2024 boundary.
-// Underlying int matches C ABI / Crubit enum mapping without <cstdint> in
-// public headers.
-enum class FlightPhase : int {  // NOLINT(performance-enum-size)
+enum class FlightPhase : uint8_t {
   kPreflight = 0,
   kClimb = 1,
   kCruise = 2,

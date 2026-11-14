@@ -28,37 +28,37 @@ namespace {
 using Clock = std::chrono::steady_clock;
 
 /// "SHMRNDV1" in ASCII. Identifies a ProcessRendezvous shared segment.
-constexpr std::uint64_t kMagic = 0x5348'4D52'4E44'5631ULL;
+constexpr uint64_t kMagic = 0x5348'4D52'4E44'5631ULL;
 /// Layout version checked by `open()`.
-constexpr std::uint32_t kLayoutVersion = 1;
+constexpr uint32_t kLayoutVersion = 1;
 /// False-sharing alignment granularity.
-constexpr std::size_t kCacheLine = platform::kCacheLineSize;
+constexpr size_t kCacheLine = platform::kCacheLineSize;
 
 /// @brief Shared-memory layout for the two-stage startup rendezvous
 /// (PRV-REQ-012).
 struct alignas(kCacheLine) RendezvousHeader {
   // Line 0: identity and version. `magic` is release-stored last on init.
-  std::atomic<std::uint64_t> magic{0};
-  std::uint32_t layout_version{0};
-  std::uint32_t reserved{0};
+  std::atomic<uint64_t> magic{0};
+  uint32_t layout_version{0};
+  uint32_t reserved{0};
 
   // Line 1: stage 1 (producer created channel).
-  alignas(kCacheLine) std::atomic<std::uint32_t> producer_ready{0};
+  alignas(kCacheLine) std::atomic<uint32_t> producer_ready{0};
 
   // Line 2: stage 2 (consumer attached subscriber and is waiting).
-  alignas(kCacheLine) std::atomic<std::uint32_t> consumer_ready{0};
+  alignas(kCacheLine) std::atomic<uint32_t> consumer_ready{0};
 
   // Line 3: close flag.
-  alignas(kCacheLine) std::atomic<std::uint32_t> closed{0};
+  alignas(kCacheLine) std::atomic<uint32_t> closed{0};
 };
 
-static_assert(std::atomic<std::uint64_t>::is_always_lock_free);
-static_assert(std::atomic<std::uint32_t>::is_always_lock_free);
+static_assert(std::atomic<uint64_t>::is_always_lock_free);
+static_assert(std::atomic<uint32_t>::is_always_lock_free);
 static_assert(std::is_trivially_destructible_v<RendezvousHeader>);
 static_assert(std::is_standard_layout_v<RendezvousHeader>);
 static_assert(sizeof(RendezvousHeader) % kCacheLine == 0);
 
-constexpr std::size_t kHeaderBytes = sizeof(RendezvousHeader);
+constexpr size_t kHeaderBytes = sizeof(RendezvousHeader);
 
 [[nodiscard]] auto header_of(std::byte* base) noexcept -> RendezvousHeader& {
   // NOLINTNEXTLINE(*-pro-type-reinterpret-cast): shared-memory layout view.
@@ -107,9 +107,8 @@ void initialize_layout(std::byte* base) noexcept {
   return now + std::chrono::duration_cast<Clock::duration>(timeout);
 }
 
-[[nodiscard]] auto try_wait_flag(
-    const detail::RendezvousOsHandle& handle,
-    const std::atomic<std::uint32_t>& flag) noexcept
+[[nodiscard]] auto try_wait_flag(const detail::RendezvousOsHandle& handle,
+                                 const std::atomic<uint32_t>& flag) noexcept
     -> std::expected<void, ProcessRendezvousError> {
   if (!handle.valid()) {
     return std::unexpected(ProcessRendezvousError::kInvalidArgument);
@@ -126,7 +125,7 @@ void initialize_layout(std::byte* base) noexcept {
 }
 
 [[nodiscard]] auto wait_flag_until(const detail::RendezvousOsHandle& handle,
-                                   const std::atomic<std::uint32_t>& flag,
+                                   const std::atomic<uint32_t>& flag,
                                    Clock::time_point deadline) noexcept
     -> std::expected<void, ProcessRendezvousError> {
   constexpr auto kMaxSlice = std::chrono::milliseconds{2};

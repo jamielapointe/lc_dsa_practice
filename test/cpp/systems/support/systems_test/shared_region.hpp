@@ -27,7 +27,7 @@ namespace detail {
 /// Owns an anonymous shared mapping of `bytes` bytes (page-aligned, zeroed).
 class AnonymousSharedMapping {
  public:
-  explicit AnonymousSharedMapping(std::size_t bytes) noexcept;
+  explicit AnonymousSharedMapping(size_t bytes) noexcept;
   ~AnonymousSharedMapping();
 
   AnonymousSharedMapping(const AnonymousSharedMapping&) = delete;
@@ -43,7 +43,7 @@ class AnonymousSharedMapping {
 
  private:
   void* base_{nullptr};
-  std::size_t bytes_{0};
+  size_t bytes_{0};
 };
 
 /// True unless `T` is (an array of) a `std::atomic` that is not always
@@ -56,7 +56,7 @@ template <typename U>
 struct IsAddressFree<std::atomic<U>>
     : std::bool_constant<std::atomic<U>::is_always_lock_free> {};
 
-template <typename U, std::size_t N>
+template <typename U, size_t N>
 // NOLINTNEXTLINE(*-avoid-c-arrays): trait must match C array types.
 struct IsAddressFree<U[N]> : IsAddressFree<U> {};
 
@@ -70,7 +70,7 @@ struct IsAddressFree<U[N]> : IsAddressFree<U> {};
 ///
 /// @tparam T Trivially destructible type: plain data, an always-lock-free
 ///         `std::atomic`, or a struct of those (for example a rendezvous
-///         block of `std::atomic<std::uint32_t>` flags).
+///         block of `std::atomic<uint32_t>` flags).
 template <typename T>
 class SharedRegion {
   static_assert(std::is_trivially_destructible_v<T>,

@@ -64,7 +64,7 @@ Never copy these helpers into a test file; extend the support library (with self
 constexpr int kThreads = 8;
 constexpr auto kBudget = std::chrono::seconds{3};
 std::latch start{kThreads + 1};
-std::atomic<std::uint64_t> published{0};
+std::atomic<uint64_t> published{0};
 {
   std::vector<std::jthread> workers;  // tests may allocate; the component may not
   workers.reserve(kThreads);          // clang-tidy: performance-inefficient-vector-operation
@@ -135,7 +135,7 @@ designs that do not need robust mutexes should not skip.
 Initialize outside the scope, exercise every steady-state operation inside it, read the count before any other assertion (gtest may allocate on failure):
 
 ```cpp
-std::size_t allocations = 0;
+size_t allocations = 0;
 {
   const systems_test::AllocationScope scope;
   for (int i = 0; i < 1000; ++i) { static_cast<void>(channel->publish(payload)); static_cast<void>(sub.try_receive(buffer)); }

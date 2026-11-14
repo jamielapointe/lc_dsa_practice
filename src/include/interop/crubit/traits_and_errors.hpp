@@ -4,6 +4,8 @@
 /// @brief Value equality and FFI-safe calibration error outcomes exported to
 /// Rust 2024.
 
+#include <cstdint>
+
 namespace interop::crubit {
 
 /// @brief 2-DOF proportional-derivative controller gains.
@@ -20,9 +22,7 @@ struct GainVector2d {
 };
 
 /// @brief Status code produced by PD controller calibration.
-// Underlying int matches C ABI / Crubit enum mapping without <cstdint> in
-// public headers.
-enum class CalibrationCode : int {  // NOLINT(performance-enum-size)
+enum class CalibrationCode : uint8_t {
   kOk = 0,
   kOutOfRange = 1,
   kSingular = 2,

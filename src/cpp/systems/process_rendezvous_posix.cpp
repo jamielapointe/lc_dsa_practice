@@ -35,6 +35,7 @@
 #include <cerrno>
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #if defined(HAVE_POSIX_SEM_TIMEDWAIT)
 #include <ctime>
 #endif
@@ -70,7 +71,7 @@ constexpr int kPopulateFlag = 0;
 
 constexpr int kMlockRetries = 3;
 constexpr auto kMlockFirstDelay = std::chrono::milliseconds{1};
-constexpr std::size_t kFallbackPageSize = 4096;
+constexpr size_t kFallbackPageSize = 4096;
 
 using CName = std::array<char, platform::kMaxShmNameLength + 1>;
 
@@ -114,14 +115,13 @@ class FileDescriptor {
   int fd_{-1};
 };
 
-[[nodiscard]] auto page_size() noexcept -> std::size_t {
-  // NOLINTNEXTLINE(google-runtime-int): sysconf's POSIX return type is long.
-  const long size = ::sysconf(_SC_PAGESIZE);
-  return size > 0 ? static_cast<std::size_t>(size) : kFallbackPageSize;
+[[nodiscard]] auto page_size() noexcept -> size_t {
+  const int64_t size = ::sysconf(_SC_PAGESIZE);
+  return size > 0 ? static_cast<size_t>(size) : kFallbackPageSize;
 }
 
-[[nodiscard]] auto map_shared(int fd, std::size_t bytes,
-                              int extra_flags) noexcept -> std::byte* {
+[[nodiscard]] auto map_shared(int fd, size_t bytes, int extra_flags) noexcept
+    -> std::byte* {
   void* const base = ::mmap(nullptr, bytes, PROT_READ | PROT_WRITE,
                             MAP_SHARED | extra_flags, fd, 0);
   // NOLINTNEXTLINE(*-cstyle-cast,performance-no-int-to-ptr): MAP_FAILED.
@@ -132,17 +132,17 @@ class FileDescriptor {
 }
 
 void prefault_by_writing(std::span<std::byte> region) noexcept {
-  const std::size_t step = page_size();
-  for (std::size_t offset = 0; offset < region.size(); offset += step) {
+  const size_t step = page_size();
+  for (size_t offset = 0; offset < region.size(); offset += step) {
     std::atomic_ref{region[offset]}.store(std::byte{0},
                                           std::memory_order_relaxed);
   }
 }
 
 void prefault_by_reading(std::span<std::byte> region) noexcept {
-  const std::size_t step = page_size();
+  const size_t step = page_size();
   std::byte sink{0};
-  for (std::size_t offset = 0; offset < region.size(); offset += step) {
+  for (size_t offset = 0; offset < region.size(); offset += step) {
     sink |= std::atomic_ref{region[offset]}.load(std::memory_order_relaxed);
   }
   std::atomic_signal_fence(std::memory_order_seq_cst);
@@ -189,8 +189,7 @@ RendezvousOsHandle::~RendezvousOsHandle() {
   }
 }
 
-auto RendezvousOsHandle::create(std::string_view name,
-                                std::size_t bytes) noexcept
+auto RendezvousOsHandle::create(std::string_view name, size_t bytes) noexcept
     -> std::expected<RendezvousOsHandle, ProcessRendezvousError> {
   const auto c_name = to_c_name(name);
   if (!c_name || bytes == 0) {
@@ -252,7 +251,7 @@ auto RendezvousOsHandle::open(std::string_view name) noexcept
   if (::fstat(fd.get(), &info) != 0 || info.st_size < 0) {
     return std::unexpected(ProcessRendezvousError::kOsError);
   }
-  const auto bytes = static_cast<std::size_t>(info.st_size);
+  const auto bytes = static_cast<size_t>(info.st_size);
   if (bytes == 0) {
     return RendezvousOsHandle{};
   }

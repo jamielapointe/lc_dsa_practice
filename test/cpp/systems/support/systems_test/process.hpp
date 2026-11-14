@@ -53,7 +53,7 @@ inline constexpr int kChildThrew = 125;
 inline constexpr int kForkFailed = -1;
 
 /// @brief How a child process ended.
-enum class ChildStatus : std::uint8_t {
+enum class ChildStatus : uint8_t {
   kExited,     ///< Normal exit; `ChildResult::code` is the exit code.
   kSignaled,   ///< Killed by a signal; `ChildResult::code` is the signal.
   kTimedOut,   ///< Still running at the deadline; it was SIGKILLed and reaped.

@@ -39,16 +39,16 @@ auto main() -> int {
   // Verify Rust TelemetryPacketBuffer RAII Drop counter via stack &
   // std::unique_ptr.
   INTEROP_EXPECT_EQ(ctx, rs_ownership_raii::live_packet_buffers(),
-                    static_cast<std::size_t>(0));
+                    static_cast<size_t>(0));
   {
     auto buf = rs_ownership_raii::TelemetryPacketBuffer::create(
         rs::StrRef{"imu_primary"}, 16);
     INTEROP_EXPECT_EQ(ctx, rs_ownership_raii::live_packet_buffers(),
-                      static_cast<std::size_t>(1));
-    INTEROP_EXPECT_EQ(ctx, buf.label_len(), static_cast<std::size_t>(11));
-    INTEROP_EXPECT_EQ(ctx, buf.append_byte(0xAAU), static_cast<std::size_t>(1));
-    INTEROP_EXPECT_EQ(ctx, buf.append_byte(0x55U), static_cast<std::size_t>(2));
-    INTEROP_EXPECT_EQ(ctx, buf.checksum(), static_cast<std::uint32_t>(0xFFU));
+                      static_cast<size_t>(1));
+    INTEROP_EXPECT_EQ(ctx, buf.label_len(), static_cast<size_t>(11));
+    INTEROP_EXPECT_EQ(ctx, buf.append_byte(0xAAU), static_cast<size_t>(1));
+    INTEROP_EXPECT_EQ(ctx, buf.append_byte(0x55U), static_cast<size_t>(2));
+    INTEROP_EXPECT_EQ(ctx, buf.checksum(), static_cast<uint32_t>(0xFFU));
 
     // TelemetryPacketBuffer has deleted C++ move ctor, so std::make_unique
     // cannot be used.
@@ -57,14 +57,14 @@ auto main() -> int {
             rs_ownership_raii::TelemetryPacketBuffer::create(rs::StrRef{"aux"},
                                                              8)));
     INTEROP_EXPECT_EQ(ctx, rs_ownership_raii::live_packet_buffers(),
-                      static_cast<std::size_t>(2));
-    INTEROP_EXPECT_EQ(ctx, heap_buf->label_len(), static_cast<std::size_t>(3));
+                      static_cast<size_t>(2));
+    INTEROP_EXPECT_EQ(ctx, heap_buf->label_len(), static_cast<size_t>(3));
     heap_buf.reset();
     INTEROP_EXPECT_EQ(ctx, rs_ownership_raii::live_packet_buffers(),
-                      static_cast<std::size_t>(1));
+                      static_cast<size_t>(1));
   }
   INTEROP_EXPECT_EQ(ctx, rs_ownership_raii::live_packet_buffers(),
-                    static_cast<std::size_t>(0));
+                    static_cast<size_t>(0));
 
   return ctx.exit_code();
 }

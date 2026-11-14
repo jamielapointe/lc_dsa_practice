@@ -32,8 +32,8 @@ auto make_grid(const std::vector<std::vector<int>>& int_grid)
 bool all_cleaned(const std::vector<std::vector<int>>& original_room,
                  const DefaultRobot& robot) {
   const auto& robot_grid = robot.grid();
-  for (std::size_t i = 0; i < original_room.size(); ++i) {
-    for (std::size_t j = 0; j < original_room[0].size(); ++j) {
+  for (size_t i = 0; i < original_room.size(); ++i) {
+    for (size_t j = 0; j < original_room[0].size(); ++j) {
       if (original_room[i][j] == 1 &&
           robot_grid[i][j] != CellValue::OpenClean) {
         return false;

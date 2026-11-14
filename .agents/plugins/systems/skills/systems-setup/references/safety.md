@@ -18,10 +18,10 @@ Every generated header, stub, spec, and test must respect these rules; the user'
 
 | Rule | Detail |
 | --- | --- |
-| No exceptions in runtime paths | Every public operation is `noexcept` and reports failure with `std::expected<T, <Name>Error>` (or `std::expected<void, ...>`). The error type is a scoped `enum class <Name>Error : std::uint8_t` that always includes `kNotImplemented` (used by stubs) and one enumerator per distinct failure. |
+| No exceptions in runtime paths | Every public operation is `noexcept` and reports failure with `std::expected<T, <Name>Error>` (or `std::expected<void, ...>`). The error type is a scoped `enum class <Name>Error : uint8_t` that always includes `kNotImplemented` (used by stubs) and one enumerator per distinct failure. |
 | No RTTI | No `dynamic_cast`, no `typeid`; use static polymorphism (templates, concepts) or explicit tagged types. |
 | `[[nodiscard]]` everywhere | All functions returning values, and the error enum type itself. |
-| Fixed-width integers | `std::uint32_t`, `std::int64_t`, ... for anything stored in shared memory, on the wire, or in registers. |
+| Fixed-width integers | Enforce Google C++ Style Guide Integer Types: allow `int`, unqualified `<cstdint>` types (`uint32_t`, `int64_t`, ...), and `size_t`/`ptrdiff_t` (`<cstddef>`), never `short`, `long`, or `unsigned`. |
 | No type punning | Use `std::bit_cast`, `std::memcpy` into properly aligned storage, or `std::start_lifetime_as` (if available); never `reinterpret_cast` between unrelated object types to read data. |
 | No implicit narrowing | Warnings are errors; cast explicitly with `static_cast` and check ranges first. |
 | Deterministic timing | Every blocking operation has try / timed / blocking variants; the timed variant takes a `std::chrono` duration and uses `steady_clock`. Spin loops are bounded and back off. |

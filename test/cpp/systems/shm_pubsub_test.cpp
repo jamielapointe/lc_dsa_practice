@@ -85,12 +85,11 @@ class TestName {
 
 /// Payload whose bytes are all derived from `tag`, so any mix of two
 /// publications (a torn read) is detectable. The first 8 bytes hold the tag.
-auto make_payload(std::uint64_t tag, std::size_t size)
-    -> std::vector<std::byte> {
+auto make_payload(uint64_t tag, size_t size) -> std::vector<std::byte> {
   std::vector<std::byte> bytes(size);
   std::array<std::byte, sizeof(tag)> tag_bytes{};
   std::memcpy(tag_bytes.data(), &tag, sizeof(tag));
-  for (std::size_t i = 0; i < size; ++i) {
+  for (size_t i = 0; i < size; ++i) {
     bytes[i] = i < tag_bytes.size()
                    ? tag_bytes[i]
                    : static_cast<std::byte>(((tag * 31U) + i) & 0xFFU);
@@ -99,15 +98,15 @@ auto make_payload(std::uint64_t tag, std::size_t size)
 }
 
 /// Reads the tag of a payload produced by `make_payload` (size >= 8).
-auto read_tag(std::span<const std::byte> bytes) -> std::uint64_t {
-  std::uint64_t tag = 0;
+auto read_tag(std::span<const std::byte> bytes) -> uint64_t {
+  uint64_t tag = 0;
   std::memcpy(&tag, bytes.data(), std::min(bytes.size(), sizeof(tag)));
   return tag;
 }
 
 /// True if every byte matches the pattern implied by the embedded tag.
 auto payload_is_consistent(std::span<const std::byte> bytes) -> bool {
-  if (bytes.size() < sizeof(std::uint64_t)) {
+  if (bytes.size() < sizeof(uint64_t)) {
     return true;
   }
   const auto expected = make_payload(read_tag(bytes), bytes.size());
@@ -221,7 +220,7 @@ TEST(ShmPubSubTest, OpenMissingChannelReturnsNotFound) {
 
 TEST(ShmPubSubTest, OpenRejectsForeignSegments) {
   RecordProperty("requirements", "SHMPS-REQ-005");
-  for (const std::size_t size : {std::size_t{0}, std::size_t{4096}}) {
+  for (const size_t size : {size_t{0}, size_t{4096}}) {
     const TestName name;
     // NOLINTBEGIN(*-vararg): POSIX shm_open is variadic.
     const int fd =
@@ -302,8 +301,7 @@ TEST(ShmPubSubTest, PublishAssignsSequencesStartingAtOne) {
   ASSERT_TRUE(channel.has_value()) << error_text(channel.error());
   auto publisher = ShmPublisher::attach(*channel);
   ASSERT_TRUE(publisher.has_value()) << error_text(publisher.error());
-  for (std::uint64_t expected = 1; expected <= 3 * kSmall.slot_count;
-       ++expected) {
+  for (uint64_t expected = 1; expected <= 3 * kSmall.slot_count; ++expected) {
     const auto sequence = publisher->publish(make_payload(expected, 8));
     ASSERT_TRUE(sequence.has_value()) << error_text(sequence.error());
     EXPECT_EQ(*sequence, expected);
@@ -372,14 +370,14 @@ TEST(ShmPubSubTest, SubscriberReceivesInOrderWithExactBytes) {
   auto subscriber = ShmSubscriber::attach(*channel);
   ASSERT_TRUE(subscriber.has_value()) << error_text(subscriber.error());
 
-  const std::vector<std::size_t> sizes{8, 1, 64, 17, 33};
+  const std::vector<size_t> sizes{8, 1, 64, 17, 33};
   std::vector<std::vector<std::byte>> sent;
-  for (std::size_t i = 0; i < sizes.size(); ++i) {
+  for (size_t i = 0; i < sizes.size(); ++i) {
     sent.push_back(make_payload(100 + i, sizes[i]));
     ASSERT_TRUE(publisher->publish(sent.back()).has_value());
   }
   std::vector<std::byte> buffer(kSmall.slot_size);
-  for (std::size_t i = 0; i < sent.size(); ++i) {
+  for (size_t i = 0; i < sent.size(); ++i) {
     const auto sample = subscriber->try_receive(buffer);
     ASSERT_TRUE(sample.has_value()) << i << ": " << error_text(sample.error());
     EXPECT_EQ(sample->sequence, i + 1);
@@ -423,8 +421,8 @@ TEST(ShmPubSubTest, LaggingSubscriberSkipsAheadAndReportsMissed) {
   auto subscriber = ShmSubscriber::attach(*channel);
   ASSERT_TRUE(subscriber.has_value()) << error_text(subscriber.error());
 
-  constexpr std::uint64_t kPublished = 20;
-  for (std::uint64_t seq = 1; seq <= kPublished; ++seq) {
+  constexpr uint64_t kPublished = 20;
+  for (uint64_t seq = 1; seq <= kPublished; ++seq) {
     ASSERT_TRUE(publisher->publish(make_payload(seq, 16)).has_value());
   }
   // The subscriber is 20 samples behind an 8-slot ring: it was lapped. A
@@ -441,7 +439,7 @@ TEST(ShmPubSubTest, LaggingSubscriberSkipsAheadAndReportsMissed) {
   EXPECT_EQ(none.error(), ShmPubSubError::kWouldBlock);
 
   // Back in step: the next samples arrive in order with nothing missed.
-  for (std::uint64_t seq = kPublished + 1; seq <= kPublished + 3; ++seq) {
+  for (uint64_t seq = kPublished + 1; seq <= kPublished + 3; ++seq) {
     ASSERT_TRUE(publisher->publish(make_payload(seq, 16)).has_value());
     const auto sample = subscriber->try_receive(buffer);
     ASSERT_TRUE(sample.has_value()) << error_text(sample.error());
@@ -586,7 +584,7 @@ TEST(ShmPubSubTest, CloseStopsPublishingAndDrainsSubscribers) {
   EXPECT_EQ(rejected.error(), ShmPubSubError::kClosed);
 
   std::vector<std::byte> buffer(kSmall.slot_size);
-  for (std::uint64_t seq = 1; seq <= 2; ++seq) {
+  for (uint64_t seq = 1; seq <= 2; ++seq) {
     const auto sample = subscriber->try_receive(buffer);
     ASSERT_TRUE(sample.has_value()) << error_text(sample.error());
     EXPECT_EQ(sample->sequence, seq);
@@ -624,10 +622,9 @@ TEST(ShmPubSubTest, CloseWakesBlockedReceiversInThreads) {
         std::vector<std::byte> buffer(kSmall.slot_size);
         started.arrive_and_wait();
         const auto result =
-            (i % 2 == 0)
-                ? subscribers[static_cast<std::size_t>(i)].receive(buffer)
-                : subscribers[static_cast<std::size_t>(i)].receive_for(
-                      buffer, std::chrono::seconds{10});
+            (i % 2 == 0) ? subscribers[static_cast<size_t>(i)].receive(buffer)
+                         : subscribers[static_cast<size_t>(i)].receive_for(
+                               buffer, std::chrono::seconds{10});
         if (!result.has_value() && result.error() == ShmPubSubError::kClosed) {
           closed_results.fetch_add(1);
         }
@@ -659,7 +656,7 @@ TEST(ShmPubSubTest, NoHeapAllocationAfterInitialization) {
 
   int publish_ok = 0;
   int receive_ok = 0;
-  std::size_t allocations = 0;
+  size_t allocations = 0;
   {
     const systems_test::AllocationScope scope;
     for (int i = 0; i < 1000; ++i) {
@@ -723,13 +720,13 @@ TEST(ShmPubSubTest, InOrderModeIsDefault) {
   auto explicit_mode = ShmSubscriber::attach(*channel, ShmReadMode::kInOrder);
   ASSERT_TRUE(explicit_mode.has_value()) << error_text(explicit_mode.error());
 
-  constexpr std::uint64_t kPublished = 5;  // fewer than slot_count: no lap
-  for (std::uint64_t seq = 1; seq <= kPublished; ++seq) {
+  constexpr uint64_t kPublished = 5;  // fewer than slot_count: no lap
+  for (uint64_t seq = 1; seq <= kPublished; ++seq) {
     ASSERT_TRUE(publisher->publish(make_payload(seq, 16)).has_value());
   }
   std::vector<std::byte> buffer(kSmall.slot_size);
   for (ShmSubscriber* subscriber : {&*implicit_mode, &*explicit_mode}) {
-    for (std::uint64_t seq = 1; seq <= kPublished; ++seq) {
+    for (uint64_t seq = 1; seq <= kPublished; ++seq) {
       const auto sample = subscriber->try_receive(buffer);
       ASSERT_TRUE(sample.has_value()) << error_text(sample.error());
       EXPECT_EQ(sample->sequence, seq);
@@ -752,14 +749,14 @@ TEST(ShmPubSubTest, LatestModeAlwaysReturnsNewest) {
   auto subscriber = ShmSubscriber::attach(*channel, ShmReadMode::kLatest);
   ASSERT_TRUE(subscriber.has_value()) << error_text(subscriber.error());
 
-  std::uint64_t next = 1;
-  const auto publish_through = [&](std::uint64_t last) {
+  uint64_t next = 1;
+  const auto publish_through = [&](uint64_t last) {
     for (; next <= last; ++next) {
       ASSERT_TRUE(publisher->publish(make_payload(next, 16)).has_value());
     }
   };
   std::vector<std::byte> buffer(kSmall.slot_size);
-  const auto expect_newest = [&](std::uint64_t sequence, std::uint64_t missed) {
+  const auto expect_newest = [&](uint64_t sequence, uint64_t missed) {
     const auto sample = subscriber->try_receive(buffer);
     ASSERT_TRUE(sample.has_value()) << error_text(sample.error());
     EXPECT_EQ(sample->sequence, sequence);
@@ -857,12 +854,12 @@ TEST(ShmPubSubTest, MovedFromHandlesReportInvalidArgument) {
 
 /// KiB of this process's memory locked into RAM (`VmLck` in
 /// /proc/self/status), or -1 if the field is unavailable.
-auto locked_kib() -> std::int64_t {
+auto locked_kib() -> int64_t {
   std::ifstream status{"/proc/self/status"};
   std::string token;
   while (status >> token) {
     if (token == "VmLck:") {
-      std::int64_t kib = -1;
+      int64_t kib = -1;
       status >> kib;
       return kib;
     }
@@ -872,21 +869,21 @@ auto locked_kib() -> std::int64_t {
 
 /// Page faults (minor + major) taken so far by the calling thread (or process
 /// on single-threaded macOS residency tests), or -1 if unavailable.
-auto page_faults_this_thread() -> std::int64_t {
+auto page_faults_this_thread() -> int64_t {
 #if defined(RUSAGE_THREAD)
   rusage usage{};
   if (::getrusage(RUSAGE_THREAD, &usage) != 0) {
     return -1;
   }
-  return static_cast<std::int64_t>(usage.ru_minflt) +
-         static_cast<std::int64_t>(usage.ru_majflt);
+  return static_cast<int64_t>(usage.ru_minflt) +
+         static_cast<int64_t>(usage.ru_majflt);
 #elif defined(__APPLE__)
   rusage usage{};
   if (::getrusage(RUSAGE_SELF, &usage) != 0) {
     return -1;
   }
-  return static_cast<std::int64_t>(usage.ru_minflt) +
-         static_cast<std::int64_t>(usage.ru_majflt);
+  return static_cast<int64_t>(usage.ru_minflt) +
+         static_cast<int64_t>(usage.ru_majflt);
 #else
   return -1;
 #endif
@@ -939,8 +936,8 @@ class RealStackFramesScope {
 
 /// Outcome of one `measure_laps` run.
 struct LapResult {
-  int delivered{0};        ///< Iterations where publish AND receive succeeded.
-  std::int64_t faults{0};  ///< Page faults this thread took during the loop.
+  int delivered{0};   ///< Iterations where publish AND receive succeeded.
+  int64_t faults{0};  ///< Page faults this thread took during the loop.
 };
 
 /// Publishes and receives `laps` samples and counts the calling thread's page
@@ -972,7 +969,7 @@ struct LapResult {
 // Geometry whose ring spans many pages: 64 slots x (4096 B payload +
 // header) is a little over 256 KiB.
 constexpr ShmPubSubConfig kPaged{.slot_count = 64, .slot_size = 4096};
-constexpr std::int64_t kPagedRingKib = 256;
+constexpr int64_t kPagedRingKib = 256;
 
 TEST(ShmPubSubResidencyTest, CreateAndOpenLockTheMapping) {
   RecordProperty("requirements", "SHMPS-REQ-023");
@@ -1015,7 +1012,7 @@ TEST(ShmPubSubResidencyTest, PublishAndReceiveTakeNoPageFaults) {
   // Control: prove the probe can see faults at all. A plain shared mapping
   // without pre-faulting takes a fault on the first touch of each page.
   {
-    constexpr std::size_t kControlBytes = std::size_t{64} * 4096;
+    constexpr size_t kControlBytes = size_t{64} * 4096;
     const TestName raw;
     // NOLINTBEGIN(*-vararg): POSIX shm_open is variadic.
     const int fd =
@@ -1029,7 +1026,7 @@ TEST(ShmPubSubResidencyTest, PublishAndReceiveTakeNoPageFaults) {
     ASSERT_NE(base, MAP_FAILED);
     const std::span bytes{static_cast<std::byte*>(base), kControlBytes};
     const auto before = page_faults_this_thread();
-    for (std::size_t offset = 0; offset < bytes.size(); offset += 4096) {
+    for (size_t offset = 0; offset < bytes.size(); offset += 4096) {
       bytes[offset] = std::byte{1};
     }
     const auto control_faults = page_faults_this_thread() - before;
@@ -1135,7 +1132,7 @@ TEST(ShmPubSubConcurrencyTest, ConcurrentReadersNeverSeeTornSamples) {
                  "SHMPS-REQ-015,SHMPS-REQ-017,SHMPS-REQ-011,SHMPS-REQ-009");
   constexpr ShmPubSubConfig kTiny{.slot_count = 4, .slot_size = 256};
   constexpr int kReaders = 4;
-  constexpr std::uint64_t kMaxPublishes = 200'000;
+  constexpr uint64_t kMaxPublishes = 200'000;
   constexpr auto kBudget = std::chrono::milliseconds{1500};
 
   const TestName name;
@@ -1151,19 +1148,19 @@ TEST(ShmPubSubConcurrencyTest, ConcurrentReadersNeverSeeTornSamples) {
   }
 
   std::atomic<bool> publishing_done{false};
-  std::atomic<std::uint64_t> published{0};
-  std::atomic<std::uint64_t> received{0};
-  std::atomic<std::uint64_t> torn{0};
-  std::atomic<std::uint64_t> order_violations{0};
+  std::atomic<uint64_t> published{0};
+  std::atomic<uint64_t> received{0};
+  std::atomic<uint64_t> torn{0};
+  std::atomic<uint64_t> order_violations{0};
   std::latch start{kReaders + 2};
   {
     std::vector<std::jthread> threads;
     threads.reserve(kReaders + 1);
     for (int r = 0; r < kReaders; ++r) {
       threads.emplace_back([&, r] {
-        auto& subscriber = subscribers[static_cast<std::size_t>(r)];
+        auto& subscriber = subscribers[static_cast<size_t>(r)];
         std::vector<std::byte> buffer(kTiny.slot_size);
-        std::uint64_t previous = 0;
+        uint64_t previous = 0;
         start.arrive_and_wait();
         const auto deadline = Clock::now() + kBudget + std::chrono::seconds{2};
         while (Clock::now() < deadline) {
@@ -1191,8 +1188,8 @@ TEST(ShmPubSubConcurrencyTest, ConcurrentReadersNeverSeeTornSamples) {
     threads.emplace_back([&] {
       start.arrive_and_wait();
       const auto deadline = Clock::now() + kBudget;
-      for (std::uint64_t seq = 1;
-           seq <= kMaxPublishes && Clock::now() < deadline; ++seq) {
+      for (uint64_t seq = 1; seq <= kMaxPublishes && Clock::now() < deadline;
+           ++seq) {
         const auto size = 8 + (seq % (kTiny.slot_size - 8));
         if (publisher->publish(make_payload(seq, size)).has_value()) {
           published.fetch_add(1);
@@ -1223,7 +1220,7 @@ TEST(ShmPubSubConcurrencyTest, IndependentSubscribersEachReceiveEverything) {
     subscribers.push_back(std::move(*subscriber));
   }
   std::vector<std::byte> buffer(kSmall.slot_size);
-  for (std::uint64_t seq = 1; seq <= 100; ++seq) {
+  for (uint64_t seq = 1; seq <= 100; ++seq) {
     ASSERT_TRUE(publisher->publish(make_payload(seq, 24)).has_value());
     for (auto& subscriber : subscribers) {
       const auto sample = subscriber.try_receive(buffer);
@@ -1241,7 +1238,7 @@ TEST(ShmPubSubConcurrencyTest, LatestReadersNeverSeeTornSamples) {
   RecordProperty("requirements", "SHMPS-REQ-015,SHMPS-REQ-026,SHMPS-REQ-027");
   constexpr ShmPubSubConfig kTiny{.slot_count = 4, .slot_size = 256};
   constexpr int kReaders = 4;
-  constexpr std::uint64_t kMaxPublishes = 200'000;
+  constexpr uint64_t kMaxPublishes = 200'000;
   constexpr auto kBudget = std::chrono::milliseconds{1500};
 
   const TestName name;
@@ -1257,19 +1254,19 @@ TEST(ShmPubSubConcurrencyTest, LatestReadersNeverSeeTornSamples) {
   }
 
   std::atomic<bool> publishing_done{false};
-  std::atomic<std::uint64_t> published{0};
-  std::atomic<std::uint64_t> received{0};
-  std::atomic<std::uint64_t> torn{0};
-  std::atomic<std::uint64_t> order_violations{0};
+  std::atomic<uint64_t> published{0};
+  std::atomic<uint64_t> received{0};
+  std::atomic<uint64_t> torn{0};
+  std::atomic<uint64_t> order_violations{0};
   std::latch start{kReaders + 2};
   {
     std::vector<std::jthread> threads;
     threads.reserve(kReaders + 1);
     for (int r = 0; r < kReaders; ++r) {
       threads.emplace_back([&, r] {
-        auto& subscriber = subscribers[static_cast<std::size_t>(r)];
+        auto& subscriber = subscribers[static_cast<size_t>(r)];
         std::vector<std::byte> buffer(kTiny.slot_size);
-        std::uint64_t previous = 0;
+        uint64_t previous = 0;
         start.arrive_and_wait();
         const auto deadline = Clock::now() + kBudget + std::chrono::seconds{2};
         while (Clock::now() < deadline) {
@@ -1299,8 +1296,8 @@ TEST(ShmPubSubConcurrencyTest, LatestReadersNeverSeeTornSamples) {
     threads.emplace_back([&] {
       start.arrive_and_wait();
       const auto deadline = Clock::now() + kBudget;
-      for (std::uint64_t seq = 1;
-           seq <= kMaxPublishes && Clock::now() < deadline; ++seq) {
+      for (uint64_t seq = 1; seq <= kMaxPublishes && Clock::now() < deadline;
+           ++seq) {
         const auto size = 8 + (seq % (kTiny.slot_size - 8));
         if (publisher->publish(make_payload(seq, size)).has_value()) {
           published.fetch_add(1);
@@ -1319,18 +1316,18 @@ TEST(ShmPubSubConcurrencyTest, LatestReadersNeverSeeTornSamples) {
 // =============================================== Tier 5: multi-process
 
 struct ProcessTally {
-  std::atomic<std::uint32_t> ready{0};
-  std::atomic<std::uint32_t> go{0};
-  std::atomic<std::uint64_t> received{0};
-  std::atomic<std::uint64_t> torn{0};
-  std::atomic<std::uint64_t> last_sequence{0};
+  std::atomic<uint32_t> ready{0};
+  std::atomic<uint32_t> go{0};
+  std::atomic<uint64_t> received{0};
+  std::atomic<uint64_t> torn{0};
+  std::atomic<uint64_t> last_sequence{0};
 };
-static_assert(std::atomic<std::uint64_t>::is_always_lock_free);
+static_assert(std::atomic<uint64_t>::is_always_lock_free);
 
 /// Child body: open `name`, subscribe, signal ready, receive until `count`
 /// samples, close, or the deadline; record into `tally`.
 auto child_subscriber(const std::string& name, ProcessTally& tally,
-                      std::uint64_t count) -> int {
+                      uint64_t count) -> int {
   auto channel = ShmChannel::open(name);
   if (!channel) {
     return 1;
@@ -1363,7 +1360,7 @@ auto child_subscriber(const std::string& name, ProcessTally& tally,
 
 TEST(ShmPubSubMultiProcessTest, ChildSubscriberReceivesParentSamples) {
   RecordProperty("requirements", "SHMPS-REQ-016,SHMPS-REQ-010");
-  constexpr std::uint64_t kCount = 500;
+  constexpr uint64_t kCount = 500;
   constexpr ShmPubSubConfig kRoomy{.slot_count = 1024, .slot_size = 64};
   const TestName name;
   auto channel = ShmChannel::create(name.str(), kRoomy);
@@ -1377,7 +1374,7 @@ TEST(ShmPubSubMultiProcessTest, ChildSubscriberReceivesParentSamples) {
       [&] { return child_subscriber(name.str(), *tally, kCount); });
   ASSERT_TRUE(systems_test::wait_until([&] { return tally->ready.load() == 1; },
                                        std::chrono::seconds{5}));
-  for (std::uint64_t seq = 1; seq <= kCount; ++seq) {
+  for (uint64_t seq = 1; seq <= kCount; ++seq) {
     ASSERT_TRUE(
         publisher->publish(make_payload(seq, 8 + (seq % 56))).has_value());
   }
@@ -1390,7 +1387,7 @@ TEST(ShmPubSubMultiProcessTest, ChildSubscriberReceivesParentSamples) {
 
 TEST(ShmPubSubMultiProcessTest, ChildPublisherBlocksParentPublisherRole) {
   RecordProperty("requirements", "SHMPS-REQ-016,SHMPS-REQ-007");
-  constexpr std::uint64_t kCount = 200;
+  constexpr uint64_t kCount = 200;
   constexpr ShmPubSubConfig kRoomy{.slot_count = 256, .slot_size = 64};
   const TestName name;
   auto channel = ShmChannel::create(name.str(), kRoomy);
@@ -1414,7 +1411,7 @@ TEST(ShmPubSubMultiProcessTest, ChildPublisherBlocksParentPublisherRole) {
                                   std::chrono::seconds{5})) {
       return 3;
     }
-    for (std::uint64_t seq = 1; seq <= kCount; ++seq) {
+    for (uint64_t seq = 1; seq <= kCount; ++seq) {
       if (!pub->publish(make_payload(seq, 32))) {
         return 4;
       }
@@ -1429,7 +1426,7 @@ TEST(ShmPubSubMultiProcessTest, ChildPublisherBlocksParentPublisherRole) {
   tally->go.store(1);
 
   std::vector<std::byte> buffer(kRoomy.slot_size);
-  std::uint64_t received = 0;
+  uint64_t received = 0;
   const auto deadline = Clock::now() + std::chrono::seconds{10};
   while (received < kCount && Clock::now() < deadline) {
     const auto sample =
@@ -1493,7 +1490,7 @@ TEST(ShmPubSubMultiProcessTest, ManySubscriberProcessesNeverSeeTornSamples) {
     ASSERT_TRUE(tally.valid());
     children.push_back(systems_test::ChildProcess::spawn([&] {
       return child_subscriber(name.str(), *tally,
-                              std::numeric_limits<std::uint64_t>::max());
+                              std::numeric_limits<uint64_t>::max());
     }));
   }
   ASSERT_TRUE(systems_test::wait_until(
@@ -1503,14 +1500,14 @@ TEST(ShmPubSubMultiProcessTest, ManySubscriberProcessesNeverSeeTornSamples) {
       },
       std::chrono::seconds{5}));
   const auto deadline = Clock::now() + std::chrono::milliseconds{1500};
-  std::uint64_t seq = 0;
+  uint64_t seq = 0;
   while (Clock::now() < deadline) {
     ++seq;
     ASSERT_TRUE(
         publisher->publish(make_payload(seq, 8 + (seq % 500))).has_value());
   }
   channel->close();
-  for (std::size_t i = 0; i < children.size(); ++i) {
+  for (size_t i = 0; i < children.size(); ++i) {
     const auto result = children[i].wait_for(kChildWait);
     EXPECT_TRUE(result.succeeded()) << "child " << i << ": " << result;
     EXPECT_GT(tallies[i]->received.load(), 0U);
@@ -1526,8 +1523,8 @@ TEST(ShmPubSubMultiProcessTest,
      PublisherProgressesWhileSubscriberProcessIsStopped) {
   RecordProperty("requirements", "SHMPS-REQ-025,SHMPS-REQ-016");
   constexpr ShmPubSubConfig kRing{.slot_count = 64, .slot_size = 64};
-  constexpr std::uint64_t kWhileStopped = 50'000;
-  constexpr std::uint64_t kWarmupSamples = 10;
+  constexpr uint64_t kWhileStopped = 50'000;
+  constexpr uint64_t kWarmupSamples = 10;
   const TestName name;
   auto channel = ShmChannel::create(name.str(), kRing);
   ASSERT_TRUE(channel.has_value()) << error_text(channel.error());
@@ -1538,13 +1535,13 @@ TEST(ShmPubSubMultiProcessTest,
 
   auto child = systems_test::ChildProcess::spawn([&] {
     return child_subscriber(name.str(), *tally,
-                            std::numeric_limits<std::uint64_t>::max());
+                            std::numeric_limits<uint64_t>::max());
   });
   ASSERT_TRUE(systems_test::wait_until([&] { return tally->ready.load() == 1; },
                                        std::chrono::seconds{5}));
 
   // Feed the child until it is demonstrably mid-stream.
-  std::uint64_t seq = 0;
+  uint64_t seq = 0;
   const auto feed_deadline = Clock::now() + std::chrono::seconds{5};
   while (tally->received.load() < kWarmupSamples &&
          Clock::now() < feed_deadline) {
@@ -1557,9 +1554,9 @@ TEST(ShmPubSubMultiProcessTest,
   // Freeze the subscriber wherever it happens to be (possibly in the middle
   // of reading a slot) and lap the ring hundreds of times.
   ASSERT_TRUE(child.send_signal(SIGSTOP));
-  std::uint64_t failures = 0;
+  uint64_t failures = 0;
   const auto start = Clock::now();
-  for (std::uint64_t i = 0; i < kWhileStopped; ++i) {
+  for (uint64_t i = 0; i < kWhileStopped; ++i) {
     ++seq;
     failures += publisher->publish(make_payload(seq, 32)).has_value() ? 0 : 1;
   }
@@ -1634,8 +1631,8 @@ TEST(ShmPubSubFaultTest, PublisherKilledAtRandomPointsNeverCorruptsReaders) {
   ASSERT_TRUE(tally.valid());
 
   std::vector<std::byte> buffer(kTiny.slot_size);
-  std::uint64_t highest_seen = 0;
-  std::uint64_t torn = 0;
+  uint64_t highest_seen = 0;
+  uint64_t torn = 0;
   const auto drain = [&] {
     for (int i = 0; i < 64; ++i) {
       const auto sample = subscriber->try_receive(buffer);
@@ -1694,7 +1691,7 @@ TEST(ShmPubSubFaultTest, PublisherKilledAtRandomPointsNeverCorruptsReaders) {
     drain();
   }  // replacement is released at the end of each round
   EXPECT_EQ(torn, 0U);
-  EXPECT_GT(highest_seen, static_cast<std::uint64_t>(kRounds));
+  EXPECT_GT(highest_seen, static_cast<uint64_t>(kRounds));
 }
 
 }  // namespace

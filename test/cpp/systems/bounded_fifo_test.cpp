@@ -262,10 +262,10 @@ TEST(BoundedFifoTest, ThrowingConstructorLeavesQueueUnchanged) {
 }
 
 TEST(BoundedFifoTest, ObjectLivesInStaticStorageWithoutHeap) {
-  static BoundedFifo<std::uint8_t, 8>
+  static BoundedFifo<uint8_t, 8>
       fifo;  // Large, trivially constructible; no allocation involved.
-  ASSERT_TRUE(fifo.try_push(std::uint8_t{0xAB}));
-  EXPECT_EQ(fifo.try_pop(), std::uint8_t{0xAB});
+  ASSERT_TRUE(fifo.try_push(uint8_t{0xAB}));
+  EXPECT_EQ(fifo.try_pop(), uint8_t{0xAB});
 }
 
 // ---------------------------------------------------------------------------
@@ -337,10 +337,10 @@ TEST(BoundedFifoStressTest, MultiProducerMultiConsumerDeliversEverythingOnce) {
   constexpr int kProducers = 4;
   constexpr int kConsumers = 4;
   constexpr int kPerProducer = 25000;
-  BoundedFifo<std::uint64_t, 32> fifo;
+  BoundedFifo<uint64_t, 32> fifo;
 
-  std::atomic<std::uint64_t> sum{0};
-  std::atomic<std::uint64_t> received{0};
+  std::atomic<uint64_t> sum{0};
+  std::atomic<uint64_t> received{0};
   // Per-producer last-seen sequence number: each consumer checks monotonicity
   // per producer id using its own local table, which is valid because a single
   // consumer pops in FIFO order.
@@ -349,10 +349,10 @@ TEST(BoundedFifoStressTest, MultiProducerMultiConsumerDeliversEverythingOnce) {
   std::atomic<bool> order_violation{false};
   for (int c = 0; c < kConsumers; ++c) {
     consumers.emplace_back([&] {
-      std::vector<std::int64_t> last_seen(kProducers, -1);
+      std::vector<int64_t> last_seen(kProducers, -1);
       while (const auto value = fifo.pop()) {
-        const auto producer_id = static_cast<std::size_t>(*value >> 32U);
-        const auto sequence = static_cast<std::int64_t>(*value & 0xFFFFFFFFU);
+        const auto producer_id = static_cast<size_t>(*value >> 32U);
+        const auto sequence = static_cast<int64_t>(*value & 0xFFFFFFFFU);
         if (sequence <= last_seen[producer_id]) {
           order_violation = true;
         }
@@ -368,8 +368,8 @@ TEST(BoundedFifoStressTest, MultiProducerMultiConsumerDeliversEverythingOnce) {
   for (int p = 0; p < kProducers; ++p) {
     producers.emplace_back([&fifo, p] {
       for (int i = 0; i < kPerProducer; ++i) {
-        const auto item = (static_cast<std::uint64_t>(p) << 32U) |
-                          static_cast<std::uint64_t>(i);
+        const auto item =
+            (static_cast<uint64_t>(p) << 32U) | static_cast<uint64_t>(i);
         if (!fifo.push(item)) {
           return;
         }
@@ -384,14 +384,12 @@ TEST(BoundedFifoStressTest, MultiProducerMultiConsumerDeliversEverythingOnce) {
     consumer.join();
   }
 
-  constexpr std::uint64_t kPerProducerSum =
-      static_cast<std::uint64_t>(kPerProducer) *
-      (static_cast<std::uint64_t>(kPerProducer) - 1U) / 2U;
+  constexpr uint64_t kPerProducerSum =
+      static_cast<uint64_t>(kPerProducer) *
+      (static_cast<uint64_t>(kPerProducer) - 1U) / 2U;
   EXPECT_FALSE(order_violation.load());
-  EXPECT_EQ(received.load(),
-            static_cast<std::uint64_t>(kProducers) * kPerProducer);
-  EXPECT_EQ(sum.load(),
-            static_cast<std::uint64_t>(kProducers) * kPerProducerSum);
+  EXPECT_EQ(received.load(), static_cast<uint64_t>(kProducers) * kPerProducer);
+  EXPECT_EQ(sum.load(), static_cast<uint64_t>(kProducers) * kPerProducerSum);
   EXPECT_TRUE(fifo.empty());
 }
 

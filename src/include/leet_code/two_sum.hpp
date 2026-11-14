@@ -27,11 +27,11 @@ namespace leet_code {
  * eliminate copying overhead.
  *
  * Signed integer arithmetic overflow during complement computation (target -
- * nums[i]) is guarded using 64-bit integer arithmetic (std::int64_t).
+ * nums[i]) is guarded using 64-bit integer arithmetic (int64_t).
  *
  * @param nums Non-owning contiguous view of input integers.
  * @param target The target integer sum.
- * @return std::expected containing a std::pair<std::size_t, std::size_t>
+ * @return std::expected containing a std::pair<size_t, size_t>
  * representing 0-based indices on success (first < second), or a std::string
  * error message on failure.
  *
@@ -42,7 +42,7 @@ namespace leet_code {
  *         returns "No two sum solution found".
  */
 [[nodiscard]] auto two_sum(std::span<const int> nums, int target)
-    -> std::expected<std::pair<std::size_t, std::size_t>, std::string>;
+    -> std::expected<std::pair<size_t, size_t>, std::string>;
 
 /**
  * @brief Classic LeetCode #1 compatibility wrapper.
