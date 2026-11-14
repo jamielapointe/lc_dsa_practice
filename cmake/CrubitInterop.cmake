@@ -70,6 +70,8 @@ if(NOT TARGET crubit_support_cc)
             CXX_STANDARD 23
             CXX_STANDARD_REQUIRED ON
             CXX_EXTENSIONS OFF
+            CXX_SCAN_FOR_MODULES OFF
+            CXX_MODULE_STD OFF
     )
     target_include_directories(crubit_support_cc SYSTEM PUBLIC "${CRUBIT_SOURCE_DIR}")
     target_compile_options(crubit_support_cc PUBLIC -stdlib=libc++ PRIVATE -Wno-everything)
@@ -422,6 +424,8 @@ function(crubit_add_rust_api_from_cpp target_name)
             CXX_STANDARD 23
             CXX_STANDARD_REQUIRED ON
             CXX_EXTENSIONS OFF
+            CXX_SCAN_FOR_MODULES OFF
+            CXX_MODULE_STD OFF
     )
     target_compile_options(${target_name}_impl_cc PUBLIC -stdlib=libc++ PRIVATE -Wno-everything)
     target_link_options(${target_name}_impl_cc PUBLIC -stdlib=libc++)
