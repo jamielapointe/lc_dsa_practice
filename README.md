@@ -26,6 +26,7 @@ C++23 and ISO C23** tree for low-level components. Everything (toolchain, depend
 | Rust LeetCode | `src/rust/leet_code` | `test/rust/leet_code` | crate `leet_code` |
 | Systems C++, C23 & Rust | `src/{cpp,c,rust}/systems`, `src/include/systems`, `examples/{cpp,c}/systems`, `benchmarks/{cpp,c}/systems` | `test/{cpp,c,rust}/systems` | `systems` (`systems::<name>`) / `systems_c` (`systems_c::<name>`) / `systems` |
 | Rust Systems Crash Course | `src/rust/crash_course` (isolated sub-workspaces) | per-exercise test suites | standalone crates |
+| Crubit C++23 <-> Rust 2024 Interop | `src/{include,cpp,rust}/interop/crubit`, `examples/interop/crubit`, `docs/interop/crubit.md`, `scripts/crubit/` | `test/{cpp,rust}/interop/crubit` | `interop::crubit` / `rs_*` / `cc_*` |
 
 The systems track holds low-level building blocks written in an embedded-friendly style in both modern C++23 and strict ISO C23 (fixed capacity, no heap, no STL
 containers, explicit concurrency). It includes `BoundedFifo` / `bounded_fifo`, `ShmChannel` / `shm_channel` (wait-free SPMC shared-memory pub/sub),
@@ -66,6 +67,13 @@ pixi run shm-pubsub-example   # multi-process SPMC shared-memory camera example 
 pixi run cov-cpp              # llvm-cov line coverage, gate >= 85%
 pixi run cov-python           # pytest-cov, gate >= 85%
 
+# Crubit C++23 <-> Rust 2024 Interop
+pixi run crubit-bootstrap     # clone pinned Crubit, verify Rust 1.99.1 sysroot, build generators
+pixi run test-interop         # configure, build, and test interop suite (interop-debug)
+pixi run interop-release      # configure, build, and test interop suite with LTO (interop-release)
+pixi run examples-interop     # build C++23 and Rust 2024 interop showcase demos
+pixi run clippy-interop       # cargo clippy (-D warnings) across interop Rust crates
+
 # Quality
 pixi run lint                 # ruff check
 pixi run lint-fix             # ruff check --fix
@@ -86,27 +94,31 @@ pixi run pre-commit           # all hooks over the whole tree
 ├── CMakeLists.txt, CMakePresets.json, cmake/
 ├── pyproject.toml, pixi.lock      # Pixi workspace + ruff/mypy/pytest/coverage/rumdl config
 ├── src/
-│   ├── include/{leet_code,systems}/   # public C (.h) and C++ (.hpp) headers
-│   ├── cpp/{leet_code,systems}/       # C++23 sources and per-track CMakeLists.txt
-│   ├── c/{leet_code,systems}/         # ISO C23 sources and per-track CMakeLists.txt
-│   ├── rust/{crash_course,leet_code,systems}/ # Rust crates and isolated crash_course sub-workspace
-│   └── python/leet_code/              # Python package (typed)
+│   ├── include/{leet_code,systems,interop/crubit}/ # public C (.h) and C++ (.hpp) headers
+│   ├── cpp/{leet_code,systems,interop/crubit}/     # C++23 sources and per-track CMakeLists.txt
+│   ├── c/{leet_code,systems}/                      # ISO C23 sources and per-track CMakeLists.txt
+│   ├── rust/{crash_course,leet_code,systems,interop/crubit}/ # Rust crates, crash_course, and Crubit crates
+│   └── python/leet_code/                           # Python package (typed)
 ├── test/
-│   ├── cpp/{leet_code,systems}/       # C++ GoogleTest suites
-│   ├── c/{leet_code,systems}/         # C23 GoogleTest (*_c_test.cpp) + pure C23 (*_c23_test.c) suites
-│   ├── rust/{leet_code,systems}/      # Rust integration test suites (*_test.rs)
-│   └── python/{leet_code,scripts}/    # pytest suites
+│   ├── cpp/{leet_code,systems,interop/crubit}/     # C++ GoogleTest and Crubit interop suites
+│   ├── c/{leet_code,systems}/                      # C23 GoogleTest (*_c_test.cpp) + pure C23 (*_c23_test.c) suites
+│   ├── rust/{leet_code,systems,interop/crubit}/    # Rust integration test suites
+│   └── python/{leet_code,scripts}/                 # pytest suites
 ├── examples/
-│   ├── cpp/systems/                   # standalone multi-process C++ systems examples
-│   └── c/systems/                     # standalone multi-process C23 systems examples
+│   ├── cpp/systems/                                # standalone multi-process C++ systems examples
+│   ├── c/systems/                                  # standalone multi-process C23 systems examples
+│   └── interop/crubit/                             # C++23 and Rust 2024 Crubit showcase demos
 ├── benchmarks/
-│   ├── cpp/systems/                   # Google Benchmark suites for C++ systems components
-│   └── c/systems/                     # Google Benchmark suites for C23 systems components
-├── docs/systems/                  # requirements specs for systems problems
+│   ├── cpp/systems/                                # Google Benchmark suites for C++ systems components
+│   └── c/systems/                                  # Google Benchmark suites for C23 systems components
+├── docs/
+│   ├── interop/crubit.md                           # Google Crubit architecture, type matrix, and showcase guide
+│   └── systems/                                    # requirements specs for systems problems
 ├── scripts/
-│   ├── benchmarks/                    # runner and Bayesian BEST + ROPE analysis scripts
-│   ├── ci/                            # coverage gate, pyproject sorter, systems traceability check
-│   └── examples/                      # multi-process example runner and log verifier
+│   ├── benchmarks/                                 # runner and Bayesian BEST + ROPE analysis scripts
+│   ├── ci/                                         # coverage gate, pyproject sorter, systems traceability check
+│   ├── crubit/                                     # hermetic Crubit bootstrapper and rs_bindings_from_cc wrapper
+│   └── examples/                                   # multi-process and Crubit example runners and log verifiers
 ├── .agents/
 │   ├── plugins/{leetcode,systems}/    # track plugins and skills
 │   └── skills/{optimization-loop,rust-systems-tdd-coach}/ # workspace skills & references
