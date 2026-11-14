@@ -111,27 +111,26 @@ class TestChannelName {
   systems_test::ScopedShmUnlink guard_;
 };
 
-auto make_payload(std::uint64_t tag, std::size_t size)
-    -> std::vector<std::uint8_t> {
-  std::vector<std::uint8_t> bytes(size);
-  std::array<std::uint8_t, sizeof(tag)> tag_bytes{};
+auto make_payload(uint64_t tag, size_t size) -> std::vector<uint8_t> {
+  std::vector<uint8_t> bytes(size);
+  std::array<uint8_t, sizeof(tag)> tag_bytes{};
   std::memcpy(tag_bytes.data(), &tag, sizeof(tag));
-  for (std::size_t i = 0U; i < size; ++i) {
+  for (size_t i = 0U; i < size; ++i) {
     bytes[i] = i < tag_bytes.size()
                    ? tag_bytes[i]
-                   : static_cast<std::uint8_t>(((tag * 31ULL) + i) & 0xFFULL);
+                   : static_cast<uint8_t>(((tag * 31ULL) + i) & 0xFFULL);
   }
   return bytes;
 }
 
-auto read_tag(const std::uint8_t* data, std::size_t size) -> std::uint64_t {
-  std::uint64_t tag = 0ULL;
+auto read_tag(const uint8_t* data, size_t size) -> uint64_t {
+  uint64_t tag = 0ULL;
   std::memcpy(&tag, data, std::min(size, sizeof(tag)));
   return tag;
 }
 
-auto payload_is_consistent(const std::uint8_t* data, std::size_t size) -> bool {
-  if (size < sizeof(std::uint64_t)) {
+auto payload_is_consistent(const uint8_t* data, size_t size) -> bool {
+  if (size < sizeof(uint64_t)) {
     return true;
   }
   const auto expected = make_payload(read_tag(data, size), size);
@@ -242,8 +241,8 @@ TEST(ShmPubSubCTest, OpenRejectsMissingOrIncompatibleSegmentsAndUnlinkWorks) {
 
   ScopedPublisher pub;
   ASSERT_EQ(shm_publisher_attach(pub.get(), live.get()), SHM_PUBSUB_OK);
-  std::uint64_t seq = 0ULL;
-  const std::uint32_t val = 42U;
+  uint64_t seq = 0ULL;
+  const uint32_t val = 42U;
   EXPECT_EQ(shm_publisher_publish(pub.get(), &val, sizeof(val), &seq),
             SHM_PUBSUB_OK);
   EXPECT_EQ(seq, 1ULL);
@@ -278,21 +277,21 @@ TEST(ShmPubSubCTest, SinglePublisherAndInOrderAndLatestSubscribers) {
       shm_subscriber_attach(sub_latest.get(), ch.get(), SHM_READ_MODE_LATEST),
       SHM_PUBSUB_OK);
 
-  std::array<std::uint8_t, 32> buf{};
+  std::array<uint8_t, 32> buf{};
   struct shm_sample sample{};
   EXPECT_EQ(shm_subscriber_try_receive(sub_in_order.get(), buf.data(),
                                        buf.size(), &sample),
             SHM_PUBSUB_ERR_WOULD_BLOCK);
 
   // Oversized payload rejected
-  std::array<std::uint8_t, 64> oversize{};
-  std::uint64_t seq = 0ULL;
+  std::array<uint8_t, 64> oversize{};
+  uint64_t seq = 0ULL;
   EXPECT_EQ(
       shm_publisher_publish(pub2.get(), oversize.data(), oversize.size(), &seq),
       SHM_PUBSUB_ERR_PAYLOAD_TOO_LARGE);
 
   // Publish 3 samples (within ring capacity 4)
-  for (std::uint64_t i = 1ULL; i <= 3ULL; ++i) {
+  for (uint64_t i = 1ULL; i <= 3ULL; ++i) {
     const auto payload = make_payload(i, 16U);
     ASSERT_EQ(
         shm_publisher_publish(pub2.get(), payload.data(), payload.size(), &seq),
@@ -306,7 +305,7 @@ TEST(ShmPubSubCTest, SinglePublisherAndInOrderAndLatestSubscribers) {
       SHM_PUBSUB_ERR_BUFFER_TOO_SMALL);
 
   // sub_in_order receives 1, 2, 3 in sequence
-  for (std::uint64_t i = 1ULL; i <= 3ULL; ++i) {
+  for (uint64_t i = 1ULL; i <= 3ULL; ++i) {
     ASSERT_EQ(shm_subscriber_try_receive(sub_in_order.get(), buf.data(),
                                          buf.size(), &sample),
               SHM_PUBSUB_OK);
@@ -326,7 +325,7 @@ TEST(ShmPubSubCTest, SinglePublisherAndInOrderAndLatestSubscribers) {
 
   // Now publish 6 more samples (sequences 4..9), lapping sub_in_order
   // (slot_count = 4)
-  for (std::uint64_t i = 4ULL; i <= 9ULL; ++i) {
+  for (uint64_t i = 4ULL; i <= 9ULL; ++i) {
     const auto payload = make_payload(i, 16U);
     ASSERT_EQ(
         shm_publisher_publish(pub2.get(), payload.data(), payload.size(), &seq),
@@ -353,7 +352,7 @@ TEST(ShmPubSubCTest, TimedReceiveAndCloseDrainAndWake) {
   ASSERT_EQ(shm_subscriber_attach(sub.get(), ch.get(), SHM_READ_MODE_IN_ORDER),
             SHM_PUBSUB_OK);
 
-  std::array<std::uint8_t, 64> buf{};
+  std::array<uint8_t, 64> buf{};
   struct shm_sample sample{};
   const auto t0 = std::chrono::steady_clock::now();
   EXPECT_EQ(shm_subscriber_receive_for(sub.get(), buf.data(), buf.size(),
@@ -364,8 +363,8 @@ TEST(ShmPubSubCTest, TimedReceiveAndCloseDrainAndWake) {
 
   // Publish one sample, then close: subscriber drains sample 1, then gets
   // CLOSED
-  const auto payload = make_payload(77ULL, 16U);
-  std::uint64_t seq = 0ULL;
+  const auto payload = make_payload(uint64_t{77}, 16U);
+  uint64_t seq = 0;
   ASSERT_EQ(
       shm_publisher_publish(pub.get(), payload.data(), payload.size(), &seq),
       SHM_PUBSUB_OK);
@@ -400,14 +399,14 @@ TEST(ShmPubSubCTest, NoHeapAllocationAfterInitialization) {
   ASSERT_EQ(shm_subscriber_attach(sub.get(), ch.get(), SHM_READ_MODE_IN_ORDER),
             SHM_PUBSUB_OK);
 
-  std::array<std::uint8_t, 64> send_buf{};
-  std::array<std::uint8_t, 64> recv_buf{};
+  std::array<uint8_t, 64> send_buf{};
+  std::array<uint8_t, 64> recv_buf{};
   struct shm_sample sample{};
-  std::uint64_t seq = 0ULL;
+  uint64_t seq = 0ULL;
 
   const systems_test::AllocationScope scope;
-  for (std::uint64_t i = 1ULL; i <= 16ULL; ++i) {
-    send_buf[0] = static_cast<std::uint8_t>(i);
+  for (uint64_t i = 1ULL; i <= 16ULL; ++i) {
+    send_buf[0] = static_cast<uint8_t>(i);
     ASSERT_EQ(shm_publisher_publish(pub.get(), send_buf.data(), 16U, &seq),
               SHM_PUBSUB_OK);
     ASSERT_EQ(shm_subscriber_try_receive(sub.get(), recv_buf.data(),
@@ -464,15 +463,15 @@ TEST(ShmPubSubCTest, ConcurrentPublishAndReceiveNeverTears) {
   ASSERT_EQ(shm_subscriber_attach(sub.get(), ch.get(), SHM_READ_MODE_IN_ORDER),
             SHM_PUBSUB_OK);
 
-  constexpr std::uint64_t kTotalSamples = 2000ULL;
+  constexpr uint64_t kTotalSamples = 2000ULL;
   std::atomic<bool> torn_detected{false};
   std::latch start_latch{2};
 
   std::thread writer([&] {
     start_latch.arrive_and_wait();
-    for (std::uint64_t s = 1ULL; s <= kTotalSamples; ++s) {
+    for (uint64_t s = 1ULL; s <= kTotalSamples; ++s) {
       const auto payload = make_payload(s, 64U);
-      std::uint64_t seq = 0ULL;
+      uint64_t seq = 0ULL;
       if (shm_publisher_publish(pub.get(), payload.data(), payload.size(),
                                 &seq) != SHM_PUBSUB_OK) {
         torn_detected.store(true);
@@ -484,9 +483,9 @@ TEST(ShmPubSubCTest, ConcurrentPublishAndReceiveNeverTears) {
 
   std::thread reader([&] {
     start_latch.arrive_and_wait();
-    std::array<std::uint8_t, 64> buf{};
+    std::array<uint8_t, 64> buf{};
     struct shm_sample sample{};
-    std::uint64_t last_seq = 0ULL;
+    uint64_t last_seq = 0ULL;
     for (;;) {
       const auto err = shm_subscriber_receive_for(
           sub.get(), buf.data(), buf.size(), 2'000'000'000LL, &sample);
@@ -540,9 +539,9 @@ TEST(ShmPubSubCTest, CrossProcessAndDeadPublisherTakeover) {
       return 2;
     }
     shared->child_attached.store(true, std::memory_order_release);
-    for (std::uint64_t i = 1ULL; i <= 3ULL; ++i) {
+    for (uint64_t i = 1ULL; i <= 3ULL; ++i) {
       const auto payload = make_payload(i, 32U);
-      std::uint64_t seq = 0ULL;
+      uint64_t seq = 0ULL;
       if (shm_publisher_publish(&child_pub, payload.data(), payload.size(),
                                 &seq) != SHM_PUBSUB_OK) {
         return 3;
@@ -569,16 +568,16 @@ TEST(ShmPubSubCTest, CrossProcessAndDeadPublisherTakeover) {
   // Replacement publisher takes over and continues numbering past 3
   ScopedPublisher recovery_pub;
   ASSERT_EQ(shm_publisher_attach(recovery_pub.get(), ch.get()), SHM_PUBSUB_OK);
-  const auto payload4 = make_payload(4ULL, 32U);
-  std::uint64_t next_seq = 0ULL;
+  const auto payload4 = make_payload(uint64_t{4}, 32U);
+  uint64_t next_seq = 0;
   ASSERT_EQ(shm_publisher_publish(recovery_pub.get(), payload4.data(),
                                   payload4.size(), &next_seq),
             SHM_PUBSUB_OK);
   EXPECT_EQ(next_seq, 4ULL);
 
-  std::array<std::uint8_t, 64> buf{};
+  std::array<uint8_t, 64> buf{};
   struct shm_sample sample{};
-  for (std::uint64_t expected = 1ULL; expected <= 4ULL; ++expected) {
+  for (uint64_t expected = 1ULL; expected <= 4ULL; ++expected) {
     ASSERT_EQ(
         shm_subscriber_try_receive(sub.get(), buf.data(), buf.size(), &sample),
         SHM_PUBSUB_OK);

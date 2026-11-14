@@ -20,30 +20,28 @@
 
 namespace {
 
-constexpr std::uint64_t kDeterministicBenchmarkSeed = 0x5EED'B17A'F119'2026ULL;
+constexpr uint64_t kDeterministicBenchmarkSeed = 0x5EED'B17A'F119'2026ULL;
 
-[[nodiscard]] constexpr auto bytes_per_row(std::size_t width) noexcept
-    -> std::size_t {
+[[nodiscard]] constexpr auto bytes_per_row(size_t width) noexcept -> size_t {
   return (width / 8U) + ((width % 8U != 0U) ? 1U : 0U);
 }
 
-[[nodiscard]] auto make_test_buffer(std::size_t byte_count)
-    -> std::vector<std::uint8_t> {
+[[nodiscard]] auto make_test_buffer(size_t byte_count) -> std::vector<uint8_t> {
   std::mt19937_64 rng{kDeterministicBenchmarkSeed};
-  std::uniform_int_distribution<unsigned int> dist{0U, 255U};
-  std::vector<std::uint8_t> buffer(byte_count);
+  std::uniform_int_distribution<uint32_t> dist{0U, 255U};
+  std::vector<uint8_t> buffer(byte_count);
   for (auto& byte : buffer) {
-    byte = static_cast<std::uint8_t>(dist(rng));
+    byte = static_cast<uint8_t>(dist(rng));
   }
   return buffer;
 }
 
-void BM_FlipBitmap_Baseline(benchmark::State& state, std::size_t width,
-                            std::size_t height) {
-  const std::size_t row_bytes = bytes_per_row(width);
-  const std::size_t total_bytes = row_bytes * height;
+void BM_FlipBitmap_Baseline(benchmark::State& state, size_t width,
+                            size_t height) {
+  const size_t row_bytes = bytes_per_row(width);
+  const size_t total_bytes = row_bytes * height;
   auto buffer = make_test_buffer(total_bytes);
-  std::span<std::uint8_t> span(buffer.data(), buffer.size());
+  std::span<uint8_t> span(buffer.data(), buffer.size());
 
   // Warmup and zero padding bits (involution setup)
   static_cast<void>(systems::flip_bitmap_unaligned(span, width, height));
@@ -54,18 +52,18 @@ void BM_FlipBitmap_Baseline(benchmark::State& state, std::size_t width,
     benchmark::ClobberMemory();
   }
 
-  state.SetBytesProcessed(static_cast<std::int64_t>(state.iterations()) *
-                          static_cast<std::int64_t>(total_bytes));
-  state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()) *
-                          static_cast<std::int64_t>(width * height));
+  state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) *
+                          static_cast<int64_t>(total_bytes));
+  state.SetItemsProcessed(static_cast<int64_t>(state.iterations()) *
+                          static_cast<int64_t>(width * height));
 }
 
-void BM_FlipBitmap_Candidate(benchmark::State& state, std::size_t width,
-                             std::size_t height) {
-  const std::size_t row_bytes = bytes_per_row(width);
-  const std::size_t total_bytes = row_bytes * height;
+void BM_FlipBitmap_Candidate(benchmark::State& state, size_t width,
+                             size_t height) {
+  const size_t row_bytes = bytes_per_row(width);
+  const size_t total_bytes = row_bytes * height;
   auto buffer = make_test_buffer(total_bytes);
-  std::span<std::uint8_t> span(buffer.data(), buffer.size());
+  std::span<uint8_t> span(buffer.data(), buffer.size());
 
   // Warmup and zero padding bits (involution setup)
   static_cast<void>(
@@ -78,10 +76,10 @@ void BM_FlipBitmap_Candidate(benchmark::State& state, std::size_t width,
     benchmark::ClobberMemory();
   }
 
-  state.SetBytesProcessed(static_cast<std::int64_t>(state.iterations()) *
-                          static_cast<std::int64_t>(total_bytes));
-  state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()) *
-                          static_cast<std::int64_t>(width * height));
+  state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) *
+                          static_cast<int64_t>(total_bytes));
+  state.SetItemsProcessed(static_cast<int64_t>(state.iterations()) *
+                          static_cast<int64_t>(width * height));
 }
 
 #define REGISTER_FLIP_BENCHMARK(width, height)                                \
@@ -112,16 +110,16 @@ REGISTER_FLIP_BENCHMARK(10800, 7200);
 #if defined(__APPLE__)
 auto sysctl_string(const char* name) -> std::string {
   std::array<char, 256> buffer{};
-  std::size_t size = buffer.size();
+  size_t size = buffer.size();
   if (sysctlbyname(name, buffer.data(), &size, nullptr, 0) == 0 && size > 0U) {
     return std::string{buffer.data()};
   }
   return {};
 }
 
-auto sysctl_int64(const char* name) -> std::int64_t {
-  std::int64_t value = 0;
-  std::size_t size = sizeof(value);
+auto sysctl_int64(const char* name) -> int64_t {
+  int64_t value = 0;
+  size_t size = sizeof(value);
   if (sysctlbyname(name, &value, &size, nullptr, 0) == 0) {
     return value;
   }
@@ -140,7 +138,7 @@ void configure_darwin_benchmark_environment() {
   // before the first benchmark repetition begins.
   const auto warmup_deadline =
       std::chrono::steady_clock::now() + std::chrono::milliseconds(150);
-  std::uint64_t accumulator = 1U;
+  uint64_t accumulator = 1U;
   while (std::chrono::steady_clock::now() < warmup_deadline) {
     for (int i = 0; i < 4096; ++i) {
       accumulator = (accumulator * 6364136223846793005ULL) + 1ULL;
@@ -155,8 +153,8 @@ void configure_darwin_benchmark_environment() {
   benchmark::AddCustomContext("darwin_thread_qos",
                               "QOS_CLASS_USER_INTERACTIVE");
 
-  const std::int64_t p_cores = sysctl_int64("hw.perflevel0.physicalcpu");
-  const std::int64_t e_cores = sysctl_int64("hw.perflevel1.physicalcpu");
+  const int64_t p_cores = sysctl_int64("hw.perflevel0.physicalcpu");
+  const int64_t e_cores = sysctl_int64("hw.perflevel1.physicalcpu");
   if (p_cores > 0) {
     benchmark::AddCustomContext("apple_perflevel0_p_cores",
                                 std::to_string(p_cores));
@@ -174,7 +172,7 @@ void configure_darwin_benchmark_environment() {
     benchmark::AddCustomContext("apple_perflevel1_e_cores",
                                 std::to_string(e_cores));
   }
-  const std::int64_t cacheline = sysctl_int64("hw.cachelinesize");
+  const int64_t cacheline = sysctl_int64("hw.cachelinesize");
   if (cacheline > 0) {
     benchmark::AddCustomContext("apple_cacheline_bytes",
                                 std::to_string(cacheline));

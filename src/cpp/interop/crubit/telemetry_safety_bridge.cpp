@@ -10,53 +10,47 @@ namespace interop::crubit {
 
 namespace {
 
-constexpr std::uint32_t kCrc32Poly = 0xEDB88320U;
-constexpr std::uint32_t kNonFiniteFaultBit = 0x80000000U;
+constexpr uint32_t kCrc32Poly = 0xEDB88320U;
+constexpr uint32_t kNonFiniteFaultBit = 0x80000000U;
 
-auto crc32_update_byte(std::uint32_t crc, std::uint8_t byte) noexcept
-    -> std::uint32_t {
-  crc ^= static_cast<std::uint32_t>(byte);
+auto crc32_update_byte(uint32_t crc, uint8_t byte) noexcept -> uint32_t {
+  crc ^= static_cast<uint32_t>(byte);
   for (int bit = 0; bit < 8; ++bit) {
-    const std::uint32_t mask = (crc & 1U) != 0U ? 0xFFFFFFFFU : 0U;
+    const uint32_t mask = (crc & 1U) != 0U ? 0xFFFFFFFFU : 0U;
     crc = (crc >> 1U) ^ (kCrc32Poly & mask);
   }
   return crc;
 }
 
-template <std::size_t ByteCount>
-void append_le_bytes(std::uint64_t value, std::array<std::uint8_t, 28>& out,
-                     std::size_t offset) noexcept {
-  for (std::size_t idx = 0; idx < ByteCount; ++idx) {
-    out.at(offset + idx) =
-        static_cast<std::uint8_t>((value >> (8U * idx)) & 0xFFU);
+template <size_t ByteCount>
+void append_le_bytes(uint64_t value, std::array<uint8_t, 28>& out,
+                     size_t offset) noexcept {
+  for (size_t idx = 0; idx < ByteCount; ++idx) {
+    out.at(offset + idx) = static_cast<uint8_t>((value >> (8U * idx)) & 0xFFU);
   }
 }
 
 }  // namespace
 
-auto compute_frame_crc32(
-    unsigned int sequence_id,
-    // Built-in type required for Crubit CMake mode.
-    unsigned long long timestamp_ns,  // NOLINT(google-runtime-int)
-    double torque_cmd_nm, double velocity_rad_s) noexcept -> unsigned int {
-  std::array<std::uint8_t, 28> payload{};
-  append_le_bytes<4>(static_cast<std::uint64_t>(sequence_id), payload, 0);
-  append_le_bytes<8>(static_cast<std::uint64_t>(timestamp_ns), payload, 4);
-  append_le_bytes<8>(std::bit_cast<std::uint64_t>(torque_cmd_nm), payload, 12);
-  append_le_bytes<8>(std::bit_cast<std::uint64_t>(velocity_rad_s), payload, 20);
+auto compute_frame_crc32(uint32_t sequence_id, uint64_t timestamp_ns,
+                         double torque_cmd_nm, double velocity_rad_s) noexcept
+    -> uint32_t {
+  std::array<uint8_t, 28> payload{};
+  append_le_bytes<4>(static_cast<uint64_t>(sequence_id), payload, 0);
+  append_le_bytes<8>(timestamp_ns, payload, 4);
+  append_le_bytes<8>(std::bit_cast<uint64_t>(torque_cmd_nm), payload, 12);
+  append_le_bytes<8>(std::bit_cast<uint64_t>(velocity_rad_s), payload, 20);
 
-  std::uint32_t crc = 0xFFFFFFFFU;
-  for (const std::uint8_t byte : payload) {
+  uint32_t crc = 0xFFFFFFFFU;
+  for (const uint8_t byte : payload) {
     crc = crc32_update_byte(crc, byte);
   }
   return crc ^ 0xFFFFFFFFU;
 }
 
-auto make_verified_frame(
-    unsigned int sequence_id,
-    // Built-in type required for Crubit CMake mode.
-    unsigned long long timestamp_ns,  // NOLINT(google-runtime-int)
-    double torque_cmd_nm, double velocity_rad_s) noexcept -> SensorFrame {
+auto make_verified_frame(uint32_t sequence_id, uint64_t timestamp_ns,
+                         double torque_cmd_nm, double velocity_rad_s) noexcept
+    -> SensorFrame {
   return SensorFrame{
       .sequence_id = sequence_id,
       .timestamp_ns = timestamp_ns,
@@ -67,11 +61,11 @@ auto make_verified_frame(
   };
 }
 
-auto ActuatorSink::committed_count() const noexcept -> unsigned int {
+auto ActuatorSink::committed_count() const noexcept -> uint32_t {
   return committed_count_;
 }
 
-auto ActuatorSink::latched_fault_mask() const noexcept -> unsigned int {
+auto ActuatorSink::latched_fault_mask() const noexcept -> uint32_t {
   return latched_fault_mask_;
 }
 
@@ -79,8 +73,8 @@ auto ActuatorSink::last_safe_torque_nm() const noexcept -> double {
   return last_safe_torque_nm_;
 }
 
-auto ActuatorSink::commit(double safe_torque_nm,
-                          unsigned int fault_mask) noexcept -> bool {
+auto ActuatorSink::commit(double safe_torque_nm, uint32_t fault_mask) noexcept
+    -> bool {
   if (fault_mask != 0U) {
     latched_fault_mask_ |= fault_mask;
     last_safe_torque_nm_ = 0.0;

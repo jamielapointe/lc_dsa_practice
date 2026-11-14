@@ -27,11 +27,6 @@ use rs_telemetry_validator::FAULT_WATCHDOG_EXPIRED;
 use rs_telemetry_validator::SafetyInterceptor;
 use rs_telemetry_validator::SafetyState;
 
-#[allow(clippy::useless_conversion)]
-fn c_ulonglong_to_u64(val: ffi_11::c_ulonglong) -> u64 {
-    u64::from(val)
-}
-
 #[test]
 fn primitives_and_enums_roundtrip() {
     let origin = Waypoint3d::default();
@@ -138,7 +133,7 @@ fn telemetry_capstone_fault_latch_and_recovery() {
     let mut interceptor = SafetyInterceptor::new_armed();
     let mut sink = ActuatorSink::default();
 
-    let frame1 = make_verified_frame(ffi_11::new_c_uint(1), ffi_11::new_c_ulonglong(10_000_000), 18.5, 0.9);
+    let frame1 = make_verified_frame(1, 10_000_000, 18.5, 0.9);
     let crc1_ok = compute_frame_crc32(
         frame1.sequence_id,
         frame1.timestamp_ns,
@@ -148,19 +143,19 @@ fn telemetry_capstone_fault_latch_and_recovery() {
     assert!(crc1_ok);
 
     let dec1 = interceptor.validate_command(
-        c_ulonglong_to_u64(frame1.timestamp_ns),
+        frame1.timestamp_ns,
         12_000_000,
         frame1.torque_cmd_nm,
         crc1_ok,
     );
     assert_eq!(dec1.state, SafetyState::Active);
-    assert!(sink.commit(dec1.safe_torque_nm, ffi_11::new_c_uint(dec1.fault_mask)));
+    assert!(sink.commit(dec1.safe_torque_nm, dec1.fault_mask));
     assert_eq!(sink.committed_count(), 1);
 
     // Trigger combined watchdog expiry, over-torque, and CRC mismatch.
-    let frame2 = make_verified_frame(ffi_11::new_c_uint(2), ffi_11::new_c_ulonglong(11_000_000), 120.0, 1.2);
+    let frame2 = make_verified_frame(2, 11_000_000, 120.0, 1.2);
     let dec2 = interceptor.validate_command(
-        c_ulonglong_to_u64(frame2.timestamp_ns),
+        frame2.timestamp_ns,
         20_000_000,
         frame2.torque_cmd_nm,
         false,
@@ -171,7 +166,7 @@ fn telemetry_capstone_fault_latch_and_recovery() {
         dec2.fault_mask,
         FAULT_WATCHDOG_EXPIRED | FAULT_TORQUE_OUT_OF_RANGE | FAULT_CRC_MISMATCH
     );
-    assert!(!sink.commit(dec2.safe_torque_nm, ffi_11::new_c_uint(dec2.fault_mask)));
+    assert!(!sink.commit(dec2.safe_torque_nm, dec2.fault_mask));
     assert_eq!(sink.latched_fault_mask(), dec2.fault_mask);
 
     // Wrong auth token must keep latch engaged.
@@ -184,15 +179,15 @@ fn telemetry_capstone_fault_latch_and_recovery() {
     assert_eq!(interceptor.state(), SafetyState::Armed);
     assert_eq!(sink.latched_fault_mask(), 0);
 
-    let frame3 = make_verified_frame(ffi_11::new_c_uint(3), ffi_11::new_c_ulonglong(25_000_000), -12.5, -0.4);
+    let frame3 = make_verified_frame(3, 25_000_000, -12.5, -0.4);
     let dec3 = interceptor.validate_command(
-        c_ulonglong_to_u64(frame3.timestamp_ns),
+        frame3.timestamp_ns,
         26_000_000,
         frame3.torque_cmd_nm,
         true,
     );
     assert_eq!(dec3.state, SafetyState::Active);
-    assert!(sink.commit(dec3.safe_torque_nm, ffi_11::new_c_uint(dec3.fault_mask)));
+    assert!(sink.commit(dec3.safe_torque_nm, dec3.fault_mask));
     assert_eq!(sink.committed_count(), 2);
     assert!((sink.last_safe_torque_nm() - (-12.5)).abs() < 1e-12);
 }

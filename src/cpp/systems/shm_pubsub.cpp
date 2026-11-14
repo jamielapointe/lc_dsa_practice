@@ -59,13 +59,13 @@ using Clock = std::chrono::steady_clock;
 // each process maps the segment at a different address.
 
 /// "SHMPSUB1" in ASCII. Identifies a channel segment.
-constexpr std::uint64_t kMagic = 0x5348'4D50'5355'4231ULL;
+constexpr uint64_t kMagic = 0x5348'4D50'5355'4231ULL;
 /// Bump whenever the layout below changes, so `open()` rejects old segments.
-constexpr std::uint32_t kLayoutVersion = 1;
+constexpr uint32_t kLayoutVersion = 1;
 /// False-sharing granularity (64 bytes on x86-64 / Cortex-A, see platform).
-constexpr std::size_t kCacheLine = platform::kCacheLineSize;
+constexpr size_t kCacheLine = platform::kCacheLineSize;
 /// Payload is stored and copied as 64-bit words (see `store_payload`).
-constexpr std::size_t kWordBytes = sizeof(std::uint64_t);
+constexpr size_t kWordBytes = sizeof(uint64_t);
 
 /// @brief Channel-wide state at offset 0 of the mapping.
 ///
@@ -76,43 +76,43 @@ struct alignas(kCacheLine) ChannelHeader {
   // --- Line 0: identity and geometry. Written once by `create()`, before
   // `magic` is release-stored; read-only afterwards. Plain fields are fine
   // because every reader first acquire-loads `magic`.
-  std::atomic<std::uint64_t> magic{0};
-  std::uint32_t layout_version{0};
-  std::uint32_t slot_count{0};
-  std::uint32_t slot_size{0};
-  std::uint32_t slot_stride{0};
+  std::atomic<uint64_t> magic{0};
+  uint32_t layout_version{0};
+  uint32_t slot_count{0};
+  uint32_t slot_size{0};
+  uint32_t slot_stride{0};
 
   // --- Line 1: written by the publisher.
   /// Sequence of the newest *committed* sample (0 = nothing yet). Subscribers
   /// poll it to learn whether anything new exists and how far behind they are.
-  alignas(kCacheLine) std::atomic<std::uint64_t> published{0};
+  alignas(kCacheLine) std::atomic<uint64_t> published{0};
   /// Process id holding the publisher role, 0 when free (SHMPS-REQ-007).
-  std::atomic<std::int64_t> publisher_pid{0};
+  std::atomic<int64_t> publisher_pid{0};
 
   // --- Line 2: written at most once per channel lifetime.
-  alignas(kCacheLine) std::atomic<std::uint32_t> closed{0};
+  alignas(kCacheLine) std::atomic<uint32_t> closed{0};
 };
 
 /// @brief Metadata at the start of every slot.
 struct SlotHeader {
   /// The per-slot sequence lock: `2s` = stable sample `s`, `2s - 1` =
   /// sample `s` is being written, 0 = never written.
-  std::atomic<std::uint64_t> seq{0};
+  std::atomic<uint64_t> seq{0};
   /// Payload length of the sample in this slot. Written inside the seqlock
   /// window, so it is validated exactly like the payload.
-  std::atomic<std::uint32_t> size{0};
-  std::uint32_t reserved{0};  ///< Keeps the payload 8-byte aligned.
+  std::atomic<uint32_t> size{0};
+  uint32_t reserved{0};  ///< Keeps the payload 8-byte aligned.
 };
 
 // Cross-process atomics must be lock-free. An address-based lock table
 // (libatomic's fallback) is per process and would protect nothing.
-static_assert(std::atomic<std::uint64_t>::is_always_lock_free);
-static_assert(std::atomic<std::int64_t>::is_always_lock_free);
-static_assert(std::atomic<std::uint32_t>::is_always_lock_free);
-static_assert(std::atomic_ref<std::uint64_t>::is_always_lock_free);
+static_assert(std::atomic<uint64_t>::is_always_lock_free);
+static_assert(std::atomic<int64_t>::is_always_lock_free);
+static_assert(std::atomic<uint32_t>::is_always_lock_free);
+static_assert(std::atomic_ref<uint64_t>::is_always_lock_free);
 static_assert(std::atomic_ref<std::byte>::is_always_lock_free);
 // Payload words sit at 8-byte offsets inside cache-line-aligned slots.
-static_assert(std::atomic_ref<std::uint64_t>::required_alignment <= kWordBytes);
+static_assert(std::atomic_ref<uint64_t>::required_alignment <= kWordBytes);
 // Nothing in shared memory may need a destructor or hold hidden pointers.
 static_assert(std::is_trivially_destructible_v<ChannelHeader>);
 static_assert(std::is_trivially_destructible_v<SlotHeader>);
@@ -121,36 +121,35 @@ static_assert(std::is_standard_layout_v<SlotHeader>);
 static_assert(sizeof(SlotHeader) == 2 * kWordBytes);
 static_assert(sizeof(ChannelHeader) % kCacheLine == 0);
 
-constexpr std::size_t kHeaderBytes = sizeof(ChannelHeader);
-constexpr std::size_t kSlotHeaderBytes = sizeof(SlotHeader);
+constexpr size_t kHeaderBytes = sizeof(ChannelHeader);
+constexpr size_t kSlotHeaderBytes = sizeof(SlotHeader);
 
-[[nodiscard]] constexpr auto round_up(std::size_t value,
-                                      std::size_t multiple) noexcept
-    -> std::size_t {
+[[nodiscard]] constexpr auto round_up(size_t value, size_t multiple) noexcept
+    -> size_t {
   return (value + multiple - 1) / multiple * multiple;
 }
 
 /// @brief Bytes per slot: header and word-rounded payload, padded to a cache
 /// line so two slots never share one. Otherwise the publisher writing slot
 /// i+1 would keep invalidating the line a reader is copying from slot i.
-[[nodiscard]] constexpr auto slot_stride_for(std::uint32_t slot_size) noexcept
-    -> std::uint32_t {
-  return static_cast<std::uint32_t>(
+[[nodiscard]] constexpr auto slot_stride_for(uint32_t slot_size) noexcept
+    -> uint32_t {
+  return static_cast<uint32_t>(
       round_up(kSlotHeaderBytes + round_up(slot_size, kWordBytes), kCacheLine));
 }
 
 /// @brief Total mapping size for a configuration.
 [[nodiscard]] constexpr auto region_bytes(
-    const ShmPubSubConfig& config) noexcept -> std::size_t {
-  return kHeaderBytes + (static_cast<std::size_t>(config.slot_count) *
+    const ShmPubSubConfig& config) noexcept -> size_t {
+  return kHeaderBytes + (static_cast<size_t>(config.slot_count) *
                          slot_stride_for(config.slot_size));
 }
 
 // Largest legal segment: 4096 slots x ~64 KiB, about 256 MiB. It fits
-// comfortably in std::size_t, so `region_bytes` cannot overflow.
+// comfortably in size_t, so `region_bytes` cannot overflow.
 static_assert(region_bytes({.slot_count = kShmMaxSlotCount,
                             .slot_size = kShmMaxSlotSize}) <
-              (std::size_t{1} << 30U));
+              (size_t{1} << 30U));
 
 // ---------------------------------------------------------------------
 // Typed access to the mapping. These two helpers are the only places
@@ -167,7 +166,7 @@ static_assert(region_bytes({.slot_count = kShmMaxSlotCount,
 }
 
 /// @brief `base + offset`. Keeps pointer arithmetic in one audited spot.
-[[nodiscard]] auto byte_at(std::byte* base, std::size_t offset) noexcept
+[[nodiscard]] auto byte_at(std::byte* base, size_t offset) noexcept
     -> std::byte* {
   // NOLINTNEXTLINE(*-pro-bounds-pointer-arithmetic): validated layout offset.
   return base + offset;
@@ -175,8 +174,8 @@ static_assert(region_bytes({.slot_count = kShmMaxSlotCount,
 
 /// @brief A slot as seen through a `ChannelView`.
 struct SlotRef {
-  SlotHeader* header;              ///< Sequence lock and size.
-  std::span<std::uint64_t> words;  ///< Payload storage (relaxed atomics).
+  SlotHeader* header;         ///< Sequence lock and size.
+  std::span<uint64_t> words;  ///< Payload storage (relaxed atomics).
 };
 
 /// @brief The slot that stores sample `sequence` (sequence >= 1).
@@ -184,14 +183,14 @@ struct SlotRef {
 /// Pure arithmetic on cached geometry: this is how the publisher finds its
 /// slot without reading shared memory.
 [[nodiscard]] auto slot_for(const detail::ChannelView& view,
-                            std::uint64_t sequence) noexcept -> SlotRef {
-  const auto index = static_cast<std::size_t>((sequence - 1U) & view.slot_mask);
+                            uint64_t sequence) noexcept -> SlotRef {
+  const auto index = static_cast<size_t>((sequence - 1U) & view.slot_mask);
   std::byte* const slot =
       byte_at(view.base, kHeaderBytes + (index * view.slot_stride));
   // NOLINTBEGIN(*-pro-type-reinterpret-cast): shared-memory layout view.
   auto* const header = std::launder(reinterpret_cast<SlotHeader*>(slot));
   auto* const words =
-      reinterpret_cast<std::uint64_t*>(byte_at(slot, kSlotHeaderBytes));
+      reinterpret_cast<uint64_t*>(byte_at(slot, kSlotHeaderBytes));
   // NOLINTEND(*-pro-type-reinterpret-cast)
   return {.header = header,
           .words = {words, round_up(view.slot_size, kWordBytes) / kWordBytes}};
@@ -211,36 +210,36 @@ struct SlotRef {
 // ---------------------------------------------------------------------
 
 /// @brief Writes `payload` into `words`, zero-padding the last word.
-void store_payload(std::span<std::uint64_t> words,
+void store_payload(std::span<uint64_t> words,
                    std::span<const std::byte> payload) noexcept {
-  const std::size_t full_words = payload.size() / kWordBytes;
-  for (std::size_t i = 0; i < full_words; ++i) {
-    std::uint64_t word = 0;
+  const size_t full_words = payload.size() / kWordBytes;
+  for (size_t i = 0; i < full_words; ++i) {
+    uint64_t word = 0;
     std::memcpy(&word, payload.subspan(i * kWordBytes, kWordBytes).data(),
                 kWordBytes);
     std::atomic_ref{words[i]}.store(word, std::memory_order_relaxed);
   }
-  const std::size_t tail = payload.size() % kWordBytes;
+  const size_t tail = payload.size() % kWordBytes;
   if (tail != 0) {
-    std::uint64_t word = 0;
+    uint64_t word = 0;
     std::memcpy(&word, payload.subspan(full_words * kWordBytes).data(), tail);
     std::atomic_ref{words[full_words]}.store(word, std::memory_order_relaxed);
   }
 }
 
 /// @brief Reads `out.size()` payload bytes from `words` into `out`.
-void load_payload(std::span<std::uint64_t> words,
+void load_payload(std::span<uint64_t> words,
                   std::span<std::byte> out) noexcept {
-  const std::size_t full_words = out.size() / kWordBytes;
-  for (std::size_t i = 0; i < full_words; ++i) {
-    const std::uint64_t word =
+  const size_t full_words = out.size() / kWordBytes;
+  for (size_t i = 0; i < full_words; ++i) {
+    const uint64_t word =
         std::atomic_ref{words[i]}.load(std::memory_order_relaxed);
     std::memcpy(out.subspan(i * kWordBytes, kWordBytes).data(), &word,
                 kWordBytes);
   }
-  const std::size_t tail = out.size() % kWordBytes;
+  const size_t tail = out.size() % kWordBytes;
   if (tail != 0) {
-    const std::uint64_t word =
+    const uint64_t word =
         std::atomic_ref{words[full_words]}.load(std::memory_order_relaxed);
     std::memcpy(out.subspan(full_words * kWordBytes).data(), &word, tail);
   }
@@ -251,7 +250,7 @@ void load_payload(std::span<std::uint64_t> words,
 // =====================================================================
 
 /// @brief Outcome of one attempt to read a specific sample.
-enum class ReadOutcome : std::uint8_t {
+enum class ReadOutcome : uint8_t {
   kOk,              ///< Copied an intact sample.
   kBufferTooSmall,  ///< Intact sample, but it does not fit; nothing copied.
   kOverwritten,     ///< The publisher lapped this slot (before or during).
@@ -277,15 +276,13 @@ enum class ReadOutcome : std::uint8_t {
 ///        it for free.
 ///   (R4) `v2 = seq.load(relaxed)`. Unchanged means nothing overlapped the
 ///   copy.
-[[nodiscard]] auto read_slot(const detail::ChannelView& view,
-                             std::uint64_t sequence,
+[[nodiscard]] auto read_slot(const detail::ChannelView& view, uint64_t sequence,
                              std::span<std::byte> buffer,
-                             std::uint32_t& size_out) noexcept -> ReadOutcome {
+                             uint32_t& size_out) noexcept -> ReadOutcome {
   const SlotRef slot = slot_for(view, sequence);
-  const std::uint64_t wanted = 2U * sequence;
+  const uint64_t wanted = 2U * sequence;
 
-  const std::uint64_t v1 =
-      slot.header->seq.load(std::memory_order_acquire);  // (R1)
+  const uint64_t v1 = slot.header->seq.load(std::memory_order_acquire);  // (R1)
   if (v1 != wanted) {
     // Larger (even or odd): a newer sample is in, or being written into,
     // the slot, so ours is gone. Smaller: ours has not been committed
@@ -293,7 +290,7 @@ enum class ReadOutcome : std::uint8_t {
     return v1 > wanted ? ReadOutcome::kOverwritten : ReadOutcome::kNotReady;
   }
 
-  const std::uint32_t size =
+  const uint32_t size =
       slot.header->size.load(std::memory_order_relaxed);  // (R2)
   // A size that does not fit the slot can only be a torn value (or a foreign
   // writer), so never trust it for the copy length. Report it the same way
@@ -304,9 +301,8 @@ enum class ReadOutcome : std::uint8_t {
     load_payload(slot.words, buffer.first(size));  // (R2)
   }
 
-  std::atomic_thread_fence(std::memory_order_acquire);  // (R3)
-  const std::uint64_t v2 =
-      slot.header->seq.load(std::memory_order_relaxed);  // (R4)
+  std::atomic_thread_fence(std::memory_order_acquire);                   // (R3)
+  const uint64_t v2 = slot.header->seq.load(std::memory_order_relaxed);  // (R4)
   if (v2 != v1 || !size_plausible) {
     return ReadOutcome::kOverwritten;  // torn: the copy (or size) is garbage
   }
@@ -347,7 +343,7 @@ enum class ReadOutcome : std::uint8_t {
 /// @brief Builds the layout in a fresh, zero-filled mapping.
 ///
 /// Uses `std::construct_at` so the atomics start their lifetime properly.
-/// Payload words are `std::uint64_t` (an implicit-lifetime type) and are
+/// Payload words are `uint64_t` (an implicit-lifetime type) and are
 /// already zero. The magic number is release-stored **last**: a concurrent
 /// `open()` either sees no magic and rejects the segment, or sees the magic
 /// together with every field written before it.
@@ -364,7 +360,7 @@ void initialize_layout(std::byte* base,
                                  .slot_mask = config.slot_count - 1U,
                                  .slot_size = config.slot_size,
                                  .slot_stride = header->slot_stride};
-  for (std::uint64_t sequence = 1; sequence <= config.slot_count; ++sequence) {
+  for (uint64_t sequence = 1; sequence <= config.slot_count; ++sequence) {
     std::construct_at(slot_for(view, sequence).header);
   }
   header->magic.store(kMagic, std::memory_order_release);
@@ -407,12 +403,12 @@ void initialize_layout(std::byte* base,
 /// sequence we hand out is therefore greater than every sequence that was
 /// ever committed (SHMPS-REQ-020).
 [[nodiscard]] auto recover_next_sequence(
-    const detail::ChannelView& view) noexcept -> std::uint64_t {
-  std::uint64_t newest =
+    const detail::ChannelView& view) noexcept -> uint64_t {
+  uint64_t newest =
       header_of(view.base).published.load(std::memory_order_acquire);
-  const std::uint64_t slot_count = std::uint64_t{view.slot_mask} + 1U;
-  for (std::uint64_t sequence = 1; sequence <= slot_count; ++sequence) {
-    const std::uint64_t lock =
+  const uint64_t slot_count = uint64_t{view.slot_mask} + 1U;
+  for (uint64_t sequence = 1; sequence <= slot_count; ++sequence) {
+    const uint64_t lock =
         slot_for(view, sequence).header->seq.load(std::memory_order_acquire);
     newest = std::max(newest, lock / 2U);
   }
@@ -601,7 +597,7 @@ void ShmPublisher::release() noexcept {
   // this handle. If the child destroyed its copy, it must not release the
   // parent's role. Only the process that claimed the role gives it back.
   if (owner_pid_ == detail::SharedMemoryRegion::current_process_id()) {
-    std::int64_t expected = owner_pid_;
+    int64_t expected = owner_pid_;
     // Release: our final slot writes happen-before the next publisher's
     // acquire in `attach()`. A failed CAS means someone already took over
     // (we were presumed dead); leave their claim alone.
@@ -626,8 +622,8 @@ auto ShmPublisher::attach(ShmChannel& channel) noexcept
 
   // Claim the role: CAS 0 -> our pid. acq_rel: acquire sees everything the
   // previous publisher wrote before releasing; release publishes our claim.
-  const std::int64_t me = detail::SharedMemoryRegion::current_process_id();
-  std::int64_t holder = 0;
+  const int64_t me = detail::SharedMemoryRegion::current_process_id();
+  int64_t holder = 0;
   if (!header.publisher_pid.compare_exchange_strong(
           holder, me, std::memory_order_acq_rel, std::memory_order_acquire)) {
     // Held. Our own process counts as alive: one publisher per channel, even
@@ -657,7 +653,7 @@ auto ShmPublisher::attach(ShmChannel& channel) noexcept
 // this function down.
 
 auto ShmPublisher::publish(std::span<const std::byte> payload) noexcept
-    -> std::expected<std::uint64_t, ShmPubSubError> {
+    -> std::expected<uint64_t, ShmPubSubError> {
   if (view_.base == nullptr) {
     return std::unexpected(ShmPubSubError::kInvalidArgument);  // moved-from
   }
@@ -674,7 +670,7 @@ auto ShmPublisher::publish(std::span<const std::byte> payload) noexcept
 
   // Sequence and slot come from our own counter, so the slot's current
   // lock value is never loaded: we already know it.
-  const std::uint64_t sequence = next_sequence_;
+  const uint64_t sequence = next_sequence_;
   const SlotRef slot = slot_for(view_, sequence);
 
   // (W1) Odd: "writing sample `sequence`". Relaxed on its own...
@@ -686,7 +682,7 @@ auto ShmPublisher::publish(std::span<const std::byte> payload) noexcept
 
   // (W3) Payload and size, relaxed (ordered by W2 before and W4 after).
   store_payload(slot.words, payload);
-  slot.header->size.store(static_cast<std::uint32_t>(payload.size()),
+  slot.header->size.store(static_cast<uint32_t>(payload.size()),
                           std::memory_order_relaxed);
 
   // (W4) Even: "sample `sequence` is stable". Release keeps (W3) from
@@ -714,7 +710,7 @@ auto ShmSubscriber::attach(ShmChannel& channel, ShmReadMode mode) noexcept
   }
   // No history replay (assumption A-6): start at the next sample to be
   // published.
-  const std::uint64_t newest =
+  const uint64_t newest =
       header_of(view.base).published.load(std::memory_order_acquire);
   return ShmSubscriber{view, newest + 1U, mode};
 }
@@ -725,12 +721,12 @@ auto ShmSubscriber::try_receive(std::span<std::byte> buffer) noexcept
     return std::unexpected(ShmPubSubError::kInvalidArgument);  // moved-from
   }
   const ChannelHeader& header = header_of(view_.base);
-  const std::uint64_t slot_count = std::uint64_t{view_.slot_mask} + 1U;
+  const uint64_t slot_count = uint64_t{view_.slot_mask} + 1U;
 
   // The cursor and missed count are only committed to the handle on success,
   // so `kBufferTooSmall` / `kWouldBlock` consume nothing.
-  std::uint64_t cursor = next_sequence_;
-  std::uint64_t missed = 0;
+  uint64_t cursor = next_sequence_;
+  uint64_t missed = 0;
   bool force_newest = false;
 
   // Lock-free loop: an iteration only fails (kOverwritten) because the
@@ -740,7 +736,7 @@ auto ShmSubscriber::try_receive(std::span<std::byte> buffer) noexcept
     // published before the close is already visible in the head, so we
     // drain them all before reporting kClosed (SHMPS-REQ-014).
     const bool closed = header.closed.load(std::memory_order_acquire) != 0;
-    const std::uint64_t head = header.published.load(std::memory_order_acquire);
+    const uint64_t head = header.published.load(std::memory_order_acquire);
     if (head < cursor) {
       return std::unexpected(closed ? ShmPubSubError::kClosed
                                     : ShmPubSubError::kWouldBlock);
@@ -748,14 +744,14 @@ auto ShmSubscriber::try_receive(std::span<std::byte> buffer) noexcept
 
     // Skip policy (SHMPS-REQ-011 / REQ-027). `lag` = unread samples older
     // than the newest one.
-    const std::uint64_t lag = head - cursor;
+    const uint64_t lag = head - cursor;
     const bool lapped = lag >= slot_count;  // cursor's slot was reused
     if (lag > 0 && (lapped || force_newest || mode_ == ShmReadMode::kLatest)) {
       missed += lag;
       cursor = head;  // jump to the newest committed sample
     }
 
-    std::uint32_t size = 0;
+    uint32_t size = 0;
     switch (read_slot(view_, cursor, buffer, size)) {
       case ReadOutcome::kOk:
         next_sequence_ = cursor + 1U;

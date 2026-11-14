@@ -161,7 +161,7 @@ TEST(ChildProcessTest, MoveTransfersOwnership) {
 }
 
 TEST(ChildProcessTest, SendSignalStopsAndResumesWithoutReaping) {
-  systems_test::SharedRegion<std::atomic<std::uint64_t>> beats;
+  systems_test::SharedRegion<std::atomic<uint64_t>> beats;
   ASSERT_TRUE(beats.valid());
   auto child = ChildProcess::spawn([&beats] {
     const auto deadline =
@@ -173,7 +173,7 @@ TEST(ChildProcessTest, SendSignalStopsAndResumesWithoutReaping) {
     return 0;
   });
   const auto is_beating = [&beats] {
-    const std::uint64_t start = beats->load(std::memory_order_relaxed);
+    const uint64_t start = beats->load(std::memory_order_relaxed);
     return systems_test::wait_until(
         [&beats, start] {
           return beats->load(std::memory_order_relaxed) > start;
@@ -186,7 +186,7 @@ TEST(ChildProcessTest, SendSignalStopsAndResumesWithoutReaping) {
   // Delivery is asynchronous: give the stop a moment to land, then check
   // that a frozen child makes no progress.
   std::this_thread::sleep_for(std::chrono::milliseconds{50});
-  const std::uint64_t frozen = beats->load(std::memory_order_relaxed);
+  const uint64_t frozen = beats->load(std::memory_order_relaxed);
   std::this_thread::sleep_for(std::chrono::milliseconds{50});
   EXPECT_EQ(beats->load(std::memory_order_relaxed), frozen);
   EXPECT_TRUE(child.valid());  // stopped, not reaped
@@ -223,18 +223,18 @@ TEST(ChildProcessTest, ResultsPrintReadably) {
 // ------------------------------------------------------- shared rendezvous
 
 struct Rendezvous {
-  std::atomic<std::uint32_t> ready{0};
-  std::atomic<std::uint64_t> counter{0};
+  std::atomic<uint32_t> ready{0};
+  std::atomic<uint64_t> counter{0};
 };
-static_assert(std::atomic<std::uint64_t>::is_always_lock_free);
+static_assert(std::atomic<uint64_t>::is_always_lock_free);
 
 TEST(SharedRegionTest, WritesAreVisibleAcrossFork) {
   systems_test::SharedRegion<Rendezvous> shared;
   ASSERT_TRUE(shared.valid());
 
   auto child = ChildProcess::spawn([&shared] {
-    constexpr std::uint64_t kCount = 1000;
-    for (std::uint64_t i = 0; i < kCount; ++i) {
+    constexpr uint64_t kCount = 1000;
+    for (uint64_t i = 0; i < kCount; ++i) {
       shared->counter.fetch_add(1, std::memory_order_relaxed);
     }
     shared->ready.store(1, std::memory_order_release);
@@ -249,7 +249,7 @@ TEST(SharedRegionTest, WritesAreVisibleAcrossFork) {
 }
 
 TEST(SharedRegionTest, ValueInitializesContents) {
-  const systems_test::SharedRegion<std::uint64_t> shared;
+  const systems_test::SharedRegion<uint64_t> shared;
   ASSERT_TRUE(shared.valid());
   EXPECT_EQ(*shared, 0U);
 }
@@ -303,7 +303,7 @@ TEST(AllocationScopeTest, CountsHeapAllocationsInsideScope) {
   {
     auto one = std::make_unique<int>(1);
     escape(one.get());
-    auto many = std::make_unique<std::uint64_t[]>(16);  // NOLINT(*-c-arrays)
+    auto many = std::make_unique<uint64_t[]>(16);  // NOLINT(*-c-arrays)
     escape(many.get());
   }
   EXPECT_EQ(scope.allocations(), 2U);
@@ -311,7 +311,7 @@ TEST(AllocationScopeTest, CountsHeapAllocationsInsideScope) {
 
 TEST(AllocationScopeTest, CountsAlignedAndNothrowAllocations) {
   struct alignas(128) Wide {
-    std::uint8_t byte{0};
+    uint8_t byte{0};
   };
   const systems_test::AllocationScope scope;
   {
@@ -326,7 +326,7 @@ TEST(AllocationScopeTest, CountsAlignedAndNothrowAllocations) {
 TEST(AllocationScopeTest, IgnoresAllocationsOutsideScope) {
   auto before = std::make_unique<int>(1);
   escape(before.get());
-  std::size_t count = 0;
+  size_t count = 0;
   {
     const systems_test::AllocationScope scope;
     count = scope.allocations();
@@ -345,7 +345,7 @@ TEST(AllocationScopeTest, NestedScopeIsReported) {
 
 TEST(AllocationScopeTest, CountsAllocationsFromOtherThreads) {
   const systems_test::AllocationScope scope;
-  std::size_t after_thread_start = 0;
+  size_t after_thread_start = 0;
   {
     std::thread worker{[] {
       auto value = std::make_unique<int>(5);

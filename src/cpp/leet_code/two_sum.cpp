@@ -19,23 +19,23 @@
 namespace leet_code {
 
 [[nodiscard]] auto two_sum(std::span<const int> nums, int target)
-    -> std::expected<std::pair<std::size_t, std::size_t>, std::string> {
+    -> std::expected<std::pair<size_t, size_t>, std::string> {
   if (nums.size() < 2) {
     return std::unexpected{"Input sequence must contain at least two elements"};
   }
 
   // Value -> Index map. Reserve capacity upfront to prevent rehashing during
   // single-pass.
-  std::unordered_map<int, std::size_t> seen;
+  std::unordered_map<int, size_t> seen;
   seen.reserve(nums.size());
 
-  for (std::size_t i = 0; i < nums.size(); ++i) {
+  for (size_t i = 0; i < nums.size(); ++i) {
     const int current = nums[i];
 
     // Compute complement in 64-bit signed integer space to prevent signed
     // overflow UB.
     const auto complement_64 =
-        static_cast<std::int64_t>(target) - static_cast<std::int64_t>(current);
+        static_cast<int64_t>(target) - static_cast<int64_t>(current);
 
     // If complement is outside [INT_MIN, INT_MAX], it cannot match any 32-bit
     // int in nums.

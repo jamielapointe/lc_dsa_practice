@@ -145,7 +145,9 @@ Intent: portable building blocks that could move to a small target without redes
   - Prefer `constexpr`, `noexcept`, `[[nodiscard]]`, and `static_assert` for invariants; document thread-safety and blocking
     behavior in Doxygen.
   - Provide try/blocking/timed variants for blocking APIs and a `close()` path that wakes every waiter.
-  - Bit-twiddling or register-style code should use fixed-width integers and `std::bit_cast`/`<bit>` (or C23 `<stdbit.h>`/`memcpy`), never type punning.
+  - Enforce the Google C++ Style Guide Integer Types rule in C++: allow `int`, unqualified `<cstdint>` types (`uint32_t`, `int64_t`, etc.), and
+    `size_t`/`ptrdiff_t` (`<cstddef>`), never built-in `short`/`long`/`unsigned`. Bit-twiddling or register code should pair fixed-width integers with
+    `std::bit_cast`/`<bit>` (or C23 `<stdbit.h>`/`memcpy`), never type punning.
   - Public operations are `noexcept` and report errors via `std::expected<T, <Name>Error>` in C++ or `[[nodiscard]] enum <name>_error` in C23; no exceptions or
     RTTI in runtime paths. Heap is allowed only in an explicit init phase (`create()`/`open()`), never in steady-state operations.
   - OS calls (`shm_open`, `mmap`, `pthread_*attr*`, ...) live only in an adapter TU (`<name>_posix.cpp` / `<name>_posix.c`); branch on
@@ -247,7 +249,7 @@ Intent: intensive, TDD-driven Rust crash course and senior interview preparation
 
 | Area | Gate |
 | :--- | :--- |
-| C++ format and lint | clang-format (Google), clang-tidy with `WarningsAsErrors: "*"` (enabled in `dev-debug`) |
+| C++ format and lint | clang-format (Google), clang-tidy (`WarningsAsErrors: "*"`), Google Integer Types (`int`, `<cstdint>`, `size_t`/`ptrdiff_t`) |
 | C++ runtime | ASan, UBSan, TSan presets; 85% line coverage (`cov-cpp`) |
 | Python | `ruff check`, `ruff format`, `mypy` strict, pytest, 85% coverage |
 | Rust format and lint | `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` |

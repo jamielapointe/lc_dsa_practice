@@ -38,9 +38,9 @@ Crubit's C++ support runtime and generated thunks require LLVM `libc++` (`-stdli
 - Pixi installs `libcxx >= 23.1.4` and `libcxx-devel >= 23.1.4` on `linux-64` and `osx-arm64` (plus `libcxxabi >= 23.1.4` on `linux-64`).
 - `cmake/CrubitInterop.cmake` compiles `crubit::support_cc` and all generated `*_impl_cc` targets with `-stdlib=libc++`, `SYSTEM` includes, and
   `CXX_CLANG_TIDY ""` so third-party/generated Crubit code is exempt from project `WarningsAsErrors`.
-- Public C++23 headers parsed by `rs_bindings_from_cc` under `src/include/interop/crubit/` stay free of standard library headers such as `<string>`, `<vector>`,
-  `<memory>`, `<optional>`, and `<expected>` (Crubit CMake mode does not use Bazel `cc_std`). C++23 tests and demos that use `std::expected` include a separate
-  companion header (`traits_and_errors_expected.hpp`) that is not passed to `rs_bindings_from_cc`.
+- Public C++23 headers parsed by `rs_bindings_from_cc` under `src/include/interop/crubit/` stay free of heavy STL headers such as `<string>`, `<vector>`,
+  `<memory>`, `<optional>`, and `<expected>` (Crubit CMake mode does not use Bazel `cc_std`; `<cstdint>` and `<cstddef>` are supported). C++23 tests and demos
+  that use `std::expected` include a separate companion header (`traits_and_errors_expected.hpp`) that is not passed to `rs_bindings_from_cc`.
 - C++ interop tests use a lightweight header-only harness (`test/cpp/interop/crubit/interop_test_harness.hpp`) instead of conda-forge `GTest::gtest_main` (which
   links `libstdc++` on Linux).
 - Each `crubit_add_cpp_api_from_rust` target builds a Rust `staticlib` containing Rust `std`; therefore each C++ test or demo executable links at most one Rust
@@ -86,8 +86,8 @@ Crubit's C++ support runtime and generated thunks require LLVM `libc++` (`-stdli
 
 | Concept | C++23 Side | Rust 2024 Side | Crubit Bridge & Best Practices |
 | :--- | :--- | :--- | :--- |
-| Primitives & trivial structs | `int`, `unsigned int`, `unsigned long long`, `double`, `bool`, POD `struct` | `i32`, `u32`, `u64`, `f64`, `bool`, `#[derive(Clone, Copy)] pub struct` | Passed by value with zero marshalling overhead; keep fields public for transparent C++ field access. |
-| Scoped & payload enums | `enum class FlightPhase : int` / generated tagged class for Rust payload `enum` | Unitless `enum` / payload `enum ControlCommand` | C++ `enum class` maps to a Rust newtype/enum; Rust payload enums expose factory constructors and pattern-matched accessors in C++. |
+| Primitives & trivial structs | `int`, `int8_t`..`int64_t`, `uint8_t`..`uint64_t` (`<cstdint>`), `double`, `bool`, POD `struct` | `ffi_11::c_int`, `i8`..`i64`, `u8`..`u64`, `f64`, `bool`, `#[derive(Clone, Copy)] pub struct` | Passed by value with zero marshalling overhead; keep fields public for transparent C++ field access. |
+| Scoped & payload enums | `enum class FlightPhase : uint8_t` / generated tagged class for Rust payload `enum` | Unitless `enum` / payload `enum ControlCommand` | C++ `enum class` maps to a Rust newtype/enum; Rust payload enums expose factory constructors and pattern-matched accessors in C++. |
 | References & lifetimes | `const T& [[clang::lifetimebound]]`, `T&` | `&T`, `&mut T` | Annotate C++ functions returning references tied to parameters with `[[clang::lifetimebound]]` so Crubit binds Rust output lifetimes to the input borrow. |
 | String & slice views | `rs::StrRef`, `rs::SliceRef<const T>`, `rs::SliceRef<T>` | `&str`, `&[T]`, `&mut [T]` | Construct `rs::StrRef` from UTF-8 `std::string_view` (`rs::StrRef::FromUtf8`) and `rs::SliceRef` from `std::span` / arrays for zero-copy views. |
 | Non-trivially relocatable RAII | `class LeaseGuard` with user-defined move/destructor | `#[::ctor::recursively_pinned]` + `ctor::emplace!` | Non-trivially relocatable C++ classes cannot be moved by Rust value semantics; stack-pin them with `ctor::emplace!` and `Pin<&mut T>` so `~LeaseGuard()` runs deterministically. |

@@ -14,6 +14,7 @@
 #include <atomic>
 #include <cctype>
 #include <cstddef>
+#include <cstdint>
 #include <format>
 #include <string>
 #include <string_view>
@@ -24,16 +25,16 @@
 namespace systems_test {
 
 auto unique_shm_name(std::string_view prefix) -> std::string {
-  static std::atomic<unsigned> counter{0};
-  constexpr std::size_t kMaxPrefix = 8;
+  static std::atomic<uint32_t> counter{0};
+  constexpr size_t kMaxPrefix = 8;
 
   std::string clean;
   for (const char c : prefix.substr(0, kMaxPrefix)) {
-    const auto uc = static_cast<unsigned char>(c);
+    const auto uc = static_cast<uint8_t>(c);
     clean.push_back((std::isalnum(uc) != 0 || c == '_') ? c : '_');
   }
   std::string name =
-      std::format("/{}_{:x}_{:x}", clean, static_cast<unsigned>(::getpid()),
+      std::format("/{}_{:x}_{:x}", clean, static_cast<uint32_t>(::getpid()),
                   counter.fetch_add(1, std::memory_order_relaxed));
   if (name.size() > systems::platform::kMaxShmNameLength) {
     name.resize(systems::platform::kMaxShmNameLength);

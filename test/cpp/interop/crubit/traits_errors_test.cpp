@@ -26,10 +26,8 @@ auto main() -> int {
 
   // Test Rust PidScheduleId traits: Default, PartialEq, Display (operator<<).
   const rs_traits_errors::PidScheduleId default_id;
-  INTEROP_EXPECT_EQ(ctx, default_id.controller_id,
-                    static_cast<std::uint32_t>(0));
-  INTEROP_EXPECT_EQ(ctx, default_id.profile_slot,
-                    static_cast<std::uint16_t>(0));
+  INTEROP_EXPECT_EQ(ctx, default_id.controller_id, static_cast<uint32_t>(0));
+  INTEROP_EXPECT_EQ(ctx, default_id.profile_slot, static_cast<uint16_t>(0));
 
   const auto parsed_ok =
       rs_traits_errors::parse_schedule_id(rs::StrRef{"42:3"});

@@ -29,35 +29,35 @@
 // NOLINTBEGIN(misc-new-delete-overloads,cert-dcl54-cpp,*-owning-memory)
 // Replacement global allocation functions ([new.delete]); all forward to
 // malloc/free so ASan still tracks every block.
-auto operator new(std::size_t bytes) -> void* {
+auto operator new(size_t bytes) -> void* {
   return systems_test::detail::throwing(
       systems_test::detail::checked_malloc(bytes));
 }
-auto operator new[](std::size_t bytes) -> void* {
+auto operator new[](size_t bytes) -> void* {
   return systems_test::detail::throwing(
       systems_test::detail::checked_malloc(bytes));
 }
-auto operator new(std::size_t bytes, const std::nothrow_t& /*tag*/) noexcept
+auto operator new(size_t bytes, const std::nothrow_t& /*tag*/) noexcept
     -> void* {
   return systems_test::detail::checked_malloc(bytes);
 }
-auto operator new[](std::size_t bytes, const std::nothrow_t& /*tag*/) noexcept
+auto operator new[](size_t bytes, const std::nothrow_t& /*tag*/) noexcept
     -> void* {
   return systems_test::detail::checked_malloc(bytes);
 }
-auto operator new(std::size_t bytes, std::align_val_t align) -> void* {
+auto operator new(size_t bytes, std::align_val_t align) -> void* {
   return systems_test::detail::throwing(
       systems_test::detail::checked_aligned(bytes, align));
 }
-auto operator new[](std::size_t bytes, std::align_val_t align) -> void* {
+auto operator new[](size_t bytes, std::align_val_t align) -> void* {
   return systems_test::detail::throwing(
       systems_test::detail::checked_aligned(bytes, align));
 }
-auto operator new(std::size_t bytes, std::align_val_t align,
+auto operator new(size_t bytes, std::align_val_t align,
                   const std::nothrow_t& /*tag*/) noexcept -> void* {
   return systems_test::detail::checked_aligned(bytes, align);
 }
-auto operator new[](std::size_t bytes, std::align_val_t align,
+auto operator new[](size_t bytes, std::align_val_t align,
                     const std::nothrow_t& /*tag*/) noexcept -> void* {
   return systems_test::detail::checked_aligned(bytes, align);
 }
@@ -65,10 +65,10 @@ void operator delete(void* ptr) noexcept { systems_test::detail::release(ptr); }
 void operator delete[](void* ptr) noexcept {
   systems_test::detail::release(ptr);
 }
-void operator delete(void* ptr, std::size_t /*bytes*/) noexcept {
+void operator delete(void* ptr, size_t /*bytes*/) noexcept {
   systems_test::detail::release(ptr);
 }
-void operator delete[](void* ptr, std::size_t /*bytes*/) noexcept {
+void operator delete[](void* ptr, size_t /*bytes*/) noexcept {
   systems_test::detail::release(ptr);
 }
 void operator delete(void* ptr, std::align_val_t /*align*/) noexcept {
@@ -77,11 +77,11 @@ void operator delete(void* ptr, std::align_val_t /*align*/) noexcept {
 void operator delete[](void* ptr, std::align_val_t /*align*/) noexcept {
   systems_test::detail::release(ptr);
 }
-void operator delete(void* ptr, std::size_t /*bytes*/,
+void operator delete(void* ptr, size_t /*bytes*/,
                      std::align_val_t /*align*/) noexcept {
   systems_test::detail::release(ptr);
 }
-void operator delete[](void* ptr, std::size_t /*bytes*/,
+void operator delete[](void* ptr, size_t /*bytes*/,
                        std::align_val_t /*align*/) noexcept {
   systems_test::detail::release(ptr);
 }

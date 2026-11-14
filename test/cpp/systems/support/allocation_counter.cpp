@@ -21,15 +21,14 @@
 namespace systems_test {
 namespace {
 
-std::atomic<bool> g_armed{false};           // NOLINT(*-avoid-non-const-global*)
-std::atomic<std::size_t> g_allocations{0};  // NOLINT(*-avoid-non-const-global*)
+std::atomic<bool> g_armed{false};      // NOLINT(*-avoid-non-const-global*)
+std::atomic<size_t> g_allocations{0};  // NOLINT(*-avoid-non-const-global*)
 
 #if defined(__has_feature)
 #if __has_feature(address_sanitizer) || __has_feature(thread_sanitizer)
 // ASan/TSan own the allocator, so global_new_delete.cpp compiles to nothing.
 // Their allocator runs these hooks for every operator new and malloc call.
-void count_sanitizer_malloc(const volatile void* /*ptr*/,
-                            std::size_t /*bytes*/) {
+void count_sanitizer_malloc(const volatile void* /*ptr*/, size_t /*bytes*/) {
   detail::note_allocation();
 }
 void ignore_sanitizer_free(const volatile void* /*ptr*/) {}
@@ -56,17 +55,16 @@ void note_allocation() noexcept {
   }
 }
 
-auto checked_malloc(std::size_t bytes) noexcept -> void* {
+auto checked_malloc(size_t bytes) noexcept -> void* {
   note_allocation();
   // NOLINTNEXTLINE(*-no-malloc,*-owning-memory): this IS the allocator.
   return std::malloc(bytes == 0 ? 1 : bytes);
 }
 
-auto checked_aligned(std::size_t bytes, std::align_val_t align) noexcept
-    -> void* {
+auto checked_aligned(size_t bytes, std::align_val_t align) noexcept -> void* {
   note_allocation();
-  const auto alignment = static_cast<std::size_t>(align);
-  const std::size_t rounded = ((bytes + alignment - 1) / alignment) * alignment;
+  const auto alignment = static_cast<size_t>(align);
+  const size_t rounded = ((bytes + alignment - 1) / alignment) * alignment;
   // NOLINTNEXTLINE(*-no-malloc,*-owning-memory): this IS the allocator.
   return std::aligned_alloc(alignment, rounded == 0 ? alignment : rounded);
 }
@@ -101,7 +99,7 @@ AllocationScope::~AllocationScope() {
   }
 }
 
-auto AllocationScope::allocations() const noexcept -> std::size_t {
+auto AllocationScope::allocations() const noexcept -> size_t {
   if (!owner_) {
     return kNestedScope;
   }

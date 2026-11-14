@@ -13,6 +13,6 @@ namespace systems {
 // Common instantiations used by the tests; keeps the template compiling under
 // -Werror on every build.
 template class BoundedFifo<int, 16>;
-template class BoundedFifo<std::uint8_t, 64>;
+template class BoundedFifo<uint8_t, 64>;
 
 }  // namespace systems

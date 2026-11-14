@@ -1,4 +1,5 @@
 #include <cstddef>
+#include <cstdint>
 #include <iostream>
 
 #include "crubit/rs_ownership_raii.h"
@@ -6,9 +7,9 @@
 #include "support/rs_std/str_ref.h"
 
 auto main() -> int {
-  std::size_t peak_buffers = 0;
-  std::size_t bytes_appended = 0;
-  unsigned int checksum = 0U;
+  size_t peak_buffers = 0;
+  size_t bytes_appended = 0;
+  uint32_t checksum = 0U;
 
   {
     interop::crubit::LeaseGuard cpp_lease(42);

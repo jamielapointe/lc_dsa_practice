@@ -221,7 +221,7 @@ class TestTier1FeatureCoverage:
 
         # Check span overload signature
         assert '[[nodiscard]] auto flip_bitmap_unaligned_optimized(' in hpp_content
-        assert 'std::span<std::uint8_t> bitmap' in hpp_content
+        assert 'std::span<uint8_t> bitmap' in hpp_content
         assert '-> std::expected<void, BitmapFlipError>' in hpp_content
         assert 'noexcept' in hpp_content
 

@@ -21,28 +21,26 @@ extern "C" {
 
 namespace {
 
-constexpr std::uint64_t kDeterministicBenchmarkSeed = 0x5EED'B17A'F119'2026ULL;
+constexpr uint64_t kDeterministicBenchmarkSeed = 0x5EED'B17A'F119'2026ULL;
 
-[[nodiscard]] constexpr auto bytes_per_row(std::size_t width) noexcept
-    -> std::size_t {
+[[nodiscard]] constexpr auto bytes_per_row(size_t width) noexcept -> size_t {
   return (width / 8U) + ((width % 8U != 0U) ? 1U : 0U);
 }
 
-[[nodiscard]] auto make_test_buffer(std::size_t byte_count)
-    -> std::vector<std::uint8_t> {
+[[nodiscard]] auto make_test_buffer(size_t byte_count) -> std::vector<uint8_t> {
   std::mt19937_64 rng{kDeterministicBenchmarkSeed};
-  std::uniform_int_distribution<unsigned int> dist{0U, 255U};
-  std::vector<std::uint8_t> buffer(byte_count);
+  std::uniform_int_distribution<uint32_t> dist{0U, 255U};
+  std::vector<uint8_t> buffer(byte_count);
   for (auto& byte : buffer) {
-    byte = static_cast<std::uint8_t>(dist(rng));
+    byte = static_cast<uint8_t>(dist(rng));
   }
   return buffer;
 }
 
-void BM_FlipBitmap_C_Baseline(benchmark::State& state, std::size_t width,
-                              std::size_t height) {
-  const std::size_t row_bytes = bytes_per_row(width);
-  const std::size_t total_bytes = row_bytes * height;
+void BM_FlipBitmap_C_Baseline(benchmark::State& state, size_t width,
+                              size_t height) {
+  const size_t row_bytes = bytes_per_row(width);
+  const size_t total_bytes = row_bytes * height;
   auto buffer = make_test_buffer(total_bytes);
 
   static_cast<void>(
@@ -55,16 +53,16 @@ void BM_FlipBitmap_C_Baseline(benchmark::State& state, std::size_t width,
     benchmark::ClobberMemory();
   }
 
-  state.SetBytesProcessed(static_cast<std::int64_t>(state.iterations()) *
-                          static_cast<std::int64_t>(total_bytes));
-  state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()) *
-                          static_cast<std::int64_t>(width * height));
+  state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) *
+                          static_cast<int64_t>(total_bytes));
+  state.SetItemsProcessed(static_cast<int64_t>(state.iterations()) *
+                          static_cast<int64_t>(width * height));
 }
 
-void BM_FlipBitmap_C_Candidate(benchmark::State& state, std::size_t width,
-                               std::size_t height) {
-  const std::size_t row_bytes = bytes_per_row(width);
-  const std::size_t total_bytes = row_bytes * height;
+void BM_FlipBitmap_C_Candidate(benchmark::State& state, size_t width,
+                               size_t height) {
+  const size_t row_bytes = bytes_per_row(width);
+  const size_t total_bytes = row_bytes * height;
   auto buffer = make_test_buffer(total_bytes);
 
   static_cast<void>(bitmap_flip_unaligned_optimized(
@@ -77,10 +75,10 @@ void BM_FlipBitmap_C_Candidate(benchmark::State& state, std::size_t width,
     benchmark::ClobberMemory();
   }
 
-  state.SetBytesProcessed(static_cast<std::int64_t>(state.iterations()) *
-                          static_cast<std::int64_t>(total_bytes));
-  state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()) *
-                          static_cast<std::int64_t>(width * height));
+  state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) *
+                          static_cast<int64_t>(total_bytes));
+  state.SetItemsProcessed(static_cast<int64_t>(state.iterations()) *
+                          static_cast<int64_t>(width * height));
 }
 
 #define REGISTER_C_FLIP_BENCHMARK(width, height)                               \

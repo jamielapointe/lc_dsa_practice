@@ -97,7 +97,7 @@
 /// 5. Follow-up 3: generalize the row addressing to a byte stride, then to a
 ///    rectangle whose left and right edges may fall in the middle of a byte.
 /// 6. Validation: implement the checks in the documented order, guarding
-///    every size computation against `std::size_t` overflow.
+///    every size computation against `size_t` overflow.
 /// 7. Follow-up 4: write your answers to the questions in the spec (section
 ///    "Follow-up 4") as a comment in `bitmap_flip.cpp`.
 ///
@@ -154,14 +154,14 @@
 namespace systems {
 
 /// @brief Number of bits (pixels) in one byte of a 1-bpp bitmap.
-inline constexpr std::size_t kBitsPerByte = 8;
+inline constexpr size_t kBitsPerByte = 8;
 
 /// @brief Maximum number of distinct values for an 8-bit unsigned integer
 /// (2^8).
-inline constexpr std::size_t kMaxUint8Combinations = 256;
+inline constexpr size_t kMaxUint8Combinations = 256;
 
 /// @brief Error codes returned by the span-based flip operations.
-enum class [[nodiscard]] BitmapFlipError : std::uint8_t {
+enum class [[nodiscard]] BitmapFlipError : uint8_t {
   /// Stub placeholder; never returned by a finished implementation.
   kNotImplemented = 0,
   /// The buffer span is empty or its data pointer is null.
@@ -208,13 +208,13 @@ enum class [[nodiscard]] BitmapFlipError : std::uint8_t {
 /// `y + height <= framebuffer_height` (evaluated without overflow).
 struct BitmapRoi {
   /// Leftmost pixel column of the ROI.
-  std::size_t x{0};
+  size_t x{0};
   /// Topmost row of the ROI.
-  std::size_t y{0};
+  size_t y{0};
   /// ROI width in pixels.
-  std::size_t width{0};
+  size_t width{0};
   /// ROI height in rows.
-  std::size_t height{0};
+  size_t height{0};
 };
 /// @brief Flips a tightly packed, byte-aligned (`width % 8 == 0`) bitmap
 /// horizontally in place (Problem 0 and Follow-up 1).
@@ -232,8 +232,8 @@ struct BitmapRoi {
 /// @par Requirements
 /// BMFLP-REQ-001, BMFLP-REQ-003, BMFLP-REQ-004, BMFLP-REQ-005, BMFLP-REQ-017,
 /// BMFLP-REQ-018, BMFLP-REQ-021, BMFLP-REQ-022
-[[nodiscard]] auto flip_bitmap(std::span<std::uint8_t> bitmap,
-                               std::size_t width, std::size_t height) noexcept
+[[nodiscard]] auto flip_bitmap(std::span<uint8_t> bitmap, size_t width,
+                               size_t height) noexcept
     -> std::expected<void, BitmapFlipError>;
 
 /// @brief Flips a tightly packed bitmap of any width horizontally in place
@@ -252,9 +252,8 @@ struct BitmapRoi {
 /// @par Requirements
 /// BMFLP-REQ-001, BMFLP-REQ-004, BMFLP-REQ-005, BMFLP-REQ-008, BMFLP-REQ-009,
 /// BMFLP-REQ-017, BMFLP-REQ-018, BMFLP-REQ-021, BMFLP-REQ-022
-[[nodiscard]] auto flip_bitmap_unaligned(std::span<std::uint8_t> bitmap,
-                                         std::size_t width,
-                                         std::size_t height) noexcept
+[[nodiscard]] auto flip_bitmap_unaligned(std::span<uint8_t> bitmap,
+                                         size_t width, size_t height) noexcept
     -> std::expected<void, BitmapFlipError>;
 
 /// @brief Flips a tightly packed bitmap of any width horizontally in place
@@ -274,9 +273,10 @@ struct BitmapRoi {
 /// @par Requirements
 /// BMFLP-REQ-001, BMFLP-REQ-004, BMFLP-REQ-005, BMFLP-REQ-008, BMFLP-REQ-009,
 /// BMFLP-REQ-017, BMFLP-REQ-018, BMFLP-REQ-021, BMFLP-REQ-022
-[[nodiscard]] auto flip_bitmap_unaligned_optimized(
-    std::span<std::uint8_t> bitmap, std::size_t width,
-    std::size_t height) noexcept -> std::expected<void, BitmapFlipError>;
+[[nodiscard]] auto flip_bitmap_unaligned_optimized(std::span<uint8_t> bitmap,
+                                                   size_t width,
+                                                   size_t height) noexcept
+    -> std::expected<void, BitmapFlipError>;
 
 /// @brief Flips a bitmap whose rows are `stride_bytes` apart, in place.
 ///
@@ -294,9 +294,9 @@ struct BitmapRoi {
 /// @par Requirements
 /// BMFLP-REQ-010, BMFLP-REQ-017, BMFLP-REQ-018, BMFLP-REQ-019, BMFLP-REQ-021,
 /// BMFLP-REQ-022
-[[nodiscard]] auto flip_bitmap_stride(std::span<std::uint8_t> bitmap,
-                                      std::size_t width, std::size_t height,
-                                      std::size_t stride_bytes) noexcept
+[[nodiscard]] auto flip_bitmap_stride(std::span<uint8_t> bitmap, size_t width,
+                                      size_t height,
+                                      size_t stride_bytes) noexcept
     -> std::expected<void, BitmapFlipError>;
 
 /// @brief Flips only the pixels inside a region of interest, in place.
@@ -321,11 +321,10 @@ struct BitmapRoi {
 /// @par Requirements
 /// BMFLP-REQ-011, BMFLP-REQ-017, BMFLP-REQ-018, BMFLP-REQ-019, BMFLP-REQ-020,
 /// BMFLP-REQ-021, BMFLP-REQ-022
-[[nodiscard]] auto flip_bitmap_roi(std::span<std::uint8_t> bitmap,
-                                   std::size_t framebuffer_width,
-                                   std::size_t framebuffer_height,
-                                   std::size_t stride_bytes,
-                                   BitmapRoi roi) noexcept
+[[nodiscard]] auto flip_bitmap_roi(std::span<uint8_t> bitmap,
+                                   size_t framebuffer_width,
+                                   size_t framebuffer_height,
+                                   size_t stride_bytes, BitmapRoi roi) noexcept
     -> std::expected<void, BitmapFlipError>;
 
 }  // namespace systems

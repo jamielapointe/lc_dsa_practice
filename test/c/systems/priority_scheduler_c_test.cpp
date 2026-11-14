@@ -749,7 +749,7 @@ TEST(PrioritySchedulerCTest, ZeroHeapAllocationAcrossBssStackAndStartupArena) {
       PRIORITY_SCHEDULER_ERR_NOT_IMPLEMENTED;
   enum priority_scheduler_error heap_res =
       PRIORITY_SCHEDULER_ERR_NOT_IMPLEMENTED;
-  std::size_t allocations = 0U;
+  size_t allocations = 0U;
 
   {
     const systems_test::AllocationScope scope;

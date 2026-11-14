@@ -101,7 +101,7 @@ coming from configuration data. It is staged like the interview question: a corr
 
 | ID | Assumption / decision | Alternatives considered |
 | --- | --- | --- |
-| A-1 | Primary C++23 API uses `std::span<std::uint8_t>` buffers and `std::expected<void, BitmapFlipError>` results (`noexcept`); the ISO C23 API in `src/include/systems/bitmap_flip.h` uses explicit `buf_size` bounds and `[[nodiscard]] enum bitmap_flip_error` returns | Unchecked `void` raw-pointer prototype only (rejected: a raw pointer without size cannot be bounds-checked and `void` cannot report errors) |
+| A-1 | Primary C++23 API uses `std::span<uint8_t>` buffers and `std::expected<void, BitmapFlipError>` results (`noexcept`); the ISO C23 API in `src/include/systems/bitmap_flip.h` uses explicit `buf_size` bounds and `[[nodiscard]] enum bitmap_flip_error` returns | Unchecked `void` raw-pointer prototype only (rejected: a raw pointer without size cannot be bounds-checked and `void` cannot report errors) |
 | A-2 | Separate functions per stage: `flip_bitmap` (Problem 0 / Follow-up 1, requires `width % 8 == 0`), `flip_bitmap_unaligned` (Follow-up 2, any `width > 0`), `flip_bitmap_stride` and `flip_bitmap_roi` (Follow-up 3) | Reusing `flip_bitmap` for Follow-up 2 (rejected by user: keep Problem 0 / Follow-up 1 byte-aligned in `flip_bitmap` and use a separate generic function for Follow-up 2) |
 | A-3 | **Full-row flips write the padding bits** (bits past `width` in each row's last pixel byte) **as zero**; their input value is ignored (confirmed by the user) | Preserve the input padding bits; leave them unspecified |
 | A-4 | ROI flips change only ROI pixels and preserve every other bit, including padding bits and stride padding bytes | Zero padding bits as in A-3 (rejected: they are outside the ROI) |
@@ -110,7 +110,7 @@ coming from configuration data. It is staged like the interview question: a corr
 | A-7 | Requirement (confirmed by the user): the buffer must hold `stride_bytes * height` bytes (the last row includes its stride padding) | `stride_bytes * (height - 1) + ceil(width / 8)` (tighter; rejected for simplicity) |
 | A-8 | ROI coordinates are in pixels; ROI edges may fall anywhere inside a byte | Byte-aligned ROIs only (rejected: that would skip the interesting part of Follow-up 3) |
 | A-9 | An empty span (null or non-null data) is `kNullPointer`. Validation order: `kNullPointer`, `kZeroDimension`, `kInvalidWidth` (`flip_bitmap` only), `kInvalidStride`, `kInvalidRoi`, `kBufferTooSmall`; nothing is written on error | Unspecified order (rejected: tests could not pin the error for inputs with several problems) |
-| A-11 | `reverse_bits(std::uint8_t)` is public API so the byte-reversal step, called out in the prompt, can be tested on its own | Keep it private (rejected: its tests would be indirect) |
+| A-11 | `reverse_bits(uint8_t)` is public API so the byte-reversal step, called out in the prompt, can be tested on its own | Keep it private (rejected: its tests would be indirect) |
 | A-12 | The caller owns the buffer; there is no compile-time capacity. Any `width` / `height` up to `SIZE_MAX` is validated without overflow | Template on image size (rejected: framebuffer geometry is usually run-time configuration) |
 | A-13 | The library starts no threads. Follow-up 4 is a written discussion (BMFLP-REQ-014); only reentrancy is tested (BMFLP-REQ-013) | Built-in parallel flip (rejected: the prompt says nobody writes or tests it) |
 | A-14 | Follow-up 1 speed is verified by analysis, not by a timing test (wall-clock assertions are unreliable under sanitizers) | A benchmark with a time bound |
@@ -135,15 +135,15 @@ The header is authoritative for signatures.
 - `BitmapFlipError` — `kNotImplemented` (stub only), `kNullPointer`, `kInvalidWidth`, `kZeroDimension`, `kBufferTooSmall`, `kInvalidStride`, `kInvalidRoi`;
   `to_string()`.
 - `BitmapRoi` — aggregate `{x, y, width, height}` in pixels.
-- `reverse_bits(std::uint8_t) -> std::uint8_t` — mirror one byte.
-- `reverse_bits_lookup(std::uint8_t) -> std::uint8_t` — mirror one byte using a 256-byte static constexpr lookup table.
-- `flip_bitmap(std::span<std::uint8_t>, width, height) -> std::expected<void, BitmapFlipError>` — packed rows, byte-aligned (`width % 8 == 0`, Problem 0 and
+- `reverse_bits(uint8_t) -> uint8_t` — mirror one byte.
+- `reverse_bits_lookup(uint8_t) -> uint8_t` — mirror one byte using a 256-byte static constexpr lookup table.
+- `flip_bitmap(std::span<uint8_t>, width, height) -> std::expected<void, BitmapFlipError>` — packed rows, byte-aligned (`width % 8 == 0`, Problem 0 and
   Follow-up 1).
-- `flip_bitmap_unaligned(std::span<std::uint8_t>, width, height) -> std::expected<void, BitmapFlipError>` — packed rows, any `width > 0` (Follow-up 2).
-- `flip_bitmap_unaligned_optimized(std::span<std::uint8_t>, width, height) -> std::expected<void, BitmapFlipError>` — packed rows, any `width > 0` candidate
+- `flip_bitmap_unaligned(std::span<uint8_t>, width, height) -> std::expected<void, BitmapFlipError>` — packed rows, any `width > 0` (Follow-up 2).
+- `flip_bitmap_unaligned_optimized(std::span<uint8_t>, width, height) -> std::expected<void, BitmapFlipError>` — packed rows, any `width > 0` candidate
   (Follow-up 2).
-- `flip_bitmap_stride(std::span<std::uint8_t>, width, height, stride_bytes) -> std::expected<void, BitmapFlipError>` — strided rows.
-- `flip_bitmap_roi(std::span<std::uint8_t>, framebuffer_width, framebuffer_height, stride_bytes, BitmapRoi) -> std::expected<void, BitmapFlipError>`.
+- `flip_bitmap_stride(std::span<uint8_t>, width, height, stride_bytes) -> std::expected<void, BitmapFlipError>` — strided rows.
+- `flip_bitmap_roi(std::span<uint8_t>, framebuffer_width, framebuffer_height, stride_bytes, BitmapRoi) -> std::expected<void, BitmapFlipError>`.
 
 ## 6. Functional requirements
 
@@ -295,7 +295,7 @@ The span-based functions shall return `kZeroDimension` when `width` or `height` 
 ### BMFLP-REQ-020: ROI outside the framebuffer
 
 `flip_bitmap_roi` shall return `kInvalidRoi` unless `roi.x + roi.width <= framebuffer_width` and `roi.y + roi.height <= framebuffer_height`, evaluated
-without `std::size_t` overflow.
+without `size_t` overflow.
 
 - **Verification:** Test
 - **Rationale:** A wrapped-around bounds check lets an out-of-range ROI write outside the framebuffer.
@@ -304,7 +304,7 @@ without `std::size_t` overflow.
 
 The span-based functions shall return `kBufferTooSmall` when the span holds fewer than `stride_bytes * height` bytes (`(width / 8) * height` for `flip_bitmap`,
 `ceil(width / 8) * height` for `flip_bitmap_unaligned` and `flip_bitmap_unaligned_optimized`), with every size computation (including `ceil(width / 8)`)
-evaluated without `std::size_t` overflow.
+evaluated without `size_t` overflow.
 
 - **Verification:** Test
 - **Rationale:** A product that wraps to a small value passes the check and the flip then writes past the buffer.

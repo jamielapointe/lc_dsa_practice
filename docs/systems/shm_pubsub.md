@@ -322,7 +322,7 @@ Rule numbers are informative pointers; confirm them against licensed copies of t
 
 Read about: seqlocks (per-slot sequence counters with odd = "writing"), `std::atomic_thread_fence` and acquire / release pairing, cache-line padding between
 the header and slots, `ftruncate` + `mmap(MAP_SHARED)`, `O_CREAT | O_EXCL`, checking whether a process is alive with `getpgid(pid)`, and why
-`std::atomic<std::uint64_t>` must be lock-free to be usable across processes.
+`std::atomic<uint64_t>` must be lock-free to be usable across processes.
 
 ## 15. Design (Linux reference implementation)
 

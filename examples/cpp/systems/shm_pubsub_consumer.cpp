@@ -39,18 +39,18 @@ using systems::examples::CameraFramePayload;
 struct ConsumerOptions {
   std::string_view channel_name{"/shmps_cam_demo"};
   std::string_view sync_name{"/shmps_syn_demo"};
-  std::uint32_t base_sleep_ms{28};
-  std::uint32_t lag_sleep_ms{65};
-  std::uint32_t timeout_ms{10000};
+  uint32_t base_sleep_ms{28};
+  uint32_t lag_sleep_ms{65};
+  uint32_t timeout_ms{10000};
   bool cleanup{false};
 };
 
 [[nodiscard]] auto parse_u32(std::string_view text) noexcept
-    -> std::optional<std::uint32_t> {
+    -> std::optional<uint32_t> {
   if (text.empty()) {
     return std::nullopt;
   }
-  std::uint32_t value = 0;
+  uint32_t value = 0;
   const auto [ptr, ec] =
       std::from_chars(text.data(), text.data() + text.size(), value, 10);
   if (ec != std::errc{} || ptr != text.data() + text.size()) {
@@ -62,7 +62,7 @@ struct ConsumerOptions {
 [[nodiscard]] auto parse_args(std::span<char*> args) noexcept
     -> std::optional<ConsumerOptions> {
   ConsumerOptions opts{};
-  for (std::size_t i = 1; i < args.size(); ++i) {
+  for (size_t i = 1; i < args.size(); ++i) {
     const std::string_view flag{args[i]};
     auto next_arg = [&] -> std::optional<std::string_view> {
       if (i + 1 >= args.size()) {
@@ -117,11 +117,11 @@ struct ConsumerOptions {
 /// @brief Variable consumer sleep schedule: mostly `base_sleep_ms`, but every
 /// few frames pauses for `lag_sleep_ms` so the consumer falls 1–2 frames
 /// behind the producer.
-[[nodiscard]] constexpr auto consumer_delay_ms(
-    const ConsumerOptions& opts, std::uint64_t receive_index) noexcept
-    -> std::uint32_t {
-  constexpr std::array<std::uint32_t, 5> kJitterMs{0U, 4U, 8U, 2U, 6U};
-  const std::uint32_t jitter = kJitterMs[receive_index % kJitterMs.size()];
+[[nodiscard]] constexpr auto consumer_delay_ms(const ConsumerOptions& opts,
+                                               uint64_t receive_index) noexcept
+    -> uint32_t {
+  constexpr std::array<uint32_t, 5> kJitterMs{0U, 4U, 8U, 2U, 6U};
+  const uint32_t jitter = kJitterMs[receive_index % kJitterMs.size()];
   if (receive_index % 3U == 2U) {
     return opts.lag_sleep_ms + jitter;
   }
@@ -179,9 +179,9 @@ auto run_consumer(const ConsumerOptions& opts) -> int {
   CameraFramePayload frame{};
   auto frame_bytes =
       std::as_writable_bytes(std::span<CameraFramePayload, 1>{&frame, 1});
-  std::uint64_t received_count = 0;
-  std::uint64_t missed_total = 0;
-  std::uint64_t crc_errors = 0;
+  uint64_t received_count = 0;
+  uint64_t missed_total = 0;
+  uint64_t crc_errors = 0;
 
   for (;;) {
     const auto sample = subscriber->receive_for(frame_bytes, timeout);
@@ -197,7 +197,7 @@ auto run_consumer(const ConsumerOptions& opts) -> int {
     ++received_count;
     missed_total += sample->missed;
 
-    const std::uint32_t computed_crc =
+    const uint32_t computed_crc =
         systems::examples::compute_pixel_crc32(frame.pixels);
     const bool crc_ok = (sample->size == sizeof(CameraFramePayload)) &&
                         (sample->sequence == frame.frame_id) &&
@@ -214,7 +214,7 @@ auto run_consumer(const ConsumerOptions& opts) -> int {
               << " crc_ok=" << (crc_ok ? "true" : "false") << '\n'
               << std::flush;
 
-    const std::uint32_t delay_ms = consumer_delay_ms(opts, received_count);
+    const uint32_t delay_ms = consumer_delay_ms(opts, received_count);
     std::this_thread::sleep_for(std::chrono::milliseconds{delay_ms});
   }
 
@@ -234,7 +234,7 @@ auto run_consumer(const ConsumerOptions& opts) -> int {
 }  // namespace
 
 auto main(int argc, char* argv[]) -> int {
-  const std::span<char*> args{argv, static_cast<std::size_t>(argc)};
+  const std::span<char*> args{argv, static_cast<size_t>(argc)};
   const auto opts = parse_args(args);
   if (!opts) {
     std::cerr << "Usage: shm_pubsub_consumer [--channel /name] [--sync /name] "

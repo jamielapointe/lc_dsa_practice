@@ -44,7 +44,7 @@ class Robot {
 };
 
 /// @brief Represents a Direction for movement
-enum class Direction : std::uint8_t {
+enum class Direction : uint8_t {
   Up,
   Right,
   Down,
@@ -52,7 +52,7 @@ enum class Direction : std::uint8_t {
 };
 
 /// @brief Represents the possible states of a cell in the grid
-enum class CellValue : std::int8_t {
+enum class CellValue : int8_t {
   Wall = 0,
   OpenDirty = 1,
   OpenClean = 2,
@@ -90,7 +90,7 @@ struct Point {
 };
 
 struct PointHash {
-  auto operator()(const Point& cell) const -> std::size_t {
+  auto operator()(const Point& cell) const -> size_t {
     return std::hash<int>()(cell.row) ^ (std::hash<int>()(cell.col) << 1U);
   }
 };
@@ -161,7 +161,7 @@ class DefaultRobot final : public Robot {
 
   [[nodiscard]] auto cell_value(Point cell) -> CellValue& {
     auto const [row, col] = cell;
-    return grid_[static_cast<std::size_t>(row)][static_cast<std::size_t>(col)];
+    return grid_[static_cast<size_t>(row)][static_cast<size_t>(col)];
   }
 
   [[nodiscard]] auto cell_value(Point cell) const -> CellValue {
@@ -169,7 +169,7 @@ class DefaultRobot final : public Robot {
     if (row < 0 || col < 0 || row >= height_ || col >= width_) {
       return CellValue::Wall;
     }
-    return grid_[static_cast<std::size_t>(row)][static_cast<std::size_t>(col)];
+    return grid_[static_cast<size_t>(row)][static_cast<size_t>(col)];
   }
 };
 

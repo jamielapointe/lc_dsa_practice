@@ -40,11 +40,6 @@ fn read_dominant_peak(lhs: &SignalWindow, rhs: &SignalWindow) -> (f64, i32) {
     (peak, count)
 }
 
-#[allow(clippy::useless_conversion)]
-fn c_ulonglong_to_u64(val: ffi_11::c_ulonglong) -> u64 {
-    u64::from(val)
-}
-
 fn run_primitives_enums() -> Result<(), &'static str> {
     let origin = Waypoint3d {
         x_m: 0.0,
@@ -139,7 +134,7 @@ fn run_telemetry_capstone() -> Result<(), &'static str> {
     let mut interceptor = SafetyInterceptor::new_armed();
     let mut sink = ActuatorSink::default();
 
-    let frame1 = make_verified_frame(ffi_11::new_c_uint(1), ffi_11::new_c_ulonglong(10_000_000), 32.5, 1.8);
+    let frame1 = make_verified_frame(1, 10_000_000, 32.5, 1.8);
     let crc1_ok = compute_frame_crc32(
         frame1.sequence_id,
         frame1.timestamp_ns,
@@ -147,25 +142,25 @@ fn run_telemetry_capstone() -> Result<(), &'static str> {
         frame1.velocity_rad_s,
     ) == frame1.crc32;
     let dec1 = interceptor.validate_command(
-        c_ulonglong_to_u64(frame1.timestamp_ns),
+        frame1.timestamp_ns,
         11_000_000,
         frame1.torque_cmd_nm,
         crc1_ok,
     );
-    if dec1.state != SafetyState::Active || !sink.commit(dec1.safe_torque_nm, ffi_11::new_c_uint(dec1.fault_mask)) {
+    if dec1.state != SafetyState::Active || !sink.commit(dec1.safe_torque_nm, dec1.fault_mask) {
         return Err("nominal capstone frame rejected");
     }
 
     // Inject over-torque fault and verify both sides latch until authenticated reset.
-    let frame2 = make_verified_frame(ffi_11::new_c_uint(2), ffi_11::new_c_ulonglong(12_000_000), 110.0, 2.5);
+    let frame2 = make_verified_frame(2, 12_000_000, 110.0, 2.5);
     let dec2 = interceptor.validate_command(
-        c_ulonglong_to_u64(frame2.timestamp_ns),
+        frame2.timestamp_ns,
         13_000_000,
         frame2.torque_cmd_nm,
         true,
     );
     if dec2.state != SafetyState::FaultEstop
-        || sink.commit(dec2.safe_torque_nm, ffi_11::new_c_uint(dec2.fault_mask))
+        || sink.commit(dec2.safe_torque_nm, dec2.fault_mask)
         || sink.latched_fault_mask() == 0
     {
         return Err("fault latch failed");
@@ -176,14 +171,14 @@ fn run_telemetry_capstone() -> Result<(), &'static str> {
     }
     sink.clear_latched_fault();
 
-    let frame3 = make_verified_frame(ffi_11::new_c_uint(3), ffi_11::new_c_ulonglong(14_000_000), 24.0, 1.1);
+    let frame3 = make_verified_frame(3, 14_000_000, 24.0, 1.1);
     let dec3 = interceptor.validate_command(
-        c_ulonglong_to_u64(frame3.timestamp_ns),
+        frame3.timestamp_ns,
         15_000_000,
         frame3.torque_cmd_nm,
         true,
     );
-    if !sink.commit(dec3.safe_torque_nm, ffi_11::new_c_uint(dec3.fault_mask)) {
+    if !sink.commit(dec3.safe_torque_nm, dec3.fault_mask) {
         return Err("post-reset frame rejected");
     }
 

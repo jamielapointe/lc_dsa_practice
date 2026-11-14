@@ -61,14 +61,14 @@ class HitCounter {
   [[nodiscard]] auto getHits(int timestamp) -> int;
 
  private:
-  static constexpr std::size_t kBucketSize = 300;
+  static constexpr size_t kBucketSize = 300;
   std::array<std::pair<int, int>, kBucketSize> buckets_{
       {
           {0, 0},
       },
   };  // <timestamp, count>
-  std::size_t head_{0};
-  std::size_t tail_{0};
+  size_t head_{0};
+  size_t tail_{0};
   bool is_start_{true};
 };
 

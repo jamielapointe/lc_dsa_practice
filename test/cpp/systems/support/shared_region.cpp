@@ -13,7 +13,7 @@
 
 namespace systems_test::detail {
 
-AnonymousSharedMapping::AnonymousSharedMapping(std::size_t bytes) noexcept
+AnonymousSharedMapping::AnonymousSharedMapping(size_t bytes) noexcept
     : bytes_{bytes == 0 ? 1 : bytes} {
   void* const base = ::mmap(nullptr, bytes_, PROT_READ | PROT_WRITE,
                             MAP_SHARED | MAP_ANON, -1, 0);

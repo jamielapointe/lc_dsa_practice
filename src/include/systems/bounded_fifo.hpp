@@ -44,7 +44,7 @@ namespace systems {
 /// @brief Bounded multi-producer / multi-consumer FIFO.
 /// @tparam T Element type; must be nothrow-destructible.
 /// @tparam Capacity Maximum number of elements; must be greater than zero.
-template <typename T, std::size_t Capacity>
+template <typename T, size_t Capacity>
 class BoundedFifo {
   static_assert(Capacity > 0, "BoundedFifo capacity must be greater than zero");
   static_assert(std::is_nothrow_destructible_v<T>,
@@ -62,13 +62,13 @@ class BoundedFifo {
   auto operator=(BoundedFifo&&) -> BoundedFifo& = delete;
 
   /// @brief Maximum number of elements the queue can hold.
-  [[nodiscard]] static constexpr auto capacity() noexcept -> std::size_t {
+  [[nodiscard]] static constexpr auto capacity() noexcept -> size_t {
     return Capacity;
   }
 
   /// @brief Current number of queued elements (a snapshot; may be stale
   /// immediately).
-  [[nodiscard]] auto size() const -> std::size_t {
+  [[nodiscard]] auto size() const -> size_t {
     const std::scoped_lock lock{mutex_};
     return count_;
   }
@@ -203,7 +203,7 @@ class BoundedFifo {
   /// room.
   template <typename... Args>
   void emplace_back_locked(Args&&... args) {
-    const std::size_t tail = (head_ + count_) % Capacity;
+    const size_t tail = (head_ + count_) % Capacity;
     slots_[tail].emplace(
         std::forward<Args>(args)...);  // May throw; indices not yet updated.
     ++count_;
@@ -233,8 +233,8 @@ class BoundedFifo {
   // std::array).
   // NOLINTNEXTLINE(modernize-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays)
   std::optional<T> slots_[Capacity];
-  std::size_t head_{0};
-  std::size_t count_{0};
+  size_t head_{0};
+  size_t count_{0};
   bool closed_{false};
 };
 

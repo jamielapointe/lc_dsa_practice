@@ -37,15 +37,15 @@ using systems::examples::CameraFramePayload;
 struct ProducerOptions {
   std::string_view channel_name{"/shmps_cam_demo"};
   std::string_view sync_name{"/shmps_syn_demo"};
-  std::uint32_t frames{20};
-  std::uint32_t slots{4};
-  std::uint32_t sleep_ms{25};
-  std::uint32_t seed{0xC0FF'EE01U};
-  std::uint32_t timeout_ms{10000};
+  uint32_t frames{20};
+  uint32_t slots{4};
+  uint32_t sleep_ms{25};
+  uint32_t seed{0xC0FF'EE01U};
+  uint32_t timeout_ms{10000};
 };
 
 [[nodiscard]] auto parse_u32(std::string_view text) noexcept
-    -> std::optional<std::uint32_t> {
+    -> std::optional<uint32_t> {
   if (text.empty()) {
     return std::nullopt;
   }
@@ -54,7 +54,7 @@ struct ProducerOptions {
     text.remove_prefix(2);
     base = 16;
   }
-  std::uint32_t value = 0;
+  uint32_t value = 0;
   const auto [ptr, ec] =
       std::from_chars(text.data(), text.data() + text.size(), value, base);
   if (ec != std::errc{} || ptr != text.data() + text.size()) {
@@ -66,7 +66,7 @@ struct ProducerOptions {
 [[nodiscard]] auto parse_args(std::span<char*> args) noexcept
     -> std::optional<ProducerOptions> {
   ProducerOptions opts{};
-  for (std::size_t i = 1; i < args.size(); ++i) {
+  for (size_t i = 1; i < args.size(); ++i) {
     const std::string_view flag{args[i]};
     auto next_arg = [&] -> std::optional<std::string_view> {
       if (i + 1 >= args.size()) {
@@ -139,7 +139,7 @@ auto run_producer(const ProducerOptions& opts) -> int {
 
   const ShmPubSubConfig config{
       .slot_count = opts.slots,
-      .slot_size = static_cast<std::uint32_t>(sizeof(CameraFramePayload)),
+      .slot_size = static_cast<uint32_t>(sizeof(CameraFramePayload)),
   };
   auto channel = ShmChannel::create(opts.channel_name, config);
   if (!channel) {
@@ -190,16 +190,16 @@ auto run_producer(const ProducerOptions& opts) -> int {
   // Main sensor production loop: zero inter-process coordination here.
   std::mt19937 rng{opts.seed};
   CameraFramePayload frame{};
-  for (std::uint32_t idx = 1; idx <= opts.frames; ++idx) {
+  for (uint32_t idx = 1; idx <= opts.frames; ++idx) {
     frame.frame_id = idx;
-    frame.timestamp_ns = static_cast<std::uint64_t>(
+    frame.timestamp_ns = static_cast<uint64_t>(
         std::chrono::duration_cast<std::chrono::nanoseconds>(
             Clock::now().time_since_epoch())
             .count());
     frame.width = systems::examples::kCameraFrameWidth;
     frame.height = systems::examples::kCameraFrameHeight;
-    for (std::uint32_t& pixel : frame.pixels) {
-      pixel = static_cast<std::uint32_t>(rng());
+    for (uint32_t& pixel : frame.pixels) {
+      pixel = static_cast<uint32_t>(rng());
     }
     frame.pixel_crc32 = systems::examples::compute_pixel_crc32(frame.pixels);
 
@@ -233,7 +233,7 @@ auto run_producer(const ProducerOptions& opts) -> int {
 }  // namespace
 
 auto main(int argc, char* argv[]) -> int {
-  const std::span<char*> args{argv, static_cast<std::size_t>(argc)};
+  const std::span<char*> args{argv, static_cast<size_t>(argc)};
   const auto opts = parse_args(args);
   if (!opts) {
     std::cerr << "Usage: shm_pubsub_producer [--channel /name] [--sync /name] "

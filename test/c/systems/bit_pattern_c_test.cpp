@@ -326,7 +326,7 @@ TEST(BitPatternCTest, ZeroHeapAllocationAcrossAllTiers) {
   enum FoundError naive_res = FOUND_ERR_NOT_IMPLEMENTED;
   enum FoundError kmp_res = FOUND_ERR_NOT_IMPLEMENTED;
   enum FoundError found_res = FOUND_ERR_NOT_IMPLEMENTED;
-  std::size_t allocations = 0U;
+  size_t allocations = 0U;
 
   {
     const systems_test::AllocationScope scope;

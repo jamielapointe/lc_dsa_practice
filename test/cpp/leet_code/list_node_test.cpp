@@ -288,7 +288,7 @@ TEST(ScopedLinkedListTest, SelfMoveAssignmentSafety) {
 
 TEST(LinkedListStressTest, DeepListIterativeDestructionAvoidsStackOverflow) {
   // Test with 50,000 nodes. Recursive destruction would overflow stack.
-  constexpr std::size_t kLargeSize = 50'000;
+  constexpr size_t kLargeSize = 50'000;
   std::vector<int> large_vec(kLargeSize, 1);
 
   {
