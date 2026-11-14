@@ -368,7 +368,7 @@ TEST(BoundedFifoCTest, SteadyStatePushPopProducesZeroHeapAllocations) {
   ASSERT_EQ(bounded_fifo_init(&fifo, buffer.data(), 16, sizeof(int)),
             BOUNDED_FIFO_OK);
 
-  std::size_t allocations = 0;
+  size_t allocations = 0;
   {
     const systems_test::AllocationScope scope;
     for (int i = 0; i < 100; ++i) {
@@ -389,7 +389,7 @@ TEST(BoundedFifoCTest, StaticStorageLifecycleProducesZeroHeapAllocations) {
   static struct bounded_fifo static_fifo;
   static std::array<int, 8> static_buffer{};
 
-  std::size_t allocations = 0;
+  size_t allocations = 0;
   {
     const systems_test::AllocationScope scope;
     EXPECT_EQ(

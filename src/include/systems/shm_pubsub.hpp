@@ -156,7 +156,7 @@
 namespace systems {
 
 /// @brief Errors reported by the shared-memory pub/sub channel.
-enum class [[nodiscard]] ShmPubSubError : std::uint8_t {
+enum class [[nodiscard]] ShmPubSubError : uint8_t {
   kNotImplemented,    ///< Stub: the operation has not been implemented yet.
   kInvalidArgument,   ///< Bad name / configuration, or a moved-from handle.
   kNameTooLong,       ///< Name longer than `platform::kMaxShmNameLength`.
@@ -210,18 +210,18 @@ enum class [[nodiscard]] ShmPubSubError : std::uint8_t {
 }
 
 /// @brief Smallest allowed number of slots.
-inline constexpr std::uint32_t kShmMinSlotCount = 2;
+inline constexpr uint32_t kShmMinSlotCount = 2;
 /// @brief Largest allowed number of slots.
-inline constexpr std::uint32_t kShmMaxSlotCount = 4096;
+inline constexpr uint32_t kShmMaxSlotCount = 4096;
 /// @brief Largest allowed payload size per slot, in bytes.
-inline constexpr std::uint32_t kShmMaxSlotSize = 64U * 1024U;
+inline constexpr uint32_t kShmMaxSlotSize = 64U * 1024U;
 
 /// @brief Channel geometry, fixed at creation (SHMPS-REQ-001).
 struct ShmPubSubConfig {
   /// Number of slots; a power of two in `[kShmMinSlotCount, kShmMaxSlotCount]`.
-  std::uint32_t slot_count{0};
+  uint32_t slot_count{0};
   /// Maximum payload bytes per slot; in `[1, kShmMaxSlotSize]`.
-  std::uint32_t slot_size{0};
+  uint32_t slot_size{0};
 
   friend constexpr auto operator==(const ShmPubSubConfig&,
                                    const ShmPubSubConfig&) -> bool = default;
@@ -230,14 +230,14 @@ struct ShmPubSubConfig {
 /// @brief Metadata of a received sample (payload bytes go to the caller's
 /// buffer).
 struct ShmSample {
-  std::uint64_t sequence{0};  ///< Publisher-assigned number, starting at 1.
-  std::uint32_t size{0};      ///< Payload bytes written to the buffer.
-  std::uint64_t missed{0};    ///< Samples skipped since the previous receive.
+  uint64_t sequence{0};  ///< Publisher-assigned number, starting at 1.
+  uint32_t size{0};      ///< Payload bytes written to the buffer.
+  uint64_t missed{0};    ///< Samples skipped since the previous receive.
 };
 
 /// @brief How a subscriber treats samples it has not read yet
 /// (SHMPS-REQ-027).
-enum class ShmReadMode : std::uint8_t {
+enum class ShmReadMode : uint8_t {
   /// Every sample in order while keeping up; jump to the newest when lapped
   /// or torn. For consumers that need continuity (IMU, EKF, logging).
   kInOrder,
@@ -256,10 +256,10 @@ namespace detail {
 /// loads of shared memory. A default-constructed view (`base == nullptr`)
 /// marks a moved-from handle.
 struct ChannelView {
-  std::byte* base{nullptr};      ///< Start of the mapping (the shared header).
-  std::uint32_t slot_mask{0};    ///< `slot_count - 1` (power-of-two ring).
-  std::uint32_t slot_size{0};    ///< Largest payload a slot holds, in bytes.
-  std::uint32_t slot_stride{0};  ///< Bytes from one slot to the next.
+  std::byte* base{nullptr};  ///< Start of the mapping (the shared header).
+  uint32_t slot_mask{0};     ///< `slot_count - 1` (power-of-two ring).
+  uint32_t slot_size{0};     ///< Largest payload a slot holds, in bytes.
+  uint32_t slot_stride{0};   ///< Bytes from one slot to the next.
 };
 
 /// @brief OS adapter: a mapped POSIX shared-memory object (move-only).
@@ -295,8 +295,7 @@ class SharedMemoryRegion {
   /// pre-faults every page with a dummy write, and locks it into RAM.
   /// @return `kAlreadyExists`, `kMemoryLockFailed` (the object is unlinked
   ///         again), `kOsError`.
-  [[nodiscard]] static auto create(std::string_view name,
-                                   std::size_t bytes) noexcept
+  [[nodiscard]] static auto create(std::string_view name, size_t bytes) noexcept
       -> std::expected<SharedMemoryRegion, ShmPubSubError>;
 
   /// @brief Maps an existing object at its current size, populates and
@@ -313,21 +312,21 @@ class SharedMemoryRegion {
 
   /// @brief True if process `pid` exists and is not a zombie (used for
   /// publisher takeover).
-  [[nodiscard]] static auto process_alive(std::int64_t pid) noexcept -> bool;
+  [[nodiscard]] static auto process_alive(int64_t pid) noexcept -> bool;
 
   /// @brief Id of the calling process.
-  [[nodiscard]] static auto current_process_id() noexcept -> std::int64_t;
+  [[nodiscard]] static auto current_process_id() noexcept -> int64_t;
 
   [[nodiscard]] auto data() const noexcept -> std::byte* { return base_; }
-  [[nodiscard]] auto size() const noexcept -> std::size_t { return size_; }
+  [[nodiscard]] auto size() const noexcept -> size_t { return size_; }
   [[nodiscard]] auto valid() const noexcept -> bool { return base_ != nullptr; }
 
  private:
-  SharedMemoryRegion(std::byte* base, std::size_t size) noexcept
+  SharedMemoryRegion(std::byte* base, size_t size) noexcept
       : base_{base}, size_{size} {}
 
   std::byte* base_{nullptr};
-  std::size_t size_{0};
+  size_t size_{0};
 };
 
 }  // namespace detail
@@ -437,19 +436,19 @@ class ShmPublisher {
   /// SHMPS-REQ-008, SHMPS-REQ-009, SHMPS-REQ-018, SHMPS-REQ-025,
   /// SHMPS-REQ-026
   [[nodiscard]] auto publish(std::span<const std::byte> payload) noexcept
-      -> std::expected<std::uint64_t, ShmPubSubError>;
+      -> std::expected<uint64_t, ShmPubSubError>;
 
  private:
-  ShmPublisher(detail::ChannelView view, std::uint64_t next_sequence,
-               std::int64_t owner_pid) noexcept
+  ShmPublisher(detail::ChannelView view, uint64_t next_sequence,
+               int64_t owner_pid) noexcept
       : view_{view}, next_sequence_{next_sequence}, owner_pid_{owner_pid} {}
 
   /// @brief Gives the publisher role back (destructor / move-assignment).
   void release() noexcept;
 
-  detail::ChannelView view_{};      ///< Mapping and geometry (cached).
-  std::uint64_t next_sequence_{0};  ///< Sequence the next publish assigns.
-  std::int64_t owner_pid_{0};       ///< Process that claimed the role.
+  detail::ChannelView view_{};  ///< Mapping and geometry (cached).
+  uint64_t next_sequence_{0};   ///< Sequence the next publish assigns.
+  int64_t owner_pid_{0};        ///< Process that claimed the role.
 };
 
 /// @brief One reader of a channel with its own cursor. Lock-free.
@@ -505,7 +504,7 @@ class ShmSubscriber {
       -> std::expected<ShmSample, ShmPubSubError>;
 
  private:
-  ShmSubscriber(detail::ChannelView view, std::uint64_t next_sequence,
+  ShmSubscriber(detail::ChannelView view, uint64_t next_sequence,
                 ShmReadMode mode) noexcept
       : view_{view}, next_sequence_{next_sequence}, mode_{mode} {}
 
@@ -516,8 +515,8 @@ class ShmSubscriber {
       std::chrono::steady_clock::time_point deadline) noexcept
       -> std::expected<ShmSample, ShmPubSubError>;
 
-  detail::ChannelView view_{};      ///< Mapping and geometry (cached).
-  std::uint64_t next_sequence_{0};  ///< Next sequence this reader wants.
+  detail::ChannelView view_{};  ///< Mapping and geometry (cached).
+  uint64_t next_sequence_{0};   ///< Next sequence this reader wants.
   ShmReadMode mode_{ShmReadMode::kInOrder};
 };
 

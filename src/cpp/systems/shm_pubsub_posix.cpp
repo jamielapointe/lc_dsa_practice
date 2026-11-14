@@ -123,7 +123,7 @@ constexpr int kMlockRetries = 3;
 /// First retry delay; doubles per retry (1, 2, 4 ms).
 constexpr auto kMlockFirstDelay = std::chrono::milliseconds{1};
 /// Fallback when `sysconf` cannot report the page size.
-constexpr std::size_t kFallbackPageSize = 4096;
+constexpr size_t kFallbackPageSize = 4096;
 
 /// NUL-terminated copy of a name for the C API. Bounded, no heap
 /// (SHMPS-REQ-018 does not apply to init, but we stay heap-free anyway).
@@ -174,16 +174,15 @@ class FileDescriptor {
   int fd_{-1};
 };
 
-[[nodiscard]] auto page_size() noexcept -> std::size_t {
-  // NOLINTNEXTLINE(google-runtime-int): sysconf's POSIX return type is long.
-  const long size = ::sysconf(_SC_PAGESIZE);
-  return size > 0 ? static_cast<std::size_t>(size) : kFallbackPageSize;
+[[nodiscard]] auto page_size() noexcept -> size_t {
+  const int64_t size = ::sysconf(_SC_PAGESIZE);
+  return size > 0 ? static_cast<size_t>(size) : kFallbackPageSize;
 }
 
 /// @brief `mmap(PROT_READ | PROT_WRITE, MAP_SHARED | extra_flags)`.
 /// @return The base address, or nullptr on failure (errno set).
-[[nodiscard]] auto map_shared(int fd, std::size_t bytes,
-                              int extra_flags) noexcept -> std::byte* {
+[[nodiscard]] auto map_shared(int fd, size_t bytes, int extra_flags) noexcept
+    -> std::byte* {
   void* const base = ::mmap(nullptr, bytes, PROT_READ | PROT_WRITE,
                             MAP_SHARED | extra_flags, fd, 0);
   // NOLINTNEXTLINE(*-cstyle-cast,performance-no-int-to-ptr): MAP_FAILED.
@@ -202,8 +201,8 @@ class FileDescriptor {
 /// compiler cannot drop it as a "useless" store, and tools like TSan see a
 /// well-defined access.
 void prefault_by_writing(std::span<std::byte> region) noexcept {
-  const std::size_t step = page_size();
-  for (std::size_t offset = 0; offset < region.size(); offset += step) {
+  const size_t step = page_size();
+  for (size_t offset = 0; offset < region.size(); offset += step) {
     std::atomic_ref{region[offset]}.store(std::byte{0},
                                           std::memory_order_relaxed);
   }
@@ -217,9 +216,9 @@ void prefault_by_writing(std::span<std::byte> region) noexcept {
 /// those flags (for example on hosts without `MAP_POPULATE`). Relaxed atomic
 /// loads are well defined even while a publisher writes the same bytes.
 void prefault_by_reading(std::span<std::byte> region) noexcept {
-  const std::size_t step = page_size();
+  const size_t step = page_size();
   std::byte sink{0};
-  for (std::size_t offset = 0; offset < region.size(); offset += step) {
+  for (size_t offset = 0; offset < region.size(); offset += step) {
     sink |= std::atomic_ref{region[offset]}.load(std::memory_order_relaxed);
   }
   // Make the loads observable so they are not optimized away.
@@ -258,15 +257,15 @@ void prefault_by_reading(std::span<std::byte> region) noexcept {
 /// whose parent has not reaped it yet. A publisher killed under a careless
 /// supervisor would otherwise block every takeover until the parent calls
 /// `wait()`.
-[[nodiscard]] auto is_zombie(std::int64_t pid) noexcept -> bool {
+[[nodiscard]] auto is_zombie(int64_t pid) noexcept -> bool {
   if constexpr (platform::kIsMacos) {
 #if defined(__APPLE__)
     std::array<int, 4> mib{CTL_KERN, KERN_PROC, KERN_PROC_PID,
                            static_cast<int>(pid)};
     struct kinfo_proc info{};
-    std::size_t length = sizeof(info);
-    if (::sysctl(mib.data(), static_cast<unsigned int>(mib.size()), &info,
-                 &length, nullptr, 0) != 0 ||
+    size_t length = sizeof(info);
+    if (::sysctl(mib.data(), static_cast<uint32_t>(mib.size()), &info, &length,
+                 nullptr, 0) != 0 ||
         length == 0) {
       return false;
     }
@@ -307,7 +306,7 @@ void prefault_by_reading(std::span<std::byte> region) noexcept {
     }
     // Format: "<pid> (<comm>) <state> ...". `comm` may contain spaces or
     // parentheses, so the state is the character after the LAST ')'.
-    const std::string_view text{stat.data(), static_cast<std::size_t>(bytes)};
+    const std::string_view text{stat.data(), static_cast<size_t>(bytes)};
     const auto close_paren = text.rfind(')');
     if (close_paren == std::string_view::npos ||
         close_paren + 2 >= text.size()) {
@@ -328,8 +327,7 @@ SharedMemoryRegion::~SharedMemoryRegion() {
   }
 }
 
-auto SharedMemoryRegion::create(std::string_view name,
-                                std::size_t bytes) noexcept
+auto SharedMemoryRegion::create(std::string_view name, size_t bytes) noexcept
     -> std::expected<SharedMemoryRegion, ShmPubSubError> {
   const auto c_name = to_c_name(name);
   if (!c_name || bytes == 0) {
@@ -391,7 +389,7 @@ auto SharedMemoryRegion::open(std::string_view name) noexcept
   if (::fstat(fd.get(), &info) != 0 || info.st_size < 0) {
     return std::unexpected(ShmPubSubError::kOsError);
   }
-  const auto bytes = static_cast<std::size_t>(info.st_size);
+  const auto bytes = static_cast<size_t>(info.st_size);
   if (bytes == 0) {
     // mmap rejects length 0. Report an empty region and let the layout
     // check classify it (a half-created or foreign object).
@@ -427,7 +425,7 @@ auto SharedMemoryRegion::unlink(std::string_view name) noexcept
   return {};
 }
 
-auto SharedMemoryRegion::process_alive(std::int64_t pid) noexcept -> bool {
+auto SharedMemoryRegion::process_alive(int64_t pid) noexcept -> bool {
   if (pid <= 0) {
     return false;
   }
@@ -441,8 +439,8 @@ auto SharedMemoryRegion::process_alive(std::int64_t pid) noexcept -> bool {
   return !is_zombie(pid);
 }
 
-auto SharedMemoryRegion::current_process_id() noexcept -> std::int64_t {
-  return static_cast<std::int64_t>(::getpid());
+auto SharedMemoryRegion::current_process_id() noexcept -> int64_t {
+  return static_cast<int64_t>(::getpid());
 }
 
 }  // namespace systems::detail

@@ -37,8 +37,8 @@ namespace detail {
 // Internal hooks used by the replacement global operators
 // (global_new_delete.cpp). Not part of the test-facing API.
 void note_allocation() noexcept;
-[[nodiscard]] auto checked_malloc(std::size_t bytes) noexcept -> void*;
-[[nodiscard]] auto checked_aligned(std::size_t bytes,
+[[nodiscard]] auto checked_malloc(size_t bytes) noexcept -> void*;
+[[nodiscard]] auto checked_aligned(size_t bytes,
                                    std::align_val_t align) noexcept -> void*;
 [[nodiscard]] auto throwing(void* ptr) -> void*;
 void release(void* ptr) noexcept;
@@ -51,7 +51,7 @@ void release(void* ptr) noexcept;
 class AllocationScope {
  public:
   /// @brief Sentinel returned by `allocations()` for an invalid nested scope.
-  static constexpr std::size_t kNestedScope = static_cast<std::size_t>(-1);
+  static constexpr size_t kNestedScope = static_cast<size_t>(-1);
 
   AllocationScope() noexcept;
   ~AllocationScope();
@@ -62,7 +62,7 @@ class AllocationScope {
   auto operator=(AllocationScope&&) -> AllocationScope& = delete;
 
   /// @brief Number of `operator new` calls since the scope began.
-  [[nodiscard]] auto allocations() const noexcept -> std::size_t;
+  [[nodiscard]] auto allocations() const noexcept -> size_t;
 
  private:
   bool owner_{false};

@@ -70,7 +70,7 @@ namespace leet_code {
 /// Idiomatic Modern C++23 Interface
 class CircularQueue {
  public:
-  explicit CircularQueue(std::size_t k);
+  explicit CircularQueue(size_t k);
   [[nodiscard]] auto en_queue(int value) -> bool;
   [[nodiscard]] auto de_queue() -> bool;
   [[nodiscard]] auto front() const -> int;
@@ -80,10 +80,10 @@ class CircularQueue {
 
  private:
   std::vector<int> queue_;
-  std::size_t capacity_{};
-  std::size_t head_{0};
-  std::size_t tail_{0};
-  std::size_t size_{0};
+  size_t capacity_{};
+  size_t head_{0};
+  size_t tail_{0};
+  size_t size_{0};
 };
 
 /// LeetCode Compatibility Wrapper

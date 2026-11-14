@@ -18,7 +18,7 @@
 ///   - in tests, to `GTEST_SKIP()` requirements that the host cannot satisfy,
 ///     with a reason that names the missing capability.
 ///
-/// Every flag is a `constexpr bool` or `constexpr std::size_t`, so the header
+/// Every flag is a `constexpr bool` or `constexpr size_t`, so the header
 /// has no runtime cost and no link dependency.
 
 #include <cstddef>
@@ -28,7 +28,7 @@
 namespace systems::platform {
 
 /// @brief Host operating-system family.
-enum class OsFamily : std::uint8_t {
+enum class OsFamily : uint8_t {
   kLinux,  ///< Linux, including embedded Linux distributions.
   kQnx,    ///< QNX Neutrino / QNX OS for Safety.
   kMacos,  ///< macOS (development host only).
@@ -46,7 +46,7 @@ inline constexpr OsFamily kOsFamily = OsFamily::kOther;
 #endif
 
 /// @brief Host CPU architecture family.
-enum class ArchFamily : std::uint8_t {
+enum class ArchFamily : uint8_t {
   kX86_64,   ///< 64-bit x86 (x86-64 / AMD64).
   kAarch64,  ///< 64-bit ARM (AArch64 / arm64, including Apple Silicon).
   kOther,    ///< Any other architecture.
@@ -115,18 +115,18 @@ inline constexpr bool kHasPhysicalShmCtl = kIsQnx;
 /// @brief Longest portable POSIX shared-memory object name, including the
 /// leading `/`. macOS allows 31 characters; 30 leaves headroom and is accepted
 /// by Linux (`NAME_MAX`) and QNX.
-inline constexpr std::size_t kMaxShmNameLength = 30;
+inline constexpr size_t kMaxShmNameLength = 30;
 
 /// @brief Cache-line size used to separate data written by different cores or
 /// processes (false-sharing avoidance) in shared layouts. Apple Silicon uses a
 /// 128-byte coherence granule (`hw.cachelinesize`).
 #if defined(__APPLE__) && defined(__aarch64__)
-inline constexpr std::size_t kCacheLineSize = 128;
+inline constexpr size_t kCacheLineSize = 128;
 #elif defined(__cpp_lib_hardware_interference_size)
-inline constexpr std::size_t kCacheLineSize =
+inline constexpr size_t kCacheLineSize =
     std::hardware_destructive_interference_size;
 #else
-inline constexpr std::size_t kCacheLineSize = 64;
+inline constexpr size_t kCacheLineSize = 64;
 #endif
 
 static_assert(kCacheLineSize >= alignof(std::max_align_t),

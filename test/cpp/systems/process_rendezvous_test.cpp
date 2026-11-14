@@ -302,7 +302,7 @@ TEST(ProcessRendezvousTest, NoHeapAllocationAfterInit) {
   auto sub = ProcessRendezvous::open(name.str());
   ASSERT_TRUE(sub.has_value());
 
-  std::size_t allocations = 0;
+  size_t allocations = 0;
   bool ok = false;
   {
     const systems_test::AllocationScope scope;
@@ -371,9 +371,9 @@ TEST(ProcessRendezvousMultiProcessTest, TwoProcessHandshakeOrdersStartup) {
   const TestRendezvousName name;
 
   struct SharedOrder {
-    std::atomic<std::uint32_t> step{0};
-    std::atomic<std::uint32_t> producer_step{0};
-    std::atomic<std::uint32_t> consumer_step{0};
+    std::atomic<uint32_t> step{0};
+    std::atomic<uint32_t> producer_step{0};
+    std::atomic<uint32_t> consumer_step{0};
   };
   systems_test::SharedRegion<SharedOrder> order;
   ASSERT_TRUE(order.valid());
@@ -419,7 +419,7 @@ TEST(ProcessRendezvousFaultTest, SurvivesParticipantKilledWithSigkill) {
   auto parent = ProcessRendezvous::create(name.str());
   ASSERT_TRUE(parent.has_value());
 
-  systems_test::SharedRegion<std::atomic<std::uint32_t>> child_attached;
+  systems_test::SharedRegion<std::atomic<uint32_t>> child_attached;
   ASSERT_TRUE(child_attached.valid());
 
   auto victim = systems_test::ChildProcess::spawn([&] -> int {

@@ -30,9 +30,9 @@ the solution.
      Describe *what* and *why*, never paste the algorithm.
 2. Includes: only what the declarations need (`<cstddef>`, `<cstdint>`, `<expected>`, `<span>`, `<chrono>`, `<string_view>`, `systems/platform.hpp`). No POSIX
    headers in the public header unless a POSIX type is part of the API (avoid that).
-3. Error enum: `enum class <Name>Error : std::uint8_t { kNotImplemented, ... };` with a `///` line per enumerator, plus
+3. Error enum: `enum class <Name>Error : uint8_t { kNotImplemented, ... };` with a `///` line per enumerator, plus
    `[[nodiscard]] constexpr auto to_string(<Name>Error) noexcept -> std::string_view;` (implemented in the header, fully, since tests print it).
-4. Configuration and value types: small aggregates (`struct <Name>Config { std::uint32_t slot_count; ... };`) with documented valid ranges and
+4. Configuration and value types: small aggregates (`struct <Name>Config { uint32_t slot_count; ... };`) with documented valid ranges and
    `inline constexpr` limits (`kMaxSlotCount`, ...).
 5. Public classes:
    - Factory functions for anything that can fail during init: `[[nodiscard]] static auto create(...) noexcept -> std::expected<<Name>, <Name>Error>;`
@@ -96,3 +96,5 @@ Run `pixi run format-cmake` afterwards.
 - The `dev-debug` build runs clang-tidy with `WarningsAsErrors: "*"`, including `misc-include-cleaner` and analysis of `src/include/systems/` headers.
   Common fixes: include the public POSIX header for POSIX symbols, `std::forward` forwarding references (or take callables by value), avoid chrono literals,
   no redundant `()` in lambdas without parameters (`[] -> int {}` is valid C++23).
+- Enforce the Google C++ Style Guide Integer Types rule: allow `int`, unqualified `<cstdint>` types (`uint8_t`, `uint32_t`, `int64_t`, ...), and unqualified
+  `size_t`/`ptrdiff_t` (`<cstddef>`), never `short`, `long`, or `unsigned`.

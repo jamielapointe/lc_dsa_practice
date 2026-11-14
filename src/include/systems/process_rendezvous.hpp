@@ -62,7 +62,7 @@
 namespace systems {
 
 /// @brief Errors reported by `ProcessRendezvous`.
-enum class [[nodiscard]] ProcessRendezvousError : std::uint8_t {
+enum class [[nodiscard]] ProcessRendezvousError : uint8_t {
   kNotImplemented,    ///< Stub: operation has not been implemented yet.
   kInvalidArgument,   ///< Bad name, invalid timeout, or moved-from handle.
   kNameTooLong,       ///< Name longer than `platform::kMaxShmNameLength`.
@@ -136,8 +136,7 @@ class RendezvousOsHandle {
   }
 
   /// @brief Creates a new zero-filled shared segment and wakeup semaphore.
-  [[nodiscard]] static auto create(std::string_view name,
-                                   std::size_t bytes) noexcept
+  [[nodiscard]] static auto create(std::string_view name, size_t bytes) noexcept
       -> std::expected<RendezvousOsHandle, ProcessRendezvousError>;
 
   /// @brief Opens an existing shared segment and wakeup semaphore.
@@ -156,15 +155,15 @@ class RendezvousOsHandle {
   void wait_slice(std::chrono::nanoseconds slice) const noexcept;
 
   [[nodiscard]] auto data() const noexcept -> std::byte* { return base_; }
-  [[nodiscard]] auto size() const noexcept -> std::size_t { return size_; }
+  [[nodiscard]] auto size() const noexcept -> size_t { return size_; }
   [[nodiscard]] auto valid() const noexcept -> bool { return base_ != nullptr; }
 
  private:
-  RendezvousOsHandle(std::byte* base, std::size_t size, void* sem) noexcept
+  RendezvousOsHandle(std::byte* base, size_t size, void* sem) noexcept
       : base_{base}, size_{size}, sem_{sem} {}
 
   std::byte* base_{nullptr};
-  std::size_t size_{0};
+  size_t size_{0};
   void* sem_{nullptr};
 };
 

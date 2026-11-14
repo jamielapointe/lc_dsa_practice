@@ -452,7 +452,7 @@ TEST(TwoSumTest, LeetCodeWrapperExceptionMessageMatches) {
 
 // T4-STRESS-01: 10,000 Elements Large-Scale Performance Workload Test
 TEST(TwoSumTest, LargeScale10kElementsPerformance) {
-  constexpr std::size_t kSize = 10'000;
+  constexpr size_t kSize = 10'000;
   std::vector<int> nums(kSize);
   std::ranges::iota(nums, 1);  // 1, 2, 3, ..., 10000
 
@@ -473,9 +473,9 @@ TEST(TwoSumTest, LargeScale10kElementsPerformance) {
 
 // T4-STRESS-02: 100,000 Elements Extreme-Scale Performance Workload Test
 TEST(TwoSumTest, LargeScale100kElementsPerformance) {
-  constexpr std::size_t kSize = 100'000;
+  constexpr size_t kSize = 100'000;
   std::vector<int> nums(kSize);
-  for (std::size_t i = 0; i < kSize; ++i) {
+  for (size_t i = 0; i < kSize; ++i) {
     nums[i] = static_cast<int>(i * 2);  // Even numbers: 0, 2, 4, ...
   }
 
@@ -507,12 +507,12 @@ void VerifyOnlineJudgeSolution(const std::vector<int>& solution,
 
   EXPECT_NE(idx1, idx2);
   const bool bounds_valid =
-      idx1 >= 0 && static_cast<std::size_t>(idx1) < test_case.nums.size() &&
-      idx2 >= 0 && static_cast<std::size_t>(idx2) < test_case.nums.size();
+      idx1 >= 0 && static_cast<size_t>(idx1) < test_case.nums.size() &&
+      idx2 >= 0 && static_cast<size_t>(idx2) < test_case.nums.size();
   EXPECT_TRUE(bounds_valid);
   if (bounds_valid) {
-    EXPECT_EQ(test_case.nums[static_cast<std::size_t>(idx1)] +
-                  test_case.nums[static_cast<std::size_t>(idx2)],
+    EXPECT_EQ(test_case.nums[static_cast<size_t>(idx1)] +
+                  test_case.nums[static_cast<size_t>(idx2)],
               test_case.target);
   }
 }

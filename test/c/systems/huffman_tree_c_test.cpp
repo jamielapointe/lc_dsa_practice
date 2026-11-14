@@ -542,7 +542,7 @@ TEST(HuffmanTreeCTest, ZeroHeapAllocationInBuildAndDecode) {
   enum huffman_error opt_err = HUFFMAN_ERR_NOT_IMPLEMENTED;
   enum huffman_error full_err = HUFFMAN_ERR_NOT_IMPLEMENTED;
   enum huffman_error decode_err = HUFFMAN_ERR_NOT_IMPLEMENTED;
-  std::size_t allocations = 0U;
+  size_t allocations = 0U;
 
   {
     const systems_test::AllocationScope scope;

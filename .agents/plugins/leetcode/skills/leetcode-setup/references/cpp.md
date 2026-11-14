@@ -87,3 +87,8 @@ pixi run ctest --preset dev-debug -R <slug_snake> --output-on-failure    # must 
 pixi run clang-format -i src/include/leet_code/<slug_snake>.hpp src/cpp/leet_code/<slug_snake>.cpp test/cpp/leet_code/<slug_snake>_test.cpp
 pixi run format-cmake                                                    # gersemi
 ```
+
+## Integer types
+
+- Enforce the Google C++ Style Guide Integer Types rule: allow `int`, unqualified `<cstdint>` fixed-width types (`uint32_t`, `int64_t`, ...), and
+  unqualified `size_t`/`ptrdiff_t` (`<cstddef>`), never `short`, `long`, or `unsigned`. Include `<cstdint>`/`<cstddef>` directly whenever used.
