@@ -183,8 +183,11 @@ Rust crash course and senior interview preparation workflow tailored for veteran
 
 ## Quality gates
 
-- **C++**: CMake 4.5+ (`CMD_NON_TARGET_DIRECTIVE`, `FILE_SET HEADERS`/`SOURCES`, CPS `PACKAGE_INFO`, SPDX 3.0.1 `SBOM`), LLVM/Clang 23.1.5+, clang-format
-  (Google), clang-tidy (`WarningsAsErrors: "*"`), ASan, UBSan, TSan, 85% line coverage.
+- **C++23 & ISO C23**: CMake 4.5+ (`CMD_NON_TARGET_DIRECTIVE`, `FILE_SET HEADERS`/`SOURCES`, CPS `PACKAGE_INFO`, SPDX 3.0.1 `SBOM`), LLVM/Clang 23.1.5+,
+  clang-format (Google), clang-tidy (`WarningsAsErrors: "*"`), pure `-std=c23` ABI/feature checks (`systems_c23_test`), ASan, UBSan, TSan, 85% line coverage.
+- **Rust**: Rust 1.99.1+ MSRV (Edition 2024, `resolver = "3"`), `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` (`unsafe_op_in_unsafe_fn` and
+  `undocumented_unsafe_blocks` denied), `cargo test --workspace`, 85% line coverage (`cov-rust`), and bidirectional Crubit interop (`test-interop`,
+  `interop-release`, `clippy-interop`).
 - **Python**: Python 3.15 (`PEP 649` native annotations, `TID251` bans `from __future__ import annotations`), ruff (23 families, 88 cols, double quotes,
   `RUF201` full rule names), `basedpyright` strict + `ty`, pytest 9+ (`hypothesis`, `pytest-randomly`) with 85% coverage on `src/python/leet_code`,
   `deptry` + `pip-audit` (`audit`), and reactive Marimo (`notebook-check`).

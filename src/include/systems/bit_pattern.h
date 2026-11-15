@@ -128,7 +128,7 @@ typedef enum FoundError : int32_t {
 
 static_assert(sizeof(enum FoundError) == 4U, "ABI requires 32-bit FoundError");
 static_assert(BIT_PATTERN_BITS_PER_BYTE == 8U,
-              " Packed bit stream requires 8 bits per byte");
+              "Packed bit stream requires 8 bits per byte");
 static_assert(BIT_PATTERN_MAX_PATTERN_BITS == 1024U,
               "KMP fixed stack table requires 1024-bit ceiling");
 
