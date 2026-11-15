@@ -1,366 +1,338 @@
 [project]
-description = "Multi-language LeetCode / DSA practice: C++23 LeetCode, Python LeetCode, and low-level C++ systems code"
 name = "lc-dsa-practice"
-readme = "README.md"
-requires-python = ">=3.15, <3.16"
 version = "0.1.0"
-
-[[project.authors]]
-email = "jamielapointe@google.com"
-name = "Jamie LaPointe"
-
-[tool.ruff]
-exclude = [
-    ".agent",
-    ".agents/scratch",
-    ".agents/swarm",
-    ".agents/teamwork",
-    ".agents/tmp",
-    ".agents/workflows",
-    ".claude",
-    ".codex",
-    ".cursor",
-    ".gemini",
-    ".git",
-    ".pixi",
-    ".venv",
-    ".windsurf",
-    "_agent",
-    "_agents",
-    "build",
-    "data",
-    "dist",
+description = "Multi-language LeetCode / DSA & systems engineering practice (C++23, C23, Python 3.15, Rust 1.99.1+, Crubit)"
+readme = "README.md"
+requires-python = ">=3.15"
+authors = [
+  { name = "Jamie LaPointe", email = "jamielapointe@google.com" },
 ]
-line-length = 120
-preview = true
-src = [
-    ".",
-    ".agents/plugins/leetcode/src",
-    "src/python",
-]
-target-version = "py314"
-
-[tool.ruff.format]
-indent-style = "space"
-quote-style = "single"
-skip-magic-trailing-comma = false
-
-[tool.ruff.lint]
-dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
-fixable = [
-    "A",
-    "B",
-    "C",
-    "D",
-    "E",
-    "F",
-    "I",
-    "N",
-    "RUF",
-    "UP",
-    "W",
-]
-select = [
-    "ANN",
-    "ARG",
-    "B",
-    "D",
-    "DOC",
-    "E",
-    "F",
-    "I",
-    "N",
-    "NPY",
-    "PD",
-    "PERF",
-    "PYI",
-    "RUF",
-    "S",
-    "T20",
-    "TC",
-    "UP",
-    "W",
-]
-unfixable = []
-
-[tool.ruff.lint.isort]
-force-single-line = true
-lines-after-imports = 2
-
-[tool.ruff.lint.per-file-ignores]
-".agents/plugins/leetcode/src/leetcode_mcp/client.py" = [
-    "docstring-extraneous-exception",
-    "suspicious-non-cryptographic-random-usage",
-]
-".agents/plugins/leetcode/src/leetcode_mcp/server.py" = [
-    "typing-only-first-party-import",
-]
-".agents/plugins/leetcode/tests/**" = [
-    "assert",
-    "docstring-missing-returns",
-    "docstring-missing-yields",
-    "suspicious-non-cryptographic-random-usage",
-    "typing-only-first-party-import",
-    "undocumented-public-method",
-    "unused-function-argument",
-]
-"scripts/**" = [
-    "print",
-    "start-process-with-partial-path",
-    "subprocess-without-shell-equals-true",
-    "suspicious-subprocess-import",
-]
-"test/**" = [
-    "assert",
-    "suspicious-non-cryptographic-random-usage",
+dependencies = [
+  "arviz-base>=1.3.1",
+  "arviz-stats>=1.3.3",
+  "cyclopts>=5.5.0",
+  "httpx>=0.28.1",
+  "markdownify>=1.2.3",
+  "mcp>=2.3.0",
+  "numpy>=2.5.4",
+  "plotly>=7.1.0",
+  "polars>=2.1.0",
+  "pydantic>=2.14.3",
+  "pyyaml>=6.0.2",
+  "scipy>=1.18.1",
+  "structlog>=26.1.0",
 ]
 
-[tool.ruff.lint.pycodestyle]
-max-line-length = 120
+[dependency-groups]
+dev = [
+  "prek>=0.5.10",
+  { include-group = "lint" },
+  { include-group = "security" },
+  { include-group = "test" },
+  { include-group = "typecheck" },
+]
+lint = [
+  "gersemi>=0.29.2",
+  "marimo>=0.25.2",
+  "ruff>=0.17.5",
+  "rumdl>=0.3.4",
+  "tombi>=1.11.2",
+]
+security = [
+  "deptry>=0.25.1",
+  "pip-audit>=2.10.1",
+  "zizmor>=1.32.0",
+]
+test = [
+  "hypothesis>=6.170.15",
+  "pytest>=9.2.0",
+  "pytest-asyncio>=1.4.1",
+  "pytest-cov>=7.1.0",
+  "pytest-randomly>=5.1.0",
+  "pytest-timeout>=2.4.0",
+]
+typecheck = [
+  "basedpyright>=1.40.2",
+  "scipy-stubs>=1.18.1.1",
+  "ty>=0.0.104",
+  "types-pyyaml>=6.0.12",
+]
 
-[tool.ruff.lint.pydocstyle]
-convention = "google"
+[build-system]
+requires = ["uv_build>=0.12.0,<0.14.0"]
+build-backend = "uv_build"
 
-[tool.mypy]
-check_untyped_defs = true
-disallow_any_generics = true
-disallow_incomplete_defs = true
-disallow_untyped_calls = true
-disallow_untyped_defs = true
-enable_error_code = [
-    "ignore-without-code",
+[tool.basedpyright]
+include = [
+  "src/python",
+  ".agents/plugins/leetcode/src",
+  ".agents/plugins/leetcode/tests",
+  "scripts",
+  "test/python",
+  "notebooks",
 ]
-explicit_package_bases = true
-files = [
-    ".agents/plugins/leetcode/src",
-    ".agents/plugins/leetcode/tests",
-    "scripts",
-    "src/python",
-    "test/python",
+extraPaths = [
+  ".",
+  "src/python",
+  ".agents/plugins/leetcode/src",
 ]
-follow_imports = "normal"
-ignore_missing_imports = false
-mypy_path = [
-    ".",
-    ".agents/plugins/leetcode/src",
-    "src/python",
-]
-no_implicit_optional = true
-plugins = [
-    "pydantic.mypy",
-]
-pretty = true
-python_version = "3.14"
-show_error_codes = true
-show_error_context = true
-show_traceback = true
-strict = true
-warn_redundant_casts = true
-warn_return_any = true
-warn_unreachable = true
-warn_unused_ignores = true
+pythonVersion = "3.15"
+typeCheckingMode = "strict"
+reportImplicitOverride = true
+reportMissingTypeStubs = "warning"
+reportUnusedCallResult = false
 
-[tool.pytest.ini_options]
-addopts = "--import-mode=importlib --strict-config --strict-markers -ra -m 'not live'"
-asyncio_default_fixture_loop_scope = "function"
-asyncio_mode = "auto"
-filterwarnings = [
-    "error",
+[[tool.basedpyright.executionEnvironments]]
+root = "test/python"
+extraPaths = [
+  ".",
+  "src/python",
 ]
-markers = [
-    "benchmark: performance tests",
-    "integration: multi-component integration tests",
-    "live: tests that make live network calls to the LeetCode GraphQL API (deselected by default)",
-    "stress: stress and time-limit workloads",
-    "unit: fast isolated unit tests",
-]
-minversion = "9.1.1"
-pythonpath = [
-    ".",
-    ".agents/plugins/leetcode/src",
-    "src/python",
-]
-testpaths = [
-    ".agents/plugins/leetcode/tests",
-    "test/python",
-]
-timeout = 300
-xfail_strict = true
+reportPrivateUsage = false
 
-[tool.coverage.report]
-exclude_lines = [
-    "def __repr__",
-    "if TYPE_CHECKING:",
-    "if __name__ == .__main__.:",
-    "raise NotImplementedError",
+[[tool.basedpyright.executionEnvironments]]
+root = ".agents/plugins/leetcode/tests"
+extraPaths = [
+  ".agents/plugins/leetcode/src",
 ]
-fail_under = 85
-show_missing = true
+reportPrivateUsage = false
 
 [tool.coverage.run]
 branch = true
 omit = [
-    "*/.agents/*",
-    "*/test/*",
+  "*/.agents/plugins/leetcode/tests/*",
+  "*/test/*",
 ]
 source = [
-    "src/python/leet_code",
+  "src/python/leet_code",
+  ".agents/plugins/leetcode/src/leetcode_mcp",
 ]
 
-[tool.pixi.activation.env]
-CARGO_TARGET_DIR = "$PIXI_PROJECT_ROOT/build/cargo"
-CC = "$CONDA_PREFIX/bin/clang"
-CCACHE_DIR = "$PIXI_PROJECT_ROOT/build/.ccache"
-CXX = "$CONDA_PREFIX/bin/clang++"
-LLVM_COV = "$CONDA_PREFIX/bin/llvm-cov"
-LLVM_PROFDATA = "$CONDA_PREFIX/bin/llvm-profdata"
-PYTHONPATH = "$PIXI_PROJECT_ROOT/src/python:$PIXI_PROJECT_ROOT/.agents/plugins/leetcode/src:$PIXI_PROJECT_ROOT"
-RUST_SRC_PATH = "$CONDA_PREFIX/lib/rustlib/src/rust/library"
+[tool.coverage.report]
+exclude_also = [
+  "def __repr__",
+  "if TYPE_CHECKING:",
+  "if __name__ == .__main__.:",
+  "raise NotImplementedError",
+]
+fail_under = 85
+show_missing = true
 
-[tool.pixi.dependencies]
-actionlint = ">=1.7.12"
-benchmark = ">=1.10.0"
-cargo-llvm-cov = ">=0.9.1"
-ccache = ">=4.14.1"
-clang = ">=23.1.4"
-clang-tools = ">=23.1.4"
-clangxx = ">=23.1.4"
-cmake = ">=4.4.5"
-compiler-rt = ">=23.1.4"
-gtest = ">=1.18.0"
-httpx = ">=0.28.1"
-lld = ">=23.1.4"
-llvm-tools = ">=23.1.4"
-markdownify = ">=1.2.3"
-mcp = ">=2.3.0"
-mypy = ">=2.4.1"
-ninja = ">=1.13.2"
-numpy = ">=2.5.4"
-plotly = ">=7.1.0"
-pre-commit = ">=4.7.0"
-pydantic = ">=2.14.3"
-pytest = ">=9.2.0"
-pytest-asyncio = ">=1.4.1.post1"
-pytest-cov = ">=7.1.0"
-pytest-timeout = ">=2.4.0"
-python = ">=3.14, <3.15"
-ruff = ">=0.17.4"
-rust = ">=1.99.1"
-rust-src = ">=1.99.1"
-scipy = ">=1.18.1"
-zizmor = ">=1.32.0"
-
-[tool.pixi.pypi-dependencies]
-gersemi = ">=0.29.2"
-rumdl = ">=0.3.2"
-
-[tool.pixi.target.linux-64.dependencies]
-libcxx = ">=23.1.4"
-libcxx-devel = ">=23.1.4"
-libcxxabi = ">=23.1.4"
-
-[tool.pixi.target.osx-arm64.dependencies]
-libcxx = ">=23.1.4"
-libcxx-devel = ">=23.1.4"
-
-[tool.pixi.tasks]
-check-pyproject = "python scripts/ci/reorder_pyproject.py --check pyproject.toml"
-check-rust = "cargo check --workspace --all-targets"
-check-traceability = "python scripts/ci/check_systems_traceability.py"
-clippy = "cargo clippy --workspace --all-targets -- -D warnings"
-clippy-fix = "cargo clippy --fix --allow-dirty --allow-staged --workspace --all-targets -- -D warnings"
-clippy-interop = "python -c \"import json, pathlib, os, subprocess, sys; root = pathlib.Path('.'); env_file = root / 'build/crubit/crubit_env.json'; subprocess.run([sys.executable, 'scripts/crubit/bootstrap_crubit.py'], check=True) if not env_file.is_file() else None; data = json.loads(env_file.read_text()); env = os.environ | {'CARGO': data['CARGO'], 'RUSTC': data['RUSTC'], 'RUSTC_BOOTSTRAP': '1', 'PATH': data['PATH_PREPEND'] + os.pathsep + os.environ.get('PATH', '')}; build_dir = root / 'build/interop-debug'; find_patches = lambda: sorted(build_dir.rglob('crubit_rust_api/*/Cargo.toml')); (subprocess.run(['cmake', '--preset', 'interop-debug'], check=True), subprocess.run(['cmake', '--build', '--preset', 'interop-debug'], check=True)) if not find_patches() else None; patches = [f'patch.crates-io.{p.parent.name}.path={json.dumps(p.parent.resolve().as_posix())}' for p in find_patches()]; patch_args = [a for p in patches for a in ('--config', p)]; target_dir = str((build_dir / 'crubit_cargo').resolve()); manifests = [m for base in ('src/rust/interop', 'examples/interop', 'test/rust/interop') if (root / base).is_dir() for m in sorted((root / base).rglob('Cargo.toml')) if 'target' not in m.parts]; [subprocess.run([data['CARGO'], 'clippy', '--manifest-path', str(m), '--target-dir', target_dir, *patch_args, '--all-targets', '--', '-D', 'warnings'], env=env, check=True) for m in manifests]\""
-cov-cpp = "cmake --workflow --preset coverage && python scripts/ci/cpp_coverage.py --build-dir build/coverage --fail-under 85"
-cov-python = "pytest --cov --cov-report=term-missing --cov-report=xml"
-cov-rust = "cargo llvm-cov --workspace --all-targets --fail-under-lines 85"
-cpp-asan = "cmake --workflow --preset asan"
-cpp-benchmark = "cmake --workflow --preset benchmark"
-cpp-benchmark-build = "cmake --build --preset benchmark"
-cpp-debug = "cmake --workflow --preset dev-debug"
-cpp-debug-config = "cmake --preset dev-debug"
-cpp-release = "cmake --workflow --preset dev-release"
-cpp-tsan = "cmake --workflow --preset tsan"
-cpp-ubsan = "cmake --workflow --preset ubsan"
-crubit-bootstrap = "python scripts/crubit/bootstrap_crubit.py"
-examples-interop = "python scripts/crubit/bootstrap_crubit.py && cmake --preset interop-debug && cmake --build --preset interop-debug && python scripts/examples/run_crubit_examples.py --preset interop-debug"
-format = "ruff format"
-format-check = "ruff format --check"
-format-cmake = "gersemi -i CMakeLists.txt cmake src/cpp src/c test/cpp test/c test/rust/interop benchmarks/cpp benchmarks/c examples"
-format-cmake-check = "gersemi --check CMakeLists.txt cmake src/cpp src/c test/cpp test/c test/rust/interop benchmarks/cpp benchmarks/c examples"
-format-cpp = "cmake --build --preset dev-debug --target format"
-format-cpp-check = "cmake --build --preset dev-debug --target format-check"
-format-rust = "cargo fmt --all"
-format-rust-check = "cargo fmt --all -- --check"
-interop-release = "python scripts/crubit/bootstrap_crubit.py && cmake --workflow --preset interop-release"
-leetcode-mcp = "python -m leetcode_mcp"
-lint = "ruff check"
-lint-fix = "ruff check --fix --exit-non-zero-on-fix"
-lint-md = "rumdl check ."
-pre-commit = "pre-commit run --all-files"
-reorder-pyproject = "python scripts/ci/reorder_pyproject.py pyproject.toml"
-shm-pubsub-example = "python scripts/examples/run_shm_pubsub_example.py"
-test-cpp = "cmake --workflow --preset dev-debug"
-test-interop = "python scripts/crubit/bootstrap_crubit.py && cmake --workflow --preset interop-debug"
-test-python = "pytest"
-test-rust = "cargo test --workspace --all-targets"
-typecheck = "mypy"
-
-[tool.pixi.tasks.test]
-depends-on = [
-    "test-cpp",
-    "test-python",
-    "test-rust",
+[tool.deptry]
+extend_exclude = [
+  "\\.agents/(scratch|swarm|teamwork|tmp|workflows)",
+  "benchmarks",
+  "build",
+  "data",
+  "dist",
+  "docs",
+  "examples",
+  "src/(c|cpp|include|rust)",
+  "test/(c|cpp|rust)",
+]
+known_first_party = [
+  "leet_code",
+  "leetcode_mcp",
+  "scripts",
 ]
 
-[tool.pixi.workspace]
-channels = [
-    "conda-forge",
+[tool.deptry.per_rule_ignores]
+DEP004 = [
+  "hypothesis",
+  "marimo",
+  "pytest",
 ]
-platforms = [
-    "linux-64",
-    "linux-aarch64",
-    "osx-arm64",
+
+[tool.pytest]
+addopts = [
+  "--import-mode=importlib",
+  "-ra",
+  "--doctest-modules",
+  "--timeout=300",
+  "-m",
+  "not live",
 ]
+filterwarnings = [
+  "error",
+]
+markers = [
+  "benchmark: performance tests",
+  "integration: multi-component integration tests",
+  "live: tests that make live network calls to the LeetCode GraphQL API (deselected by default)",
+  "stress: stress and time-limit workloads",
+  "unit: fast isolated unit tests",
+]
+minversion = "9.0"
+pythonpath = [
+  ".",
+  ".agents/plugins/leetcode/src",
+  "src/python",
+]
+strict = true
+testpaths = [
+  ".agents/plugins/leetcode/tests",
+  "test/python",
+]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+exclude = [
+  ".agent",
+  ".agents/scratch",
+  ".agents/swarm",
+  ".agents/teamwork",
+  ".agents/tmp",
+  ".agents/workflows",
+  ".claude",
+  ".codex",
+  ".cursor",
+  ".gemini",
+  ".git",
+  ".pixi",
+  ".venv",
+  ".windsurf",
+  "_agent",
+  "_agents",
+  "build",
+  "data",
+  "dist",
+]
+line-length = 88
+preview = true
+src = [
+  ".",
+  ".agents/plugins/leetcode/src",
+  "src/python",
+]
+target-version = "py315"
+
+[tool.ruff.format]
+docstring-code-format = true
+indent-style = "space"
+quote-style = "double"
+skip-magic-trailing-comma = false
+
+[tool.ruff.lint]
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+select = [
+  "E",
+  "F",
+  "W",
+  "I",
+  "N",
+  "D",
+  "DOC",
+  "UP",
+  "B",
+  "SIM",
+  "C4",
+  "DTZ",
+  "PT",
+  "RUF",
+  "PERF",
+  "FURB",
+  "S",
+  "ANN",
+  "ASYNC",
+  "PTH",
+  "TID",
+  "TC",
+  "PL",
+]
+# Ruff RUF201: use full rule names in ignore lists rather than raw codes.
+ignore = [
+  "line-too-long",
+]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"__future__.annotations".msg = "Python 3.14+ natively defers annotations via PEP 649/749 (annotationlib); remove 'from __future__ import annotations'."
+
+[tool.ruff.lint.isort]
+lines-after-imports = 2
+
+[tool.ruff.lint.per-file-ignores]
+".agents/plugins/leetcode/src/leetcode_mcp/client.py" = [
+  "docstring-extraneous-exception",
+  "suspicious-non-cryptographic-random-usage",
+]
+".agents/plugins/leetcode/src/leetcode_mcp/server.py" = [
+  "typing-only-first-party-import",
+]
+".agents/plugins/leetcode/tests/**" = [
+  "assert",
+  "docstring-missing-returns",
+  "docstring-missing-yields",
+  "magic-value-comparison",
+  "no-self-use",
+  "suspicious-non-cryptographic-random-usage",
+  "typing-only-first-party-import",
+  "undocumented-public-method",
+]
+"notebooks/**" = [
+  "import-outside-top-level",
+  "magic-value-comparison",
+  "too-many-arguments",
+  "too-many-locals",
+  "too-many-statements",
+]
+"scripts/**" = [
+  "start-process-with-partial-path",
+  "subprocess-without-shell-equals-true",
+  "suspicious-subprocess-import",
+]
+"test/**" = [
+  "assert",
+  "magic-value-comparison",
+  "no-self-use",
+  "suspicious-non-cryptographic-random-usage",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
 
 [tool.rumdl]
 exclude = [
-    ".agent",
-    ".agents/scratch",
-    ".agents/swarm",
-    ".agents/teamwork",
-    ".agents/tmp",
-    ".agents/workflows",
-    ".claude",
-    ".codex",
-    ".cursor",
-    ".gemini",
-    ".git",
-    ".pixi",
-    ".venv",
-    ".windsurf",
-    "BRIEFING.md",
-    "CLAUDE.md",
-    "DISPATCH.md",
-    "HANDOFF.md",
-    "ORIGINAL_REQUEST.md",
-    "PLAN.md",
-    "PROGRESS.md",
-    "PROJECT.md",
-    "SCOPE.md",
-    "TASK.md",
-    "TEST_INFRA.md",
-    "TEST_READY.md",
-    "WALKTHROUGH.md",
-    "_agent",
-    "_agents",
-    "build",
-    "data",
-    "dist",
-    "handoff.md",
-    "implementation_plan.md",
-    "progress.md",
-    "task.md",
-    "walkthrough.md",
+  ".agent",
+  ".agents/scratch",
+  ".agents/swarm",
+  ".agents/teamwork",
+  ".agents/tmp",
+  ".agents/workflows",
+  ".claude",
+  ".codex",
+  ".cursor",
+  ".gemini",
+  ".git",
+  ".pixi",
+  ".venv",
+  ".windsurf",
+  "BRIEFING.md",
+  "CLAUDE.md",
+  "DISPATCH.md",
+  "HANDOFF.md",
+  "ORIGINAL_REQUEST.md",
+  "PLAN.md",
+  "PROGRESS.md",
+  "PROJECT.md",
+  "SCOPE.md",
+  "TASK.md",
+  "TEST_INFRA.md",
+  "TEST_READY.md",
+  "WALKTHROUGH.md",
+  "_agent",
+  "_agents",
+  "build",
+  "data",
+  "dist",
+  "handoff.md",
+  "implementation_plan.md",
+  "progress.md",
+  "task.md",
+  "walkthrough.md",
 ]
 flavor = "gfm"
 line-length = 160
@@ -376,15 +348,37 @@ tables = false
 
 [tool.rumdl.MD033]
 allowed-elements = [
-    "a",
-    "br",
-    "details",
-    "div",
-    "img",
-    "kbd",
-    "p",
-    "span",
-    "sub",
-    "summary",
-    "sup",
+  "a",
+  "br",
+  "details",
+  "div",
+  "img",
+  "kbd",
+  "p",
+  "span",
+  "sub",
+  "summary",
+  "sup",
 ]
+
+[tool.ty.environment]
+python-version = "3.15"
+extra-paths = [
+  ".",
+  "src/python",
+  ".agents/plugins/leetcode/src",
+]
+
+[tool.ty.src]
+include = [
+  "src/python",
+  ".agents/plugins/leetcode/src",
+  ".agents/plugins/leetcode/tests",
+  "scripts",
+  "test/python",
+  "notebooks",
+]
+
+[tool.uv.build-backend]
+module-root = "src/python"
+module-name = "leet_code"

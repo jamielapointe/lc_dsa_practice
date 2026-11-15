@@ -10,7 +10,7 @@ A personal practice repository with independent tracks that share one Pixi works
 | :--- | :--- | :--- | :--- | :--- |
 | C++ LeetCode | Data-structure and algorithm problems in modern C++23 | `src/cpp/leet_code/`, `src/include/leet_code/` | `test/cpp/leet_code/` | `leet_code` |
 | C LeetCode | Data-structure and algorithm problems in strict ISO C23 | `src/c/leet_code/`, `src/include/leet_code/` | `test/c/leet_code/` | `leet_code_c` |
-| Python LeetCode | The same problems in typed Python 3.14 | `src/python/leet_code/` | `test/python/leet_code/` | package `leet_code` |
+| Python LeetCode | The same problems in typed Python 3.15 | `src/python/leet_code/` | `test/python/leet_code/` | package `leet_code` |
 | Rust LeetCode | The same problems in idiomatic Rust 1.99.1+ | `src/rust/leet_code/` | `test/rust/leet_code/` | crate `leet_code` |
 | Systems C++, C23 & Rust | Reusable low-level, system-level, and embedded-style components (fixed capacity, no heap, explicit concurrency) | `src/{cpp,c,rust}/systems/`, `src/include/systems/` | `test/{cpp,c,rust}/systems/` | `systems` / `systems_c` / `systems` |
 | Crubit Interop | Bidirectional C++23 <-> Rust 2024 FFI bindings via Google Crubit | `src/{include,cpp,rust}/interop/crubit/`, `examples/interop/crubit/` | `test/{cpp,rust}/interop/crubit/` | `interop::crubit` / `rs_*` / `cc_*` |
@@ -24,7 +24,8 @@ A personal practice repository with independent tracks that share one Pixi works
 ├── AGENTS.md, README.md, CONTRIBUTING.md
 ├── Cargo.toml, rustfmt.toml, clippy.toml, .cargo/config.toml # Cargo workspace config
 ├── CMakeLists.txt, CMakePresets.json, cmake/      # options: BUILD_LEET_CODE, BUILD_SYSTEMS, BUILD_BENCHMARKS
-├── pyproject.toml, pixi.lock                      # Pixi workspace and ALL tool config
+├── pixi.toml, pyproject.toml, pixi.lock           # Standalone Pixi workspace/tasks, PEP 621/735 pyproject, single lockfile
+├── notebooks/benchmark_telemetry_explorer.py      # Reactive Marimo (0.25.2+) telemetry explorer
 ├── src/
 │   ├── include/{leet_code,systems,interop/crubit}/ # public C (.h) and C++ (.hpp) headers
 │   ├── cpp/{leet_code,systems,interop/crubit}/     # .cpp files and per-track CMakeLists.txt
@@ -46,7 +47,7 @@ A personal practice repository with independent tracks that share one Pixi works
 ├── docs/{interop/crubit.md,systems/}               # Crubit interop guide and systems requirements specs
 ├── scripts/
 │   ├── benchmarks/                                 # runner and Bayesian BEST + ROPE analysis scripts
-│   ├── ci/                                         # cpp_coverage.py, reorder_pyproject.py, check_systems_traceability.py
+│   ├── ci/                                         # cpp_coverage.py, check_systems_traceability.py
 │   ├── crubit/                                     # bootstrap_crubit.py and invoke_rs_bindings_from_cc.py
 │   └── examples/                                   # run_shm_pubsub_example.py, run_crubit_examples.py
 ├── .agents/
@@ -59,39 +60,36 @@ Do not recreate the old top-level `include/`, `src/*.cpp`, or `tests/` paths, an
 
 ## Toolchain rules (Pixi only)
 
-- Run every tool through `pixi run`. Never `pip install`, `uv`, a global `cmake`, a global `cargo`, or a system compiler. The conda-forge
-  Clang 23 toolchain, CMake 4.4, Ninja, GoogleTest, rustc/cargo 1.99.1, rustfmt, clippy, ruff, mypy, pytest, gersemi, and rumdl are pinned in `pixi.lock`.
-- CMake is driven only by presets: `pixi run cmake --workflow --preset <name>`. Do not hand-configure build directories.
-  Configuring with a non-Pixi compiler fails by design (`ALLOW_NON_PIXI_TOOLCHAIN` overrides; avoid it).
-- Cargo build artifacts are isolated to `build/cargo/` via `.cargo/config.toml` and `CARGO_TARGET_DIR`.
-- Add Python or conda dependencies in `pyproject.toml` (`pixi add ...` or edit), then run `pixi run reorder-pyproject`.
-  Never hand-edit `pixi.lock`.
-- `pyproject.toml` is the single config file for Pixi, ruff, mypy, pytest, coverage, and rumdl. It is auto-sorted, so
-  order-sensitive values must be strings, not lists (see the pytest `addopts`).
+- Run every tool via `pixi run` (standalone `pixi.toml`, `requires-pixi = ">=0.84.2"`). Never `pip install`, `uv`, global `cmake`, `cargo`, or system
+  compilers. Clang 23, CMake 4.4, Ninja, GoogleTest, rustc/cargo 1.99.1, Python 3.15, ruff, basedpyright, ty, pytest 9+, marimo, tombi, deptry,
+  pip-audit, prek, gersemi, and rumdl pin in `pixi.lock`.
+- Drive CMake only via presets: `pixi run cmake --workflow --preset <name>` (`ALLOW_NON_PIXI_TOOLCHAIN` overrides; avoid). Cargo build artifacts
+  isolate to `build/cargo/` via `.cargo/config.toml` and `CARGO_TARGET_DIR`.
+- Add deps in `pixi.toml` / `pyproject.toml` (PEP 621/735, `uv_build`), then run `pixi run format-toml` (`tombi`). Never hand-edit `pixi.lock`.
+- Tool configs (`ruff`, `basedpyright`, `ty`, `pytest` native `[tool.pytest]`, `deptry`, `coverage`, `rumdl`) live in `pyproject.toml`; Pixi deps/tasks
+  live in `pixi.toml`. Keep order-sensitive values as strings where needed (e.g., pytest `addopts`).
 
 ### Common tasks
 
 ```bash
-pixi run test            # C++ (dev-debug workflow) + Python + Rust
-pixi run test-cpp        # dev-debug: ASan + UBSan + clang-tidy, build and ctest
-pixi run test-python     # pytest, live-network tests deselected
+pixi run test            # C++ (dev-debug) + Python + Rust
+pixi run test-cpp        # dev-debug: ASan + UBSan + clang-tidy, build & ctest
+pixi run test-python     # pytest 9+ (live-network tests deselected)
 pixi run test-rust       # cargo test --workspace (all 4 tiers)
 pixi run clippy | clippy-fix # cargo clippy --all-targets -- -D warnings
 pixi run format-rust | format-rust-check # cargo fmt
 pixi run cov-rust        # cargo-llvm-cov, gate >= 85%
-pixi run cpp-release     # IPO build + tests
-pixi run cpp-asan | cpp-ubsan | cpp-tsan
-pixi run cpp-benchmark   # Google Benchmark suite workflow
-pixi run cpp-benchmark-build # build benchmark executable
-pixi run cov-cpp         # llvm-cov, gate >= 85%
-pixi run cov-python      # pytest-cov, gate >= 85%
+pixi run cpp-release | cpp-asan | cpp-ubsan | cpp-tsan
+pixi run cpp-benchmark | cpp-benchmark-build # local Google Benchmark suite
+pixi run cov-cpp | cov-python # llvm-cov / pytest-cov, gate >= 85%
 pixi run crubit-bootstrap # clone pinned Crubit, verify Rust 1.99.1 sysroot, build generators
-pixi run test-interop    # build & test Crubit interop suite (interop-debug)
-pixi run interop-release # build & test Crubit interop suite with LTO (interop-release)
-pixi run examples-interop # build C++23 and Rust 2024 Crubit showcase demos
-pixi run clippy-interop  # cargo clippy (-D warnings) across interop Rust crates
-pixi run lint | lint-fix | format | format-check | format-cmake | format-cpp | typecheck | lint-md
-pixi run pre-commit      # the full gate; run before every commit
+pixi run test-interop | interop-release | examples-interop | clippy-interop
+pixi run typecheck       # basedpyright (strict) && ty check
+pixi run audit           # deptry && pip-audit
+pixi run notebook-check  # marimo check --strict on notebooks/
+pixi run format-toml | format-toml-check # tombi TOML formatting
+pixi run lint | lint-fix | format | format-check | format-cmake | format-cpp | lint-md
+pixi run pre-commit      # full gate via prek; run before every commit
 ```
 
 CMake presets: `dev-debug`, `dev-release`, `asan`, `ubsan`, `tsan`, `coverage`, `benchmark`, `interop-debug`, `interop-release` (each has configure, build,
@@ -122,12 +120,12 @@ test, and workflow variants; build trees go to `build/<preset>`).
 - Each module exposes an idiomatic, fully typed API (`snake_case`, Google docstrings, `ValueError` on invalid input) and the
   LeetCode wrapper `class Solution` with the official method name (suppress `invalid-function-name` on that line). Design
   problems use a `CapWords` class plus an official-name alias (see `lru_cache.py`).
-- References: `two_sum.py` (function) and `lru_cache.py` (class). Tests use four tiers; the stress tier carries
-  `@pytest.mark.stress` and a `time.perf_counter()` guard.
-- Style: Python 3.14, single quotes, 120 columns, `from __future__ import annotations`, typing-only imports under
-  `TYPE_CHECKING`, force-single-line imports, mypy strict, ruff with preview rules, no `print`, no bare `except`.
-- Coverage gate: 85% on `src/python/leet_code`. Never raise `NotImplementedError` in stubs (the red state must come from
-  assertions).
+- References: `two_sum.py` and `lru_cache.py`. Four test tiers: Tier 3 uses `hypothesis` properties, Tier 4 carries `@pytest.mark.stress` +
+  `time.perf_counter()` (`pytest-randomly` shuffles runs).
+- Style: Python 3.15 (`PEP 649` native annotations; `TID251` bans `from __future__ import annotations`; `PEP 810` `lazy import`, `PEP 814` `frozendict`,
+  `PEP 661`, `PEP 750`), double quotes, 88 columns, grouped imports (`lines-after-imports = 2`), typing-only imports under `TYPE_CHECKING`, 23 Ruff
+  preview families (`RUF201` full rule names), `basedpyright` strict + `ty`, no `print` or bare `except`.
+- Coverage gate: 85% on `src/python/leet_code`. Never raise `NotImplementedError` in stubs (the red state comes from assertions).
 
 ## Track 3: Systems / low-level / embedded-style C++23 and ISO C23
 
@@ -203,9 +201,10 @@ Intent: empirical microbenchmarking and statistical performance evaluation for s
 - Benchmarks live in `benchmarks/{cpp,c}/systems/<name>_benchmark.cpp`, registered in `benchmarks/{cpp,c}/systems/CMakeLists.txt`.
 - Built via CMake presets (`benchmark` preset or `dev-release` with IPO). CMake option `BUILD_BENCHMARKS` defaults to `OFF`.
 - **Exclusion from CI**: Benchmarks are local-only and MUST NEVER run on GitHub Actions CI (`.github/workflows/ci.yml`).
-- Runner and Bayesian BEST analysis scripts live in `scripts/benchmarks/` (`run_benchmark.py`, `bayesian_compare.py`, `host_tuner.py`).
-- Telemetry and reports live in `data/latest/<experiment>` and `data/baseline/<experiment>`. `data/` is strictly
-  gitignored and must never be committed.
+- Runner and Bayesian BEST analysis scripts in `scripts/benchmarks/` (`run_benchmark.py`, `bayesian_compare.py`, `host_tuner.py`) use `cyclopts`,
+  `structlog`, `polars`, and `arviz-stats`.
+- Interactive telemetry explorer: `notebooks/benchmark_telemetry_explorer.py` (Marimo `0.25.2+`; `pixi run notebook-check`, `/marimo-pro`, `/marimo-pair`).
+- Telemetry and reports live in `data/{latest,baseline}/<experiment>`. `data/` is gitignored and must never be committed.
 - Workspace agentic optimization skill: `.agents/skills/optimization-loop/SKILL.md` (orchestrating preloop, two-stage fast-screen
   then full 30-rep BEST benchmark, unit test gate, atomic git commits, and Academic Scribe report).
 - Baseline promotion requires Bayesian BEST $P(\text{better}) \ge 0.95$ with ROPE (e.g. 2%), zero unit-test regressions,
@@ -251,12 +250,13 @@ Intent: intensive, TDD-driven Rust crash course and senior interview preparation
 | :--- | :--- |
 | C++ format and lint | clang-format (Google), clang-tidy (`WarningsAsErrors: "*"`), Google Integer Types (`int`, `<cstdint>`, `size_t`/`ptrdiff_t`) |
 | C++ runtime | ASan, UBSan, TSan presets; 85% line coverage (`cov-cpp`) |
-| Python | `ruff check`, `ruff format`, `mypy` strict, pytest, 85% coverage |
+| Python | `ruff check` (23 families, `RUF201`), `ruff format`, `basedpyright` strict + `ty`, pytest 9+ (`hypothesis`, `pytest-randomly`), `deptry` + `pip-audit` (`audit`), 85% coverage |
+| Notebooks | Marimo `0.25.2+` (`pixi run notebook-check`: `marimo check --strict`), embedded pytest, headless run (`/marimo-pro`, `/marimo-pair`) |
 | Rust format and lint | `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` |
 | Rust runtime | `cargo test --workspace` (all 4 tiers), coverage >= 85% (`cov-rust`) |
 | CMake | `gersemi` (config `.gersemirc`: 100 columns, 4-space indent); run `pixi run format-cmake` |
 | Markdown | `rumdl` (160 columns) |
-| Repo hygiene | gitleaks, actionlint, zizmor, Renovate validator, sorted `pyproject.toml` |
+| Repo hygiene | `prek`, `tombi` (`format-toml-check`), `gitleaks`, `actionlint`, `zizmor`, Renovate validator |
 
 Done means `pixi run pre-commit` and `pixi run test` pass. Run `pixi run cpp-tsan` for threading changes. Fix root causes
 instead of suppressing; keep existing comments and docstrings that your change does not touch.
@@ -275,7 +275,7 @@ instead of suppressing; keep existing comments and docstrings that your change d
 
 ## Checklist when changing structure
 
-1. Update CMake registration, Cargo workspace members, `pyproject.toml` path settings (pytest `testpaths`/`pythonpath`, mypy `files`, coverage
-   `source`), and CI if paths change.
+1. Update CMake registration, Cargo workspace members, `pixi.toml` (deps/tasks), `pyproject.toml` paths (pytest `testpaths`/`pythonpath`, `basedpyright`
+   `include`, `ty.src`, `coverage` `source`), and CI if paths change; run `pixi run format-toml`.
 2. Update `README.md`, `CONTRIBUTING.md`, the plugin docs and skill, and this file.
 3. Keep this file under 24 KB (Antigravity truncates larger rule files); check with `wc -c AGENTS.md`.

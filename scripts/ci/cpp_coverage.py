@@ -1,28 +1,63 @@
+# /// script
+# requires-python = ">=3.15"
+# dependencies = [
+#   "cyclopts>=5.5.0",
+#   "structlog>=26.1.0",
+# ]
+# ///
 """Merge LLVM raw profiles and enforce the C++ line-coverage gate.
 
-Run after ``cmake --workflow --preset coverage``. The coverage test preset makes every instrumented test binary
-write ``*.profraw`` files under ``build/coverage/profraw``. This script merges them with ``llvm-profdata`` and then
-uses ``llvm-cov`` to compute line coverage for the project sources (``src/``), excluding tests and third-party code.
+Run after ``cmake --workflow --preset coverage``. The coverage test preset makes every
+instrumented test binary write ``*.profraw`` files under ``build/coverage/profraw``.
+This script merges them with ``llvm-profdata`` and then uses ``llvm-cov`` to compute
+line coverage for the project sources (``src/``), excluding tests and third-party
+code.
 
 Example:
     pixi run cov-cpp
 """
 
-from __future__ import annotations
-
-import argparse
 import json
 import logging
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Annotated, Final, cast
+lazy from collections.abc import Sequence
 
+import cyclopts
+import structlog
+from cyclopts import Parameter
 
-logger = logging.getLogger(__name__)
 
 # Paths that never count toward project coverage.
-IGNORE_FILENAME_REGEX = r'(/test/|/\.pixi/|/_deps/|/usr/|/Applications/)'
+IGNORE_FILENAME_REGEX: Final[str] = r"(/test/|/\.pixi/|/_deps/|/usr/|/Applications/)"
+DEFAULT_BUILD_DIR: Final[Path] = Path("build/coverage")
+DEFAULT_FAIL_UNDER: Final[float] = 85.0
+
+_app = cyclopts.App(name="cpp-coverage", help=__doc__)
+
+
+def _configure_logging() -> None:
+    """Configures standard library logging for coverage CLI execution."""
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+
+def _get_logger() -> structlog.stdlib.BoundLogger:
+    """Returns an isolated stdlib-backed structlog logger for this module."""
+    logger = structlog.wrap_logger(
+        logging.getLogger(__name__),
+        processors=[
+            structlog.stdlib.filter_by_level,
+            structlog.stdlib.PositionalArgumentsFormatter(),
+            structlog.processors.StackInfoRenderer(),
+            structlog.processors.format_exc_info,
+            structlog.dev.ConsoleRenderer(colors=False),
+        ],
+        wrapper_class=structlog.stdlib.BoundLogger,
+    )
+    return cast("structlog.stdlib.BoundLogger", logger)
 
 
 def find_tool(name: str) -> str:
@@ -39,7 +74,7 @@ def find_tool(name: str) -> str:
     """
     path = shutil.which(name)
     if path is None:
-        message = f'{name} not found on PATH; run this script through `pixi run`.'
+        message = f"{name} not found on PATH; run this script through `pixi run`."
         raise FileNotFoundError(message)
     return path
 
@@ -53,7 +88,7 @@ def find_test_binaries(build_dir: Path) -> list[Path]:
     Returns:
         Sorted test executables (files whose name ends with ``_test``).
     """
-    return sorted(path for path in (build_dir / 'bin').glob('*_test') if path.is_file())
+    return sorted(path for path in (build_dir / "bin").glob("*_test") if path.is_file())
 
 
 def merge_profiles(build_dir: Path, profdata: Path) -> None:
@@ -66,17 +101,32 @@ def merge_profiles(build_dir: Path, profdata: Path) -> None:
     Raises:
         FileNotFoundError: If no raw profiles were produced.
     """
-    raw_profiles = sorted((build_dir / 'profraw').glob('*.profraw'))
+    raw_profiles = sorted((build_dir / "profraw").glob("*.profraw"))
     if not raw_profiles:
-        message = f'No *.profraw files under {build_dir / "profraw"}; did the coverage tests run?'
+        message = (
+            f"No *.profraw files under {build_dir / 'profraw'}; "
+            "did the coverage tests run?"
+        )
         raise FileNotFoundError(message)
     subprocess.run(
-        [find_tool('llvm-profdata'), 'merge', '-sparse', *map(str, raw_profiles), '-o', str(profdata)],
+        [
+            find_tool("llvm-profdata"),
+            "merge",
+            "-sparse",
+            *map(str, raw_profiles),
+            "-o",
+            str(profdata),
+        ],
         check=True,
     )
 
 
-def coverage_command(subcommand: str, binaries: list[Path], profdata: Path, *extra: str) -> list[str]:
+def coverage_command(
+    subcommand: str,
+    binaries: list[Path],
+    profdata: Path,
+    *extra: str,
+) -> list[str]:
     """Builds an ``llvm-cov`` command line.
 
     Args:
@@ -88,10 +138,13 @@ def coverage_command(subcommand: str, binaries: list[Path], profdata: Path, *ext
     Returns:
         The full argument vector.
     """
-    command = [find_tool('llvm-cov'), subcommand, str(binaries[0])]
+    command = [find_tool("llvm-cov"), subcommand, str(binaries[0])]
     for binary in binaries[1:]:
-        command += ['-object', str(binary)]
-    command += [f'-instr-profile={profdata}', f'-ignore-filename-regex={IGNORE_FILENAME_REGEX}']
+        command += ["-object", str(binary)]
+    command += [
+        f"-instr-profile={profdata}",
+        f"-ignore-filename-regex={IGNORE_FILENAME_REGEX}",
+    ]
     return [*command, *extra]
 
 
@@ -106,16 +159,76 @@ def line_coverage_percent(binaries: list[Path], profdata: Path) -> float:
         Line coverage as a percentage in ``[0, 100]``.
     """
     result = subprocess.run(
-        coverage_command('export', binaries, profdata, '-summary-only'),
+        coverage_command("export", binaries, profdata, "-summary-only"),
         check=True,
         capture_output=True,
         text=True,
     )
-    totals = json.loads(result.stdout)['data'][0]['totals']
-    return float(totals['lines']['percent'])
+    totals = json.loads(result.stdout)["data"][0]["totals"]
+    return float(totals["lines"]["percent"])
 
 
-def main(argv: list[str] | None = None) -> int:
+@_app.default
+def _run_cli(
+    *,
+    build_dir: Annotated[
+        Path,
+        Parameter(help="Coverage preset build directory."),
+    ] = DEFAULT_BUILD_DIR,
+    fail_under: Annotated[
+        float,
+        Parameter(help="Minimum required line coverage percentage."),
+    ] = DEFAULT_FAIL_UNDER,
+) -> int:
+    """Merges coverage profiles, prints report, and checks line coverage gate.
+
+    Args:
+        build_dir: Coverage preset build directory.
+        fail_under: Minimum required line coverage percentage.
+
+    Returns:
+        ``0`` when coverage meets the threshold, ``1`` otherwise.
+    """
+    _configure_logging()
+    logger = _get_logger()
+
+    binaries = find_test_binaries(build_dir)
+    if not binaries:
+        logger.error(
+            "No *_test binaries in %s",
+            build_dir / "bin",
+            bin_dir=str(build_dir / "bin"),
+        )
+        return 1
+
+    profdata = build_dir / "merged.profdata"
+    merge_profiles(build_dir, profdata)
+    subprocess.run(
+        coverage_command("report", binaries, profdata, "-show-region-summary=false"),
+        check=True,
+    )
+
+    percent = line_coverage_percent(binaries, profdata)
+    logger.info(
+        "C++ line coverage: %.2f%% (threshold %.2f%%)",
+        percent,
+        fail_under,
+        percent=round(percent, 2),
+        threshold=fail_under,
+    )
+    if percent < fail_under:
+        logger.error(
+            "C++ line coverage %.2f%% is below the required %.2f%%",
+            percent,
+            fail_under,
+            percent=round(percent, 2),
+            threshold=fail_under,
+        )
+        return 1
+    return 0
+
+
+def main(argv: Sequence[str] | None = None) -> int:
     """Entry point.
 
     Args:
@@ -124,29 +237,10 @@ def main(argv: list[str] | None = None) -> int:
     Returns:
         ``0`` when coverage meets the threshold, ``1`` otherwise.
     """
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--build-dir', type=Path, default=Path('build/coverage'))
-    parser.add_argument('--fail-under', type=float, default=85.0)
-    args = parser.parse_args(argv)
-
-    logging.basicConfig(level=logging.INFO, format='%(message)s')
-    build_dir: Path = args.build_dir
-    binaries = find_test_binaries(build_dir)
-    if not binaries:
-        logger.error('No *_test binaries in %s', build_dir / 'bin')
-        return 1
-
-    profdata = build_dir / 'merged.profdata'
-    merge_profiles(build_dir, profdata)
-    subprocess.run(coverage_command('report', binaries, profdata, '-show-region-summary=false'), check=True)
-
-    percent = line_coverage_percent(binaries, profdata)
-    logger.info('C++ line coverage: %.2f%% (threshold %.2f%%)', percent, args.fail_under)
-    if percent < args.fail_under:
-        logger.error('C++ line coverage %.2f%% is below the required %.2f%%', percent, args.fail_under)
-        return 1
-    return 0
+    tokens = list(argv) if argv is not None else None
+    result = _app(tokens, result_action="return_value")
+    return result if isinstance(result, int) else 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

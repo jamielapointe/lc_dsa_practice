@@ -1,7 +1,5 @@
 """Tests for scripts/examples/run_shm_pubsub_example.py."""
 
-from __future__ import annotations
-
 import time
 from typing import TYPE_CHECKING
 
@@ -49,7 +47,7 @@ def test_verify_logs_passes_on_valid_logs() -> None:
     )
     assert verdict.passed is True
     assert verdict.errors == []
-    assert verdict.consumer_mode == 'kLatest'
+    assert verdict.consumer_mode == "kLatest"
     assert verdict.consumer_slots == 4
     assert len(verdict.published_frames) == 5
     assert [f.seq for f in verdict.received_frames] == [1, 3, 5]
@@ -58,8 +56,8 @@ def test_verify_logs_passes_on_valid_logs() -> None:
 def test_make_ipc_names_fits_posix_limit() -> None:
     """Generated IPC names start with '/' and fit within the 30-character macOS limit."""
     channel_name, sync_name = runner.make_ipc_names(0xABCDE)
-    assert channel_name.startswith('/')
-    assert sync_name.startswith('/')
+    assert channel_name.startswith("/")
+    assert sync_name.startswith("/")
     assert channel_name != sync_name
     assert len(channel_name) <= 30
     assert len(sync_name) <= 30
@@ -69,20 +67,20 @@ def test_make_ipc_names_fits_posix_limit() -> None:
 def test_end_to_end_shm_pubsub_example(capsys: pytest.CaptureFixture[str]) -> None:
     """Runs the compiled C++ producer and consumer processes end-to-end."""
     code = runner.main([
-        '--frames',
-        '20',
-        '--slots',
-        '4',
-        '--publish-sleep-ms',
-        '15',
-        '--base-sleep-ms',
-        '18',
-        '--lag-sleep-ms',
-        '45',
+        "--frames",
+        "20",
+        "--slots",
+        "4",
+        "--publish-sleep-ms",
+        "15",
+        "--base-sleep-ms",
+        "18",
+        "--lag-sleep-ms",
+        "45",
     ])
     captured = capsys.readouterr()
     assert code == 0, captured.err
-    assert 'INTEGRATION TEST PASSED' in captured.out
+    assert "INTEGRATION TEST PASSED" in captured.out
 
 
 # Tier 2: boundary and error cases
@@ -90,7 +88,9 @@ def test_end_to_end_shm_pubsub_example(capsys: pytest.CaptureFixture[str]) -> No
 
 def test_verify_logs_detects_crc_mismatch() -> None:
     """A corrupted CRC-32 between producer and consumer fails verification."""
-    bad_consumer = SAMPLE_CONSUMER_LOG.replace('computed_crc32=0x33333333', 'computed_crc32=0xdeadbeef')
+    bad_consumer = SAMPLE_CONSUMER_LOG.replace(
+        "computed_crc32=0x33333333", "computed_crc32=0xdeadbeef"
+    )
     verdict = runner.verify_logs(
         SAMPLE_PRODUCER_LOG,
         bad_consumer,
@@ -98,12 +98,14 @@ def test_verify_logs_detects_crc_mismatch() -> None:
         expected_slots=4,
     )
     assert verdict.passed is False
-    assert any('CRC mismatch at seq=3' in err for err in verdict.errors)
+    assert any("CRC mismatch at seq=3" in err for err in verdict.errors)
 
 
 def test_verify_logs_detects_wrong_missed_accounting_and_mode() -> None:
     """Incorrect missed count or non-kLatest mode fails verification."""
-    bad_consumer = SAMPLE_CONSUMER_LOG.replace('mode=kLatest', 'mode=kInOrder').replace('missed=1', 'missed=0', 1)
+    bad_consumer = SAMPLE_CONSUMER_LOG.replace("mode=kLatest", "mode=kInOrder").replace(
+        "missed=1", "missed=0", 1
+    )
     verdict = runner.verify_logs(
         SAMPLE_PRODUCER_LOG,
         bad_consumer,
@@ -111,8 +113,10 @@ def test_verify_logs_detects_wrong_missed_accounting_and_mode() -> None:
         expected_slots=4,
     )
     assert verdict.passed is False
-    assert any('Consumer read mode mismatch' in err for err in verdict.errors)
-    assert any('Consumer missed count mismatch at seq=3' in err for err in verdict.errors)
+    assert any("Consumer read mode mismatch" in err for err in verdict.errors)
+    assert any(
+        "Consumer missed count mismatch at seq=3" in err for err in verdict.errors
+    )
 
 
 def test_verify_logs_detects_no_skips_when_required() -> None:
@@ -131,15 +135,19 @@ def test_verify_logs_detects_no_skips_when_required() -> None:
         require_skips=True,
     )
     assert verdict.passed is False
-    assert any('Expected consumer to fall 1-2 frames behind' in err for err in verdict.errors)
+    assert any(
+        "Expected consumer to fall 1-2 frames behind" in err for err in verdict.errors
+    )
 
 
-def test_find_or_build_binaries_raises_on_missing_explicit_paths(tmp_path: Path) -> None:
+def test_find_or_build_binaries_raises_on_missing_explicit_paths(
+    tmp_path: Path,
+) -> None:
     """Explicit binary paths that do not exist raise FileNotFoundError."""
-    with pytest.raises(FileNotFoundError, match='Explicit binaries not found'):
+    with pytest.raises(FileNotFoundError, match="Explicit binaries not found"):
         runner.find_or_build_binaries(
-            producer_bin=tmp_path / 'missing_prod',
-            consumer_bin=tmp_path / 'missing_cons',
+            producer_bin=tmp_path / "missing_prod",
+            consumer_bin=tmp_path / "missing_cons",
         )
 
 
@@ -168,41 +176,68 @@ def test_large_log_verification_scales() -> None:
     """Verifying a 2,000-frame producer/consumer run completes quickly."""
     count = 2000
     pub_lines = [
-        '[PRODUCER] event=channel_created channel=/shmps_c slots=4 slot_size=16416',
-        '[PRODUCER] event=waiting_for_consumer sync=/shmps_s',
-        f'[PRODUCER] event=consumer_ready_starting_loop total_frames={count}',
+        "[PRODUCER] event=channel_created channel=/shmps_c slots=4 slot_size=16416",
+        "[PRODUCER] event=waiting_for_consumer sync=/shmps_s",
+        f"[PRODUCER] event=consumer_ready_starting_loop total_frames={count}",
     ]
     cons_lines = [
-        '[CONSUMER] event=init_waiting_for_channel channel=/shmps_c sync=/shmps_s',
-        '[CONSUMER] event=ready_and_waiting mode=kLatest slots=4 slot_size=16416',
+        "[CONSUMER] event=init_waiting_for_channel channel=/shmps_c sync=/shmps_s",
+        "[CONSUMER] event=ready_and_waiting mode=kLatest slots=4 slot_size=16416",
     ]
 
     prev_seq = 0
     rec_count = 0
     missed_total = 0
     for seq in range(1, count + 1):
-        crc = f'0x{seq:08x}'
-        pub_lines.append(f'[PRODUCER] event=frame_published frame={seq} seq={seq} size=16416 crc32={crc}')
+        crc = f"0x{seq:08x}"
+        pub_lines.append(
+            f"[PRODUCER] event=frame_published frame={seq} seq={seq} size=16416 crc32={crc}"
+        )
         if seq % 2 == 1:
             missed = seq - prev_seq - 1
             prev_seq = seq
             rec_count += 1
             missed_total += missed
             cons_lines.append(
-                f'[CONSUMER] event=frame_received seq={seq} missed={missed} size=16416 '
-                f'header_crc32={crc} computed_crc32={crc} crc_ok=true'
+                f"[CONSUMER] event=frame_received seq={seq} missed={missed} size=16416 "
+                f"header_crc32={crc} computed_crc32={crc} crc_ok=true"
             )
 
-    pub_lines.append(f'[PRODUCER] event=shutdown published_count={count}')
-    cons_lines.append(f'[CONSUMER] event=shutdown received_count={rec_count} missed_total={missed_total} crc_errors=0')
+    pub_lines.append(f"[PRODUCER] event=shutdown published_count={count}")
+    cons_lines.append(
+        f"[CONSUMER] event=shutdown received_count={rec_count} missed_total={missed_total} crc_errors=0"
+    )
 
     start = time.perf_counter()
     verdict = runner.verify_logs(
-        '\n'.join(pub_lines),
-        '\n'.join(cons_lines),
+        "\n".join(pub_lines),
+        "\n".join(cons_lines),
         expected_frames=count,
         expected_slots=4,
     )
     elapsed = time.perf_counter() - start
     assert verdict.passed is True
     assert elapsed < 2.0
+
+
+def test_cli_parses_hex_seed_and_forwards_options(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``main`` converts hex ``--seed`` strings and passes options through."""
+    captured: list[runner.ShmPubSubOptions] = []
+
+    def _fake_run(config: runner.ShmPubSubOptions | None = None) -> int:
+        assert config is not None
+        captured.append(config)
+        return 0
+
+    monkeypatch.setattr(runner, "run_integration_example", _fake_run)
+    exit_code = runner.main(
+        ["--frames", "10", "--slots", "8", "--seed", "0x1234", "--timeout", "5.5"],
+    )
+    assert exit_code == 0
+    assert len(captured) == 1
+    assert captured[0].frames == 10
+    assert captured[0].slots == 8
+    assert captured[0].seed == 0x1234
+    assert captured[0].timeout == pytest.approx(5.5)

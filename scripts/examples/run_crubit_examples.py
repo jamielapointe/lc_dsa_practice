@@ -1,3 +1,10 @@
+# /// script
+# requires-python = ">=3.15"
+# dependencies = [
+#     "cyclopts>=5.5.0",
+#     "structlog>=26.1.0",
+# ]
+# ///
 """Orchestrate and verify the Google Crubit C++23 <-> Rust 2024 showcase demos.
 
 Locates (or optionally builds) the five per-module C++23 demo binaries and the
@@ -6,58 +13,79 @@ structured ``[CRUBIT_CPP_DEMO]`` and ``[CRUBIT_RUST_DEMO]`` output lines, and
 verifies that all five showcase modules report ``status=ok`` on both sides.
 """
 
-from __future__ import annotations
-
-import argparse
 import os
 import re
 import shutil
 import subprocess
 import sys
-from dataclasses import dataclass
-from dataclasses import field
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import Annotated, Final, cast
+lazy from collections.abc import Sequence
+
+import cyclopts
+import structlog
+from cyclopts import Parameter, validators
 
 
-if TYPE_CHECKING:
-    from collections.abc import Sequence
+def _get_stderr_logger() -> structlog.BoundLogger:
+    """Builds an isolated structlog logger bound to the active ``sys.stderr`` stream.
+
+    Returns:
+        Bound structlog logger writing to ``sys.stderr``.
+    """
+    logger = structlog.wrap_logger(
+        structlog.PrintLogger(file=sys.stderr),
+        processors=[
+            structlog.stdlib.add_log_level,
+            structlog.processors.TimeStamper(fmt="iso", utc=True),
+            structlog.dev.ConsoleRenderer(colors=False),
+        ],
+        wrapper_class=structlog.BoundLogger,
+    )
+    return cast("structlog.BoundLogger", logger)
+
+
+DEFAULT_PRESET: Final[str] = "interop-debug"
+DEFAULT_TIMEOUT_SEC: Final[float] = 30.0
 
 
 REQUIRED_MODULES: tuple[str, ...] = (
-    'primitives_enums',
-    'references_views',
-    'ownership_raii',
-    'traits_errors',
-    'telemetry_capstone',
+    "primitives_enums",
+    "references_views",
+    "ownership_raii",
+    "traits_errors",
+    "telemetry_capstone",
 )
 
 CPP_DEMO_BINARIES: tuple[tuple[str, str], ...] = (
-    ('primitives_enums', 'crubit_demo_primitives_enums'),
-    ('references_views', 'crubit_demo_references_views'),
-    ('ownership_raii', 'crubit_demo_ownership_raii'),
-    ('traits_errors', 'crubit_demo_traits_errors'),
-    ('telemetry_capstone', 'crubit_demo_telemetry_capstone'),
+    ("primitives_enums", "crubit_demo_primitives_enums"),
+    ("references_views", "crubit_demo_references_views"),
+    ("ownership_raii", "crubit_demo_ownership_raii"),
+    ("traits_errors", "crubit_demo_traits_errors"),
+    ("telemetry_capstone", "crubit_demo_telemetry_capstone"),
 )
 
-RUST_DEMO_BINARY = 'crubit_showcase_rust_demo'
+RUST_DEMO_BINARY = "crubit_showcase_rust_demo"
 
 _MODULE_ALIASES: dict[str, str] = {
-    'primitives_enums': 'primitives_enums',
-    'primitives_and_enums': 'primitives_enums',
-    'references_views': 'references_views',
-    'references_and_views': 'references_views',
-    'ownership_raii': 'ownership_raii',
-    'ownership_and_raii': 'ownership_raii',
-    'traits_errors': 'traits_errors',
-    'traits_and_errors': 'traits_errors',
-    'telemetry_capstone': 'telemetry_capstone',
-    'telemetry_safety_bridge': 'telemetry_capstone',
-    'telemetry_bridge': 'telemetry_capstone',
-    'telemetry_validator': 'telemetry_capstone',
+    "primitives_enums": "primitives_enums",
+    "primitives_and_enums": "primitives_enums",
+    "references_views": "references_views",
+    "references_and_views": "references_views",
+    "ownership_raii": "ownership_raii",
+    "ownership_and_raii": "ownership_raii",
+    "traits_errors": "traits_errors",
+    "traits_and_errors": "traits_errors",
+    "telemetry_capstone": "telemetry_capstone",
+    "telemetry_safety_bridge": "telemetry_capstone",
+    "telemetry_bridge": "telemetry_capstone",
+    "telemetry_validator": "telemetry_capstone",
 }
 
-_DEMO_LINE_RE = re.compile(r'^\[(CRUBIT_CPP_DEMO|CRUBIT_RUST_DEMO)\]\s+module=([^\s]+)\s+status=([^\s]+)(?:\s+(.*))?$')
+_DEMO_LINE_RE = re.compile(
+    r"^\[(CRUBIT_CPP_DEMO|CRUBIT_RUST_DEMO)\]\s+module=([^\s]+)\s+status=([^\s]+)(?:\s+(.*))?$"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -136,17 +164,105 @@ def parse_demo_log(log_text: str) -> list[DemoRecord]:
         line = raw_line.strip()
         if match := _DEMO_LINE_RE.match(line):
             tag, raw_module, status, details = match.groups()
-            side = 'cpp' if tag == 'CRUBIT_CPP_DEMO' else 'rust'
+            side = "cpp" if tag == "CRUBIT_CPP_DEMO" else "rust"
             records.append(
                 DemoRecord(
                     side=side,
                     module=normalize_module_name(raw_module),
                     raw_module=raw_module,
                     status=status.lower(),
-                    details=(details or '').strip(),
+                    details=(details or "").strip(),
                 )
             )
     return records
+
+
+def _collect_cpp_records(
+    cpp_logs: dict[str, str],
+) -> tuple[dict[str, DemoRecord], list[str]]:
+    """Parses C++23 demo stdout logs into records and errors.
+
+    Args:
+        cpp_logs: Mapping from canonical module name to C++23 demo stdout.
+
+    Returns:
+        Tuple of parsed ``cpp_records`` and collected error messages.
+    """
+    cpp_records: dict[str, DemoRecord] = {}
+    errors: list[str] = []
+    for expected_module, log_text in cpp_logs.items():
+        parsed = [rec for rec in parse_demo_log(log_text) if rec.side == "cpp"]
+        if not parsed:
+            errors.append(
+                f"C++23 demo {expected_module!r} emitted no"
+                " [CRUBIT_CPP_DEMO] status lines"
+            )
+            continue
+        for rec in parsed:
+            if rec.status != "ok":
+                errors.append(
+                    f"C++23 module {rec.module!r} reported non-ok status={rec.status!r}"
+                )
+            cpp_records[rec.module] = rec
+        if (
+            expected_module not in cpp_records
+            or cpp_records[expected_module].status != "ok"
+        ):
+            errors.append(
+                f"C++23 demo {expected_module!r} did not report"
+                f" module={expected_module} status=ok"
+            )
+    return cpp_records, errors
+
+
+def _collect_rust_records(rust_log: str) -> tuple[dict[str, DemoRecord], list[str]]:
+    """Parses Rust 2024 demo stdout log into records and errors.
+
+    Args:
+        rust_log: Stdout text emitted by ``crubit_showcase_rust_demo``.
+
+    Returns:
+        Tuple of parsed ``rust_records`` and collected error messages.
+    """
+    rust_records: dict[str, DemoRecord] = {}
+    errors: list[str] = []
+    parsed_rust = [rec for rec in parse_demo_log(rust_log) if rec.side == "rust"]
+    if not parsed_rust:
+        errors.append("Rust 2024 demo emitted no [CRUBIT_RUST_DEMO] status lines")
+    for rec in parsed_rust:
+        if rec.status != "ok":
+            errors.append(
+                f"Rust 2024 module {rec.module!r} reported non-ok status={rec.status!r}"
+            )
+        rust_records[rec.module] = rec
+    return rust_records, errors
+
+
+def _validate_required_module(
+    module: str,
+    side_label: str,
+    records: dict[str, DemoRecord],
+    errors: list[str],
+) -> None:
+    """Appends missing or failed status errors for one showcase module.
+
+    Args:
+        module: Required canonical module name.
+        side_label: Human-readable language side label (e.g., ``C++23``).
+        records: Parsed records for that language side.
+        errors: Mutable error list to append findings to.
+    """
+    if module not in records:
+        msg = f"Missing {side_label} status=ok line for module {module!r}"
+        if msg not in errors and not any(
+            module in err and side_label in err for err in errors
+        ):
+            errors.append(msg)
+        return
+    if records[module].status != "ok":
+        msg = f"{side_label} module {module!r} failed with status={records[module].status!r}"
+        if msg not in errors:
+            errors.append(msg)
 
 
 def verify_demo_logs(cpp_logs: dict[str, str], rust_log: str) -> VerificationResult:
@@ -159,46 +275,13 @@ def verify_demo_logs(cpp_logs: dict[str, str], rust_log: str) -> VerificationRes
     Returns:
         Populated :class:`VerificationResult`.
     """
-    cpp_records: dict[str, DemoRecord] = {}
-    rust_records: dict[str, DemoRecord] = {}
-    errors: list[str] = []
-
-    for expected_module, log_text in cpp_logs.items():
-        parsed = [rec for rec in parse_demo_log(log_text) if rec.side == 'cpp']
-        if not parsed:
-            errors.append(f'C++23 demo {expected_module!r} emitted no [CRUBIT_CPP_DEMO] status lines')
-            continue
-        for rec in parsed:
-            if rec.status != 'ok':
-                errors.append(f'C++23 module {rec.module!r} reported non-ok status={rec.status!r}')
-            cpp_records[rec.module] = rec
-        if expected_module not in cpp_records or cpp_records[expected_module].status != 'ok':
-            errors.append(f'C++23 demo {expected_module!r} did not report module={expected_module} status=ok')
-
-    parsed_rust = [rec for rec in parse_demo_log(rust_log) if rec.side == 'rust']
-    if not parsed_rust:
-        errors.append('Rust 2024 demo emitted no [CRUBIT_RUST_DEMO] status lines')
-    for rec in parsed_rust:
-        if rec.status != 'ok':
-            errors.append(f'Rust 2024 module {rec.module!r} reported non-ok status={rec.status!r}')
-        rust_records[rec.module] = rec
+    cpp_records, errors = _collect_cpp_records(cpp_logs)
+    rust_records, rust_errors = _collect_rust_records(rust_log)
+    errors.extend(rust_errors)
 
     for module in REQUIRED_MODULES:
-        if module not in cpp_records:
-            msg = f'Missing C++23 status=ok line for module {module!r}'
-            if msg not in errors and not any(module in err and 'C++23' in err for err in errors):
-                errors.append(msg)
-        elif cpp_records[module].status != 'ok':
-            msg = f'C++23 module {module!r} failed with status={cpp_records[module].status!r}'
-            if msg not in errors:
-                errors.append(msg)
-
-        if module not in rust_records:
-            errors.append(f'Missing Rust 2024 status=ok line for module {module!r}')
-        elif rust_records[module].status != 'ok':
-            msg = f'Rust 2024 module {module!r} failed with status={rust_records[module].status!r}'
-            if msg not in errors:
-                errors.append(msg)
+        _validate_required_module(module, "C++23", cpp_records, errors)
+        _validate_required_module(module, "Rust 2024", rust_records, errors)
 
     return VerificationResult(
         passed=not errors,
@@ -215,12 +298,14 @@ def _is_executable(path: Path) -> bool:
 
 def _cargo_profile_candidates(preset: str) -> tuple[str, ...]:
     """Returns Cargo profile subdirectories ordered by likelihood for ``preset``."""
-    if 'release' in preset.lower():
-        return ('release', 'debug')
-    return ('debug', 'release')
+    if "release" in preset.lower():
+        return ("release", "debug")
+    return ("debug", "release")
 
 
-def _locate_binaries(build_dir: Path, preset: str) -> tuple[dict[str, Path], Path | None]:
+def _locate_binaries(
+    build_dir: Path, preset: str
+) -> tuple[dict[str, Path], Path | None]:
     """Searches ``build/<preset>`` for all six Crubit demo binaries.
 
     Args:
@@ -230,7 +315,7 @@ def _locate_binaries(build_dir: Path, preset: str) -> tuple[dict[str, Path], Pat
     Returns:
         Tuple of ``(cpp_demos, rust_demo)``.
     """
-    cpp_bin_dir = build_dir / 'bin'
+    cpp_bin_dir = build_dir / "bin"
     cpp_demos: dict[str, Path] = {}
     for module_name, binary_name in CPP_DEMO_BINARIES:
         candidate = cpp_bin_dir / binary_name
@@ -239,7 +324,7 @@ def _locate_binaries(build_dir: Path, preset: str) -> tuple[dict[str, Path], Pat
 
     rust_demo: Path | None = None
     for profile in _cargo_profile_candidates(preset):
-        candidate = build_dir / 'crubit_cargo' / profile / RUST_DEMO_BINARY
+        candidate = build_dir / "crubit_cargo" / profile / RUST_DEMO_BINARY
         if _is_executable(candidate):
             rust_demo = candidate.resolve()
             break
@@ -250,7 +335,7 @@ def _locate_binaries(build_dir: Path, preset: str) -> tuple[dict[str, Path], Pat
 def discover_binaries(
     *,
     repo_root: Path | None = None,
-    preset: str = 'interop-debug',
+    preset: str = "interop-debug",
     build_missing: bool = False,
 ) -> DiscoveredBinaries:
     """Locates or optionally builds all Crubit C++23 and Rust 2024 demo executables.
@@ -267,22 +352,28 @@ def discover_binaries(
         FileNotFoundError: If any binary is missing (and could not be built).
     """
     root = (repo_root or Path(__file__).resolve().parent.parent.parent).resolve()
-    build_dir = root / 'build' / preset
+    build_dir = root / "build" / preset
     cpp_demos, rust_demo = _locate_binaries(build_dir, preset)
 
-    missing_cpp = [binary for module, binary in CPP_DEMO_BINARIES if module not in cpp_demos]
+    missing_cpp = [
+        binary for module, binary in CPP_DEMO_BINARIES if module not in cpp_demos
+    ]
     if missing_cpp or rust_demo is None:
         if build_missing:
             _build_preset_demos(root, preset)
             cpp_demos, rust_demo = _locate_binaries(build_dir, preset)
-            missing_cpp = [binary for module, binary in CPP_DEMO_BINARIES if module not in cpp_demos]
+            missing_cpp = [
+                binary
+                for module, binary in CPP_DEMO_BINARIES
+                if module not in cpp_demos
+            ]
 
         if missing_cpp or rust_demo is None:
             missing_items = list(missing_cpp)
             if rust_demo is None:
                 missing_items.append(RUST_DEMO_BINARY)
-            hint = 'Pass --build-missing or run `pixi run examples-interop` first.'
-            message = f'Missing Crubit demo binaries under {build_dir}: {", ".join(missing_items)}. {hint}'
+            hint = "Pass --build-missing or run `pixi run examples-interop` first."
+            message = f"Missing Crubit demo binaries under {build_dir}: {', '.join(missing_items)}. {hint}"
             raise FileNotFoundError(message)
 
     return DiscoveredBinaries(cpp_demos=cpp_demos, rust_demo=rust_demo)
@@ -298,21 +389,21 @@ def _build_preset_demos(root: Path, preset: str) -> None:
     Raises:
         FileNotFoundError: If ``cmake`` cannot be found on ``PATH``.
     """
-    crubit_paths = root / 'build' / 'crubit' / 'crubit_paths.cmake'
+    crubit_paths = root / "build" / "crubit" / "crubit_paths.cmake"
     if not crubit_paths.is_file():
-        bootstrap_script = root / 'scripts' / 'crubit' / 'bootstrap_crubit.py'
+        bootstrap_script = root / "scripts" / "crubit" / "bootstrap_crubit.py"
         subprocess.run([sys.executable, str(bootstrap_script)], cwd=root, check=True)
 
-    cmake_bin = shutil.which('cmake')
+    cmake_bin = shutil.which("cmake")
     if cmake_bin is None:
-        message = 'cmake executable not found on PATH; run inside `pixi run`'
+        message = "cmake executable not found on PATH; run inside `pixi run`"
         raise FileNotFoundError(message)
 
-    cache_file = root / 'build' / preset / 'CMakeCache.txt'
+    cache_file = root / "build" / preset / "CMakeCache.txt"
     if not cache_file.is_file():
-        subprocess.run([cmake_bin, '--preset', preset], cwd=root, check=True)
+        subprocess.run([cmake_bin, "--preset", preset], cwd=root, check=True)
 
-    subprocess.run([cmake_bin, '--build', '--preset', preset], cwd=root, check=True)
+    subprocess.run([cmake_bin, "--build", "--preset", preset], cwd=root, check=True)
 
 
 def _run_binary(binary_path: Path, timeout_sec: float) -> tuple[int, str, str]:
@@ -344,26 +435,26 @@ def format_summary_table(verdict: VerificationResult) -> str:
     Returns:
         Multi-line formatted summary table.
     """
-    header = f'{"Module":<20} | {"C++23":<8} | {"Rust 2024":<9} | Details'
-    divider = '-' * len(header)
+    header = f"{'Module':<20} | {'C++23':<8} | {'Rust 2024':<9} | Details"
+    divider = "-" * len(header)
     lines = [header, divider]
 
     for module in REQUIRED_MODULES:
         cpp_rec = verdict.cpp_records.get(module)
         rust_rec = verdict.rust_records.get(module)
-        cpp_status = cpp_rec.status.upper() if cpp_rec else 'MISSING'
-        rust_status = rust_rec.status.upper() if rust_rec else 'MISSING'
+        cpp_status = cpp_rec.status.upper() if cpp_rec else "MISSING"
+        rust_status = rust_rec.status.upper() if rust_rec else "MISSING"
         detail = (cpp_rec.details if cpp_rec and cpp_rec.details else None) or (
-            rust_rec.details if rust_rec and rust_rec.details else '-'
+            rust_rec.details if rust_rec and rust_rec.details else "-"
         )
-        lines.append(f'{module:<20} | {cpp_status:<8} | {rust_status:<9} | {detail}')
-    return '\n'.join(lines)
+        lines.append(f"{module:<20} | {cpp_status:<8} | {rust_status:<9} | {detail}")
+    return "\n".join(lines)
 
 
 def run_crubit_examples(
     *,
-    preset: str = 'interop-debug',
-    timeout_sec: float = 30.0,
+    preset: str = DEFAULT_PRESET,
+    timeout_sec: float = DEFAULT_TIMEOUT_SEC,
     build_missing: bool = False,
     repo_root: Path | None = None,
 ) -> int:
@@ -378,6 +469,7 @@ def run_crubit_examples(
     Returns:
         ``0`` if every binary exited ``0`` and all 5 modules passed on both sides, else ``1``.
     """
+    logger = _get_stderr_logger()
     try:
         binaries = discover_binaries(
             repo_root=repo_root,
@@ -385,7 +477,7 @@ def run_crubit_examples(
             build_missing=build_missing,
         )
     except (FileNotFoundError, subprocess.CalledProcessError) as exc:
-        print(f'CRUBIT EXAMPLES FAILED: {exc}', file=sys.stderr)
+        logger.error("CRUBIT EXAMPLES FAILED", reason=str(exc))
         return 1
 
     cpp_logs: dict[str, str] = {}
@@ -393,11 +485,14 @@ def run_crubit_examples(
 
     for module, _binary_name in CPP_DEMO_BINARIES:
         exe = binaries.cpp_demos[module]
-        print(f'==> Running C++23 demo [{module}]: {exe}')
+        sys.stdout.write(f"==> Running C++23 demo [{module}]: {exe}\n")
         try:
             code, stdout, stderr = _run_binary(exe, timeout_sec)
         except subprocess.TimeoutExpired:
-            print(f'CRUBIT EXAMPLES FAILED: C++23 demo {exe.name} timed out after {timeout_sec}s', file=sys.stderr)
+            logger.error(
+                f"CRUBIT EXAMPLES FAILED: C++23 demo {exe.name}"
+                f" timed out after {timeout_sec}s"
+            )
             return 1
 
         if stdout:
@@ -405,17 +500,21 @@ def run_crubit_examples(
         if stderr:
             sys.stderr.write(stderr)
         if code != 0:
-            print(f'CRUBIT EXAMPLES FAILED: C++23 demo {exe.name} exited with code {code}', file=sys.stderr)
+            logger.error(
+                f"CRUBIT EXAMPLES FAILED: C++23 demo {exe.name} exited with code {code}"
+            )
             failed_exec = True
         cpp_logs[module] = stdout
 
-    print(f'==> Running Rust 2024 demo: {binaries.rust_demo}')
+    sys.stdout.write(f"==> Running Rust 2024 demo: {binaries.rust_demo}\n")
     try:
-        rust_code, rust_stdout, rust_stderr = _run_binary(binaries.rust_demo, timeout_sec)
+        rust_code, rust_stdout, rust_stderr = _run_binary(
+            binaries.rust_demo, timeout_sec
+        )
     except subprocess.TimeoutExpired:
-        print(
-            f'CRUBIT EXAMPLES FAILED: Rust 2024 demo {binaries.rust_demo.name} timed out after {timeout_sec}s',
-            file=sys.stderr,
+        logger.error(
+            f"CRUBIT EXAMPLES FAILED: Rust 2024 demo {binaries.rust_demo.name}"
+            f" timed out after {timeout_sec}s"
         )
         return 1
 
@@ -424,44 +523,76 @@ def run_crubit_examples(
     if rust_stderr:
         sys.stderr.write(rust_stderr)
     if rust_code != 0:
-        print(
-            f'CRUBIT EXAMPLES FAILED: Rust 2024 demo {binaries.rust_demo.name} exited with code {rust_code}',
-            file=sys.stderr,
+        logger.error(
+            f"CRUBIT EXAMPLES FAILED: Rust 2024 demo {binaries.rust_demo.name}"
+            f" exited with code {rust_code}"
         )
         failed_exec = True
 
     verdict = verify_demo_logs(cpp_logs, rust_stdout)
 
-    print('\n--- Crubit Interop Showcase Summary ---')
-    print(format_summary_table(verdict))
+    sys.stdout.write("\n--- Crubit Interop Showcase Summary ---\n")
+    sys.stdout.write(f"{format_summary_table(verdict)}\n")
 
     if failed_exec or not verdict.passed:
         for err in verdict.errors:
-            print(f'  [ERROR] {err}', file=sys.stderr)
-        print('\nCRUBIT EXAMPLES FAILED', file=sys.stderr)
+            logger.error("Showcase verification error", detail=err)
+        logger.error("CRUBIT EXAMPLES FAILED")
         return 1
 
-    print('\nCRUBIT EXAMPLES PASSED (5/5 modules verified on C++23 and Rust 2024)')
+    sys.stdout.write(
+        "\nCRUBIT EXAMPLES PASSED (5/5 modules verified on C++23 and Rust 2024)\n"
+    )
     return 0
 
 
-def _positive_timeout(raw: str) -> float:
-    """Parses a strictly positive floating-point timeout in seconds.
+@Parameter(name="*")
+@dataclass(frozen=True, slots=True, kw_only=True)
+class RunExamplesOptions:
+    """CLI options for the Crubit showcase runner."""
+
+    preset: Annotated[
+        str,
+        Parameter(
+            help="CMake preset name under build/<preset> (default: interop-debug)."
+        ),
+    ] = DEFAULT_PRESET
+    timeout: Annotated[
+        float,
+        Parameter(
+            validator=validators.Number(gt=0.0),
+            help="Per-binary timeout in seconds (default: 30.0).",
+        ),
+    ] = DEFAULT_TIMEOUT_SEC
+    build_missing: Annotated[
+        bool,
+        Parameter(
+            negative="",
+            help="Bootstrap and build missing binaries via CMake before running demos.",
+        ),
+    ] = False
+    repo_root: Annotated[
+        Path | None,
+        Parameter(help="Optional repository root override."),
+    ] = None
+
+
+def _run_cli(options: RunExamplesOptions | None = None) -> int:
+    """Executes Crubit showcase examples from parsed CLI options.
 
     Args:
-        raw: Raw CLI argument value.
+        options: Parsed CLI options.
 
     Returns:
-        Positive timeout in seconds.
-
-    Raises:
-        ArgumentTypeError: If ``raw`` is not a positive float.
+        Exit code ``0`` on pass, ``1`` on failure.
     """
-    value = float(raw)
-    if value <= 0.0:
-        message = f'Timeout must be positive, got {raw!r}'
-        raise argparse.ArgumentTypeError(message)
-    return value
+    resolved = options if options is not None else RunExamplesOptions()
+    return run_crubit_examples(
+        preset=resolved.preset,
+        timeout_sec=resolved.timeout,
+        build_missing=resolved.build_missing,
+        repo_root=resolved.repo_root,
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -473,38 +604,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     Returns:
         Exit code ``0`` on pass, ``1`` on failure.
     """
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument(
-        '--preset',
-        default='interop-debug',
-        help='CMake preset name under build/<preset> (default: interop-debug)',
+    app = cyclopts.App(
+        name="run_crubit_examples",
+        help=__doc__,
+        help_on_error=True,
+        version_flags=[],
     )
-    parser.add_argument(
-        '--timeout',
-        type=_positive_timeout,
-        default=30.0,
-        help='Per-binary timeout in seconds (default: 30.0)',
-    )
-    parser.add_argument(
-        '--build-missing',
-        action='store_true',
-        help='Bootstrap and build missing binaries via CMake before running demos',
-    )
-    parser.add_argument(
-        '--repo-root',
-        type=Path,
-        default=None,
-        help='Optional repository root override',
-    )
-    args = parser.parse_args(list(argv) if argv is not None else None)
-
-    return run_crubit_examples(
-        preset=args.preset,
-        timeout_sec=args.timeout,
-        build_missing=args.build_missing,
-        repo_root=args.repo_root,
-    )
+    app.default(_run_cli)
+    tokens = list(argv) if argv is not None else sys.argv[1:]
+    result = app(tokens, exit_on_error=True, result_action="return_value")
+    return result if isinstance(result, int) else 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

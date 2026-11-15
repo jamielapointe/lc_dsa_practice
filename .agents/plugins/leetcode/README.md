@@ -1,7 +1,7 @@
-# LeetCode Practice Antigravity Plugin (C++23 & Python) and MCP Server
+# LeetCode Practice Antigravity Plugin (C++23, Python & Rust) and MCP Server
 
-Automates setting up LeetCode DSA practice problems in modern **C++23** (CMake + Google Test) or **Python 3.14** (pytest). The user must tell the skill which
-language to use (`cpp` or `python`).
+Automates setting up LeetCode DSA practice problems in modern **C++23** (CMake + Google Test), **Python 3.15** (pytest 9+), or **Rust 1.99.1+**
+(cargo test). The user must tell the skill which language to use (`cpp`, `python`, or `rust`).
 
 ## Architecture
 
@@ -17,12 +17,13 @@ The plugin bundles a custom Python MCP server (`leetcode-mcp`) and the `leetcode
 │   ├── SKILL.md           # Language selection + shared workflow
 │   └── references/
 │       ├── cpp.md         # C++23 / CMake / Google Test templates
-│       └── python.md      # Python / pytest templates
+│       ├── python.md      # Python 3.15 / pytest 9+ templates
+│       └── rust.md        # Rust 1.99.1+ / cargo test templates
 ├── src/leetcode_mcp/      # MCP server (client.py, models.py, server.py, exceptions.py)
-└── tests/                 # Unit tests (mocked) + opt-in live tests (-m live)
+└── tests/                 # Unit tests (mocked + hypothesis) & opt-in live tests (-m live)
 ```
 
-There is no plugin-local environment: the server, its dependencies, and its tests are part of the repository's root Pixi workspace (`pyproject.toml`).
+There is no plugin-local environment: the server, its dependencies, and its tests live in the root Pixi workspace (`pixi.toml` / PEP 621 `pyproject.toml`).
 `PYTHONPATH` is configured by Pixi activation.
 
 ## MCP tool: `get_problem`
@@ -50,6 +51,7 @@ Output (`ProblemDetails`):
   "description_markdown": "...",
   "cpp_snippet": "/** ... */ class Solution ...",
   "python_snippet": "class Solution:\n    def addTwoNumbers(...) ...",
+  "rust_snippet": "impl Solution {\n    pub fn add_two_numbers(...) ...\n}",
   "sample_test_case": "[2,4,3]\n[5,6,4]",
   "example_test_cases": ["[2,4,3]\n[5,6,4]"],
   "constraints": ["The number of nodes in each linked list is in the range [1, 100]."]
@@ -59,10 +61,10 @@ Output (`ProblemDetails`):
 ## Features
 
 - LeetCode GraphQL integration with slug/ID/title/URL resolution.
-- Cloudflare-resilient client: pooled `httpx.AsyncClient`, browser headers, exponential backoff on HTTP 429/5xx and network errors.
+- Cloudflare-resilient client: pooled `httpx.AsyncClient`, PEP 814 `frozendict` headers, `asyncio.timeout`, exponential backoff on HTTP 429/5xx.
 - Mathematical exponent preservation (`<sup>4</sup>` becomes `^4`) and clean HTML to Markdown conversion.
-- Both the C++ and Python 3 starter snippets are returned.
-- Strict stdio protocol compliance: all logs go to `stderr`.
+- C++23, Python 3.15, and Rust starter snippets are returned (`cpp_snippet`, `python_snippet`, `rust_snippet`).
+- Strict stdio protocol compliance: `structlog` JSON logs go strictly to `stderr` (`0` bytes on `stdout`).
 
 ## Development and verification
 
@@ -70,8 +72,8 @@ Everything runs through Pixi from the repository root:
 
 ```bash
 pixi install
-pixi run pytest .agents/plugins/leetcode/tests          # mocked unit tests (live tests are deselected by default)
+pixi run pytest .agents/plugins/leetcode/tests          # mocked unit + hypothesis tests (live tests deselected)
 pixi run pytest .agents/plugins/leetcode/tests -m live  # live GraphQL integration tests (network required)
-pixi run ruff check && pixi run mypy
+pixi run ruff check && pixi run typecheck               # ruff (23 families) + basedpyright & ty
 pixi run leetcode-mcp                                   # start the MCP server over stdio
 ```

@@ -2,12 +2,14 @@
 
 URL: https://leetcode.com/problems/lru-cache/
 
-Design a data structure that follows the constraints of a Least Recently Used (LRU) cache:
+Design a data structure that follows the constraints of a Least Recently Used (LRU)
+cache:
 
 * ``LruCache(capacity)`` initializes the cache with a positive ``capacity``.
 * ``get(key)`` returns the value of ``key`` if it exists, otherwise ``-1``.
-* ``put(key, value)`` updates the value of ``key`` if it exists; otherwise it inserts the pair. When the number
-  of keys exceeds ``capacity``, the least recently used key is evicted.
+* ``put(key, value)`` updates the value of ``key`` if it exists; otherwise it inserts
+  the pair. When the number of keys exceeds ``capacity``, the least recently used key
+  is evicted.
 
 Both ``get`` and ``put`` must run in O(1) average time.
 
@@ -17,33 +19,51 @@ Constraints:
     * ``0 <= value <= 10**5``
     * At most ``2 * 10**5`` calls will be made to ``get`` and ``put``.
 
-Implementation: a hash map from key to node plus a doubly linked list ordered from most to least recently used,
-with sentinel head/tail nodes so insertion and removal never branch on empty neighbours.
+Implementation: a hash map from key to node plus a doubly linked list ordered from
+most to least recently used, with sentinel head/tail nodes so insertion and removal
+never branch on empty neighbours.
 """
 
-from __future__ import annotations
+from typing import Final
+
+
+type CacheKey = int
+type CacheValue = int
+
+_CACHE_MISS: Final[CacheValue] = -1
 
 
 class _Node:
     """A doubly linked list node holding one cache entry."""
 
-    __slots__ = ('key', 'next', 'prev', 'value')
+    __slots__ = ("key", "next", "prev", "value")
 
-    def __init__(self, key: int = 0, value: int = 0) -> None:
+    def __init__(self, key: CacheKey = 0, value: CacheValue = 0) -> None:
         """Initializes an unlinked node.
 
         Args:
             key: The cache key.
             value: The cached value.
         """
-        self.key = key
-        self.value = value
+        self.key: CacheKey = key
+        self.value: CacheValue = value
         self.prev: _Node = self
         self.next: _Node = self
 
 
 class LruCache:
-    """Fixed-capacity least-recently-used cache with O(1) ``get`` and ``put``."""
+    """Fixed-capacity least-recently-used cache with O(1) ``get`` and ``put``.
+
+    Examples:
+        >>> cache = LruCache(2)
+        >>> cache.put(1, 10)
+        >>> cache.put(2, 20)
+        >>> cache.get(1)
+        10
+        >>> cache.put(3, 30)
+        >>> cache.get(2)
+        -1
+    """
 
     def __init__(self, capacity: int) -> None:
         """Initializes the cache.
@@ -55,11 +75,11 @@ class LruCache:
             ValueError: If ``capacity`` is not positive.
         """
         if capacity <= 0:
-            message = 'capacity must be positive'
+            message = "capacity must be positive"
             raise ValueError(message)
         self._capacity = capacity
-        self._nodes: dict[int, _Node] = {}
-        # Sentinels: head.next is the most recently used node, tail.prev the least recently used.
+        self._nodes: dict[CacheKey, _Node] = {}
+        # Sentinels: head.next is most recently used; tail.prev is least recently used.
         self._head = _Node()
         self._tail = _Node()
         self._head.next = self._tail
@@ -78,7 +98,7 @@ class LruCache:
         """The maximum number of entries."""
         return self._capacity
 
-    def get(self, key: int) -> int:
+    def get(self, key: CacheKey) -> CacheValue:
         """Returns the cached value and marks ``key`` as most recently used.
 
         Args:
@@ -89,13 +109,13 @@ class LruCache:
         """
         node = self._nodes.get(key)
         if node is None:
-            return -1
+            return _CACHE_MISS
         self._unlink(node)
         self._push_front(node)
         return node.value
 
-    def put(self, key: int, value: int) -> None:
-        """Inserts or updates ``key`` and marks it most recently used, evicting the LRU entry if needed.
+    def put(self, key: CacheKey, value: CacheValue) -> None:
+        """Inserts or updates ``key`` and evicts the LRU entry if needed.
 
         Args:
             key: The key to store.
@@ -124,12 +144,12 @@ class LruCache:
         node.next.prev = node.prev
 
     def _push_front(self, node: _Node) -> None:
-        """Inserts ``node`` right after the head sentinel (most recently used position)."""
+        """Inserts ``node`` right after the head sentinel (MRU position)."""
         node.prev = self._head
         node.next = self._head.next
         self._head.next.prev = node
         self._head.next = node
 
 
-# LeetCode compatibility alias: the official Python 3 template names the class ``LRUCache``.
+# LeetCode compatibility alias: the official Python 3 template names it ``LRUCache``.
 LRUCache = LruCache

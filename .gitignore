@@ -1,5 +1,5 @@
 # ==============================================================================
-# Git Ignore - Multi-Language (C++23, C23, Python 3.14+, Rust 1.99.1+) Practice
+# Git Ignore - Multi-Language (C++23, C23, Python 3.15, Rust 1.99.1+) Practice
 # ==============================================================================
 
 # Prerequisites & Object files
@@ -73,6 +73,8 @@ uv.lock
 .ruff_cache/
 .mypy_cache/
 .rumdl_cache/
+.hypothesis/
+__marimo__/
 .coverage
 .coverage.*
 coverage.xml

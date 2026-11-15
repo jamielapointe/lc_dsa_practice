@@ -1,3 +1,10 @@
+# /// script
+# requires-python = ">=3.15"
+# dependencies = [
+#   "cyclopts>=5.5.0",
+#   "structlog>=26.1.0",
+# ]
+# ///
 """Wrapper CLI to invoke Crubit's ``rs_bindings_from_cc`` from CMake.
 
 Resolves Pixi Clang resource headers, ``libc++`` include paths, and macOS SDK
@@ -6,24 +13,163 @@ sysroot flags, runs ``rs_bindings_from_cc`` to generate ``lib.rs`` and
 Rust bindings crate.
 """
 
-from __future__ import annotations
-
-import argparse
 import json
 import logging
 import os
 import platform
 import subprocess
 import sys
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import Annotated, Final, cast
+lazy from collections.abc import Sequence
+
+import cyclopts
+import structlog
+from cyclopts import Parameter
 
 
-if TYPE_CHECKING:
-    from collections.abc import Sequence
+DEFAULT_CRUBIT_FEATURES: Final[tuple[str, ...]] = ("supported", "assume_lifetimes")
+
+_app = cyclopts.App(name="invoke-rs-bindings-from-cc", help=__doc__)
 
 
-logger = logging.getLogger(__name__)
+def _configure_logging() -> None:
+    """Configures standard library logging for Crubit generator CLI execution."""
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+
+
+def _get_logger() -> structlog.stdlib.BoundLogger:
+    """Returns an isolated stdlib-backed structlog logger for this module."""
+    logger = structlog.wrap_logger(
+        logging.getLogger(__name__),
+        processors=[
+            structlog.stdlib.filter_by_level,
+            structlog.stdlib.PositionalArgumentsFormatter(),
+            structlog.processors.StackInfoRenderer(),
+            structlog.processors.format_exc_info,
+            structlog.dev.ConsoleRenderer(colors=False),
+        ],
+        wrapper_class=structlog.stdlib.BoundLogger,
+    )
+    return cast("structlog.stdlib.BoundLogger", logger)
+
+
+@Parameter(name="*")
+@dataclass(frozen=True, slots=True, kw_only=True)
+class InvokeOptions:
+    """Parsed CLI options for ``invoke_rs_bindings_from_cc``."""
+
+    rs_bindings_from_cc: Annotated[
+        Path,
+        Parameter(help="Path to the compiled rs_bindings_from_cc binary."),
+    ]
+    crubit_src: Annotated[
+        Path,
+        Parameter(help="Root of the pinned Crubit source checkout."),
+    ]
+    target: Annotated[
+        str,
+        Parameter(help="Bazel-style target label for Crubit metadata."),
+    ]
+    crate_name: Annotated[
+        str,
+        Parameter(help="Generated Rust crate name."),
+    ]
+    rs_out: Annotated[
+        Path,
+        Parameter(help="Destination path for generated Rust bindings (lib.rs)."),
+    ]
+    cc_out: Annotated[
+        Path,
+        Parameter(help="Destination path for generated C++ thunk implementation."),
+    ]
+    public_header: Annotated[
+        list[str],
+        Parameter(
+            consume_multiple=False,
+            negative="",
+            help="Public C++ header path (repeatable).",
+        ),
+    ]
+    cxx: Annotated[
+        Path,
+        Parameter(help="Path to the clang++ compiler driver."),
+    ]
+    cargo_toml_out: Annotated[
+        Path | None,
+        Parameter(help="Optional destination Cargo.toml for the generated crate."),
+    ] = None
+    include_dir: Annotated[
+        list[Path],
+        Parameter(
+            consume_multiple=False,
+            negative="",
+            help="User include directory (-I, repeatable).",
+        ),
+    ] = field(default_factory=list)
+    system_include_dir: Annotated[
+        list[Path],
+        Parameter(
+            consume_multiple=False,
+            negative="",
+            help="System include directory (-isystem, repeatable).",
+        ),
+    ] = field(default_factory=list)
+    define: Annotated[
+        list[str],
+        Parameter(
+            consume_multiple=False,
+            negative="",
+            allow_leading_hyphen=True,
+            help="Preprocessor macro definition (-D, repeatable).",
+        ),
+    ] = field(default_factory=list)
+    clang_format: Annotated[
+        Path | None,
+        Parameter(help="Optional path to clang-format executable."),
+    ] = None
+    rustfmt: Annotated[
+        Path | None,
+        Parameter(help="Optional path to rustfmt executable."),
+    ] = None
+    cxx_standard: Annotated[
+        str,
+        Parameter(help="C++ standard version passed to Clang (-std=c++<ver>)."),
+    ] = "23"
+    extra_rs_src: Annotated[
+        list[str],
+        Parameter(
+            consume_multiple=False,
+            negative="",
+            help="Additional Rust source file to include (repeatable).",
+        ),
+    ] = field(default_factory=list)
+    extra_cpp_src: Annotated[
+        list[str],
+        Parameter(
+            consume_multiple=False,
+            negative="",
+            help="Additional C++ source file to include (repeatable).",
+        ),
+    ] = field(default_factory=list)
+    extra_clang_arg: Annotated[
+        list[str],
+        Parameter(
+            consume_multiple=False,
+            negative="",
+            allow_leading_hyphen=True,
+            help="Extra Clang driver argument appended after '--' (repeatable).",
+        ),
+    ] = field(default_factory=list)
+    crubit_feature: Annotated[
+        list[str],
+        Parameter(
+            consume_multiple=False,
+            negative="",
+            help="Crubit feature flag enabled for the target (repeatable).",
+        ),
+    ] = field(default_factory=list)
 
 
 def _query_command_output(cmd: Sequence[str]) -> str | None:
@@ -54,25 +200,28 @@ def _resolve_clang_system_flags(cxx: Path) -> list[str]:
     """
     flags: list[str] = []
 
-    resource_dir = _query_command_output([str(cxx), '-print-resource-dir'])
+    resource_dir = _query_command_output([str(cxx), "-print-resource-dir"])
     if resource_dir:
-        flags.extend(['-resource-dir', resource_dir])
+        flags.extend(["-resource-dir", resource_dir])
 
     # Prefer CONDA_PREFIX libc++ headers so LibTooling sees the exact same STL as Pixi builds.
     libcxx_candidates: list[Path] = []
-    conda_prefix = os.environ.get('CONDA_PREFIX')
+    conda_prefix = os.environ.get("CONDA_PREFIX")
     if conda_prefix:
-        libcxx_candidates.append(Path(conda_prefix) / 'include' / 'c++' / 'v1')
-    libcxx_candidates.append(cxx.resolve().parent.parent / 'include' / 'c++' / 'v1')
+        libcxx_candidates.append(Path(conda_prefix) / "include" / "c++" / "v1")
+    libcxx_candidates.append(cxx.resolve().parent.parent / "include" / "c++" / "v1")
     for candidate in libcxx_candidates:
         if candidate.is_dir():
-            flags.extend(['-isystem', str(candidate)])
+            flags.extend(["-isystem", str(candidate)])
             break
 
-    if platform.system() == 'Darwin':
-        sdkroot = os.environ.get('SDKROOT') or _query_command_output(['xcrun', '--show-sdk-path'])
+    if platform.system() == "Darwin":
+        sdkroot = os.environ.get("SDKROOT") or _query_command_output([
+            "xcrun",
+            "--show-sdk-path",
+        ])
         if sdkroot:
-            flags.extend(['-isysroot', sdkroot])
+            flags.extend(["-isysroot", sdkroot])
 
     return flags
 
@@ -104,7 +253,12 @@ def _normalize_header(header: str, include_dirs: Sequence[Path]) -> str:
     return header_path.as_posix()
 
 
-def _render_cargo_toml(crate_name: str, rs_out: Path, cargo_toml_out: Path, crubit_src: Path) -> str:
+def _render_cargo_toml(
+    crate_name: str,
+    rs_out: Path,
+    cargo_toml_out: Path,
+    crubit_src: Path,
+) -> str:
     """Renders a standalone ``Cargo.toml`` for the generated C++->Rust bindings crate.
 
     Args:
@@ -117,47 +271,190 @@ def _render_cargo_toml(crate_name: str, rs_out: Path, cargo_toml_out: Path, crub
         TOML text for the generated crate manifest.
     """
     try:
-        lib_path = os.path.relpath(rs_out.resolve(), cargo_toml_out.resolve().parent).replace('\\', '/')
+        lib_path = os.path.relpath(
+            rs_out.resolve(),
+            cargo_toml_out.resolve().parent,
+        ).replace("\\", "/")
     except ValueError:
-        lib_path = str(rs_out.resolve()).replace('\\', '/')
+        lib_path = str(rs_out.resolve()).replace("\\", "/")
 
     src_root = crubit_src.resolve()
     deps = {
-        'crubit_support': src_root / 'support' / 'crubit_support',
-        'crubit_bridge_rust': src_root / 'support' / 'crubit_bridge_rust',
-        'crubit_annotate': src_root / 'support' / 'crubit_annotate',
-        'ffi_11': src_root / 'support' / 'ffi_11',
-        'ctor': src_root / 'cargo' / 'support' / 'ctor',
-        'cref': src_root / 'cargo' / 'support' / 'cref',
-        'forward_declare': src_root / 'cargo' / 'support' / 'forward_declare',
-        'oops': src_root / 'cargo' / 'support' / 'oops',
-        'operator': src_root / 'cargo' / 'support' / 'operator',
-        'dyn_callable_rs': src_root / 'cargo' / 'support' / 'rs_std' / 'dyn_callable_rs',
-        'lossy_formatter': src_root / 'cargo' / 'support' / 'rs_std' / 'lossy_formatter',
-        'inline_cpp_macro': src_root / 'cargo' / 'support' / 'extract_cpp_from_rust' / 'inline_cpp_macro',
+        "crubit_support": src_root / "support" / "crubit_support",
+        "crubit_bridge_rust": src_root / "support" / "crubit_bridge_rust",
+        "crubit_annotate": src_root / "support" / "crubit_annotate",
+        "ffi_11": src_root / "support" / "ffi_11",
+        "ctor": src_root / "cargo" / "support" / "ctor",
+        "cref": src_root / "cargo" / "support" / "cref",
+        "forward_declare": src_root / "cargo" / "support" / "forward_declare",
+        "oops": src_root / "cargo" / "support" / "oops",
+        "operator": src_root / "cargo" / "support" / "operator",
+        "dyn_callable_rs": src_root
+        / "cargo"
+        / "support"
+        / "rs_std"
+        / "dyn_callable_rs",
+        "lossy_formatter": src_root
+        / "cargo"
+        / "support"
+        / "rs_std"
+        / "lossy_formatter",
+        "inline_cpp_macro": (
+            src_root
+            / "cargo"
+            / "support"
+            / "extract_cpp_from_rust"
+            / "inline_cpp_macro"
+        ),
     }
-    dep_lines = [f'{name} = {{ path = {json.dumps(str(path))} }}' for name, path in deps.items()]
-    dep_lines.append('cxx = "1"')
-    dep_lines.append('static_assertions = "1"')
+    dep_lines = [
+        f"{name} = {{ path = {json.dumps(str(path))} }}" for name, path in deps.items()
+    ]
+    dep_lines.extend(('cxx = "1"', 'static_assertions = "1"'))
 
     lines = [
-        '# Auto-generated by scripts/crubit/invoke_rs_bindings_from_cc.py. Do not edit.',
-        '[package]',
-        f'name = {json.dumps(crate_name)}',
+        "# Auto-generated by scripts/crubit/invoke_rs_bindings_from_cc.py. Do not edit.",
+        "[package]",
+        f"name = {json.dumps(crate_name)}",
         'version = "0.1.0"',
         'edition = "2024"',
-        'publish = false',
-        '',
-        '[workspace]',
-        '',
-        '[lib]',
-        f'path = {json.dumps(lib_path)}',
-        '',
-        '[dependencies]',
+        "publish = false",
+        "",
+        "[workspace]",
+        "",
+        "[lib]",
+        f"path = {json.dumps(lib_path)}",
+        "",
+        "[dependencies]",
         *dep_lines,
-        '',
+        "",
     ]
-    return '\n'.join(lines)
+    return "\n".join(lines)
+
+
+def build_rs_bindings_command(options: InvokeOptions) -> list[str]:
+    """Constructs the ``rs_bindings_from_cc`` CLI argument vector.
+
+    Args:
+        options: Parsed invocation options.
+
+    Returns:
+        Full subprocess command list including Clang flags after ``--``.
+    """
+    all_include_dirs: list[Path] = [*options.include_dir, *options.system_include_dir]
+    normalized_headers = [
+        _normalize_header(hdr, all_include_dirs) for hdr in options.public_header
+    ]
+    crubit_features = options.crubit_feature or list(DEFAULT_CRUBIT_FEATURES)
+    target_args = json.dumps(
+        [
+            {
+                "t": options.target,
+                "h": normalized_headers,
+                "f": crubit_features,
+                "c": options.crate_name,
+            }
+        ],
+        separators=(",", ":"),
+    )
+
+    cmd: list[str] = [
+        str(options.rs_bindings_from_cc),
+        f"--target={options.target}",
+        f"--rs_out={options.rs_out}",
+        f"--cc_out={options.cc_out}",
+        "--crubit_support_path_format=<support/{header}>",
+        f"--public_headers={','.join(normalized_headers)}",
+        f"--target_args={target_args}",
+        f"--driver_path={options.cxx}",
+    ]
+    if options.clang_format is not None and options.clang_format.is_file():
+        cmd.append(f"--clang_format_exe_path={options.clang_format}")
+    if options.rustfmt is not None and options.rustfmt.is_file():
+        cmd.append(f"--rustfmt_exe_path={options.rustfmt}")
+    if options.extra_rs_src:
+        cmd.append(f"--extra_rs_srcs={','.join(options.extra_rs_src)}")
+    if options.extra_cpp_src:
+        cmd.append(f"--extra_cpp_srcs={','.join(options.extra_cpp_src)}")
+
+    clang_args: list[str] = [
+        "-x",
+        "c++",
+        f"-std=c++{options.cxx_standard}",
+        "-stdlib=libc++",
+        *_resolve_clang_system_flags(options.cxx),
+        "-isystem",
+        str(options.crubit_src.resolve()),
+    ]
+    for inc_dir in options.include_dir:
+        clang_args.extend(["-I", str(inc_dir.resolve())])
+    for sys_inc_dir in options.system_include_dir:
+        clang_args.extend(["-isystem", str(sys_inc_dir.resolve())])
+    clang_args.extend(f"-D{define}" for define in options.define)
+    clang_args.extend(options.extra_clang_arg)
+
+    return [*cmd, "--", *clang_args]
+
+
+def parse_args(argv: Sequence[str] | None = None) -> InvokeOptions:
+    """Parses CLI arguments into an :class:`InvokeOptions` instance.
+
+    Args:
+        argv: Optional argument list overriding ``sys.argv[1:]``.
+
+    Returns:
+        Validated :class:`InvokeOptions` dataclass.
+
+    Raises:
+        SystemExit: If help is requested or arguments fail validation.
+    """
+    tokens = list(argv) if argv is not None else None
+    command, bound, _ = _app.parse_args(tokens, exit_on_error=True)
+    if command is not _run_cli:
+        command(*bound.args, **bound.kwargs)
+        raise SystemExit(0)
+    return cast("InvokeOptions", bound.arguments["options"])
+
+
+@_app.default
+def _run_cli(options: InvokeOptions) -> int:
+    """Executes ``rs_bindings_from_cc`` and optionally writes ``Cargo.toml``.
+
+    Args:
+        options: Parsed invocation options.
+
+    Returns:
+        ``0`` on success, non-zero on failure.
+    """
+    _configure_logging()
+    logger = _get_logger()
+
+    options.rs_out.parent.mkdir(parents=True, exist_ok=True)
+    options.cc_out.parent.mkdir(parents=True, exist_ok=True)
+    cmd = build_rs_bindings_command(options)
+
+    logger.debug("Invoking rs_bindings_from_cc", command=" ".join(cmd))
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as exc:
+        logger.error(
+            "rs_bindings_from_cc failed with exit code %s",
+            exc.returncode,
+            returncode=exc.returncode,
+        )
+        return exc.returncode or 1
+
+    if options.cargo_toml_out is not None:
+        options.cargo_toml_out.parent.mkdir(parents=True, exist_ok=True)
+        cargo_toml_text = _render_cargo_toml(
+            options.crate_name,
+            options.rs_out,
+            options.cargo_toml_out,
+            options.crubit_src,
+        )
+        options.cargo_toml_out.write_text(cargo_toml_text, encoding="utf-8")
+
+    return 0
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -169,100 +466,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     Returns:
         ``0`` on success, non-zero on failure.
     """
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--rs-bindings-from-cc', type=Path, required=True)
-    parser.add_argument('--crubit-src', type=Path, required=True)
-    parser.add_argument('--target', required=True)
-    parser.add_argument('--crate-name', required=True)
-    parser.add_argument('--rs-out', type=Path, required=True)
-    parser.add_argument('--cc-out', type=Path, required=True)
-    parser.add_argument('--cargo-toml-out', type=Path, default=None)
-    parser.add_argument('--public-header', action='append', required=True)
-    parser.add_argument('--include-dir', action='append', type=Path, default=[])
-    parser.add_argument('--system-include-dir', action='append', type=Path, default=[])
-    parser.add_argument('--define', action='append', default=[])
-    parser.add_argument('--cxx', type=Path, required=True)
-    parser.add_argument('--clang-format', type=Path, default=None)
-    parser.add_argument('--rustfmt', type=Path, default=None)
-    parser.add_argument('--cxx-standard', default='23')
-    parser.add_argument('--extra-rs-src', action='append', default=[])
-    parser.add_argument('--extra-cpp-src', action='append', default=[])
-    parser.add_argument('--extra-clang-arg', action='append', default=[])
-    parser.add_argument('--crubit-feature', action='append', default=[])
-    args = parser.parse_args(list(argv) if argv is not None else None)
-
-    logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
-
-    args.rs_out.parent.mkdir(parents=True, exist_ok=True)
-    args.cc_out.parent.mkdir(parents=True, exist_ok=True)
-
-    all_include_dirs: list[Path] = [*args.include_dir, *args.system_include_dir]
-    normalized_headers = [_normalize_header(hdr, all_include_dirs) for hdr in args.public_header]
-    crubit_features = args.crubit_feature or ['supported', 'assume_lifetimes']
-    target_args = json.dumps(
-        [
-            {
-                't': args.target,
-                'h': normalized_headers,
-                'f': crubit_features,
-                'c': args.crate_name,
-            }
-        ],
-        separators=(',', ':'),
-    )
-
-    cmd: list[str] = [
-        str(args.rs_bindings_from_cc),
-        f'--target={args.target}',
-        f'--rs_out={args.rs_out}',
-        f'--cc_out={args.cc_out}',
-        '--crubit_support_path_format=<support/{header}>',
-        f'--public_headers={",".join(normalized_headers)}',
-        f'--target_args={target_args}',
-        f'--driver_path={args.cxx}',
-    ]
-    if args.clang_format is not None and args.clang_format.is_file():
-        cmd.append(f'--clang_format_exe_path={args.clang_format}')
-    if args.rustfmt is not None and args.rustfmt.is_file():
-        cmd.append(f'--rustfmt_exe_path={args.rustfmt}')
-    if args.extra_rs_src:
-        cmd.append(f'--extra_rs_srcs={",".join(args.extra_rs_src)}')
-    if args.extra_cpp_src:
-        cmd.append(f'--extra_cpp_srcs={",".join(args.extra_cpp_src)}')
-
-    clang_args: list[str] = [
-        '-x',
-        'c++',
-        f'-std=c++{args.cxx_standard}',
-        '-stdlib=libc++',
-        *_resolve_clang_system_flags(args.cxx),
-        '-isystem',
-        str(args.crubit_src.resolve()),
-    ]
-    for inc_dir in args.include_dir:
-        clang_args.extend(['-I', str(inc_dir.resolve())])
-    for sys_inc_dir in args.system_include_dir:
-        clang_args.extend(['-isystem', str(sys_inc_dir.resolve())])
-    clang_args.extend(f'-D{define}' for define in args.define)
-    clang_args.extend(args.extra_clang_arg)
-
-    cmd.append('--')
-    cmd.extend(clang_args)
-
-    logger.debug('Invoking rs_bindings_from_cc: %s', ' '.join(cmd))
-    try:
-        subprocess.run(cmd, check=True)
-    except subprocess.CalledProcessError as exc:
-        logger.error('rs_bindings_from_cc failed with exit code %s', exc.returncode)
-        return exc.returncode or 1
-
-    if args.cargo_toml_out is not None:
-        args.cargo_toml_out.parent.mkdir(parents=True, exist_ok=True)
-        cargo_toml_text = _render_cargo_toml(args.crate_name, args.rs_out, args.cargo_toml_out, args.crubit_src)
-        args.cargo_toml_out.write_text(cargo_toml_text, encoding='utf-8')
-
-    return 0
+    tokens = list(argv) if argv is not None else None
+    result = _app(tokens, result_action="return_value")
+    return result if isinstance(result, int) else 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())
