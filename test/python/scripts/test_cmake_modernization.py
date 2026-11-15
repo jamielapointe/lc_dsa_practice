@@ -406,6 +406,8 @@ def test_file_set_and_discovery_modernization() -> None:
     )
     assert "FILE_SET generated_sources TYPE SOURCES" in crubit_cmake
     assert "SKIP_LINTING" in crubit_cmake
+    assert "crubit_cargo_pool=1" in crubit_cmake
+    assert "JOB_POOL crubit_cargo_pool" in crubit_cmake
 
     c23_test_cmake = (
         REPO_ROOT / "test" / "c" / "systems" / "CMakeLists.txt"

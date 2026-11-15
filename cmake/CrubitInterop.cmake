@@ -53,6 +53,14 @@ endif()
 
 find_program(CRUBIT_CLANG_FORMAT_EXECUTABLE NAMES clang-format clang-format-23)
 
+# Serialize Cargo / cargo-cpp_api_from_rust invocations that share
+# ${CMAKE_BINARY_DIR}/crubit_cargo so concurrent stdlib header generation
+# (core.h, alloc.h, std.h, proc_macro.h in deps/) never races or truncates.
+get_property(_crubit_existing_job_pools GLOBAL PROPERTY JOB_POOLS)
+if(NOT _crubit_existing_job_pools MATCHES "(^|;)crubit_cargo_pool=")
+    set_property(GLOBAL APPEND PROPERTY JOB_POOLS crubit_cargo_pool=1)
+endif()
+
 if(NOT TARGET crubit_support_cc)
     add_library(crubit_support_cc STATIC)
     add_library(crubit::support_cc ALIAS crubit_support_cc)
@@ -268,6 +276,11 @@ function(crubit_add_cpp_api_from_rust target_name)
         list(APPEND cmd_args -- --release)
     endif()
 
+    set(_crubit_job_pool_args "")
+    if(CMAKE_GENERATOR MATCHES "Ninja")
+        set(_crubit_job_pool_args JOB_POOL crubit_cargo_pool)
+    endif()
+
     add_custom_command(
         OUTPUT "${generated_header}" "${generated_lib}"
         COMMAND "${CMAKE_COMMAND}" -E make_directory "${out_dir}"
@@ -277,12 +290,17 @@ function(crubit_add_cpp_api_from_rust target_name)
             "CARGO=${CRUBIT_CARGO_EXECUTABLE}" "RUSTC=${CRUBIT_RUSTC_EXECUTABLE}"
             "RUSTC_BOOTSTRAP=1" "CRUBIT_SUPPORT_RUST_PATH=${CRUBIT_SUPPORT_CRATE_DIR}"
             "${CRUBIT_CARGO_EXECUTABLE}" cpp_api_from_rust ${cmd_args}
-        DEPENDS "${manifest_path}" ${rust_sources}
+        DEPENDS "${manifest_path}" ${rust_sources} ${_crubit_job_pool_args}
         COMMENT "Generating C++ API from Rust crate ${crate_name} (${target_name})"
         VERBATIM
     )
 
     add_custom_target(${target_name}_crubit_gen DEPENDS "${generated_header}" "${generated_lib}")
+    get_property(_crubit_prev_cpp_api_gen GLOBAL PROPERTY _CRUBIT_LAST_CPP_API_GEN_TARGET)
+    if(_crubit_prev_cpp_api_gen AND TARGET "${_crubit_prev_cpp_api_gen}")
+        add_dependencies(${target_name}_crubit_gen "${_crubit_prev_cpp_api_gen}")
+    endif()
+    set_property(GLOBAL PROPERTY _CRUBIT_LAST_CPP_API_GEN_TARGET "${target_name}_crubit_gen")
 
     add_library(${target_name}_rust_static STATIC IMPORTED GLOBAL)
     set_target_properties(
@@ -601,6 +619,11 @@ function(crubit_add_rust_binary_or_test target_name)
         "CARGO_ENCODED_RUSTFLAGS=${encoded_rustflags}"
     )
 
+    set(_crubit_job_pool_args "")
+    if(CMAKE_GENERATOR MATCHES "Ninja")
+        set(_crubit_job_pool_args JOB_POOL crubit_cargo_pool)
+    endif()
+
     if(ARG_TEST)
         add_custom_target(
             ${target_name}
@@ -608,7 +631,7 @@ function(crubit_add_rust_binary_or_test target_name)
             COMMAND
                 "${CMAKE_COMMAND}" -E env ${cargo_env_args} "${CRUBIT_CARGO_EXECUTABLE}" test
                 --no-run ${cargo_common_args}
-            DEPENDS ${gen_deps} ${cpp_link_targets}
+            DEPENDS ${gen_deps} ${cpp_link_targets} ${_crubit_job_pool_args}
             COMMENT "Building Rust interop test target ${target_name}"
             VERBATIM
         )
@@ -633,7 +656,7 @@ function(crubit_add_rust_binary_or_test target_name)
             COMMAND
                 "${CMAKE_COMMAND}" -E env ${cargo_env_args} "${CRUBIT_CARGO_EXECUTABLE}" build
                 ${cargo_common_args}
-            DEPENDS ${gen_deps} ${cpp_link_targets}
+            DEPENDS ${gen_deps} ${cpp_link_targets} ${_crubit_job_pool_args}
             COMMENT "Building Rust interop binary target ${target_name}"
             VERBATIM
         )
