@@ -7,6 +7,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "systems/bit_pattern.h"
@@ -217,12 +218,56 @@ static void record_c23_task_tick(void* const user_data, const uint64_t now_ns) {
   return ok;
 }
 
-int main() {
-  if (!test_platform_c23() || !test_bounded_fifo_c23() ||
-      !test_bitmap_flip_c23() || !test_huffman_tree_c23() ||
-      !test_bit_pattern_c23() || !test_priority_scheduler_c23() ||
-      !test_process_rendezvous_and_shm_pubsub_c23()) {
-    return 1;
+struct c23_test_case {
+  const char* name;
+  bool (*fn)();
+};
+
+static const struct c23_test_case k_c23_tests[] = {
+    {.name = "platform", .fn = test_platform_c23},
+    {.name = "bounded_fifo", .fn = test_bounded_fifo_c23},
+    {.name = "bitmap_flip", .fn = test_bitmap_flip_c23},
+    {.name = "huffman_tree", .fn = test_huffman_tree_c23},
+    {.name = "bit_pattern", .fn = test_bit_pattern_c23},
+    {.name = "priority_scheduler", .fn = test_priority_scheduler_c23},
+    {.name = "process_rendezvous_and_shm_pubsub",
+     .fn = test_process_rendezvous_and_shm_pubsub_c23},
+};
+
+int main(int argc, char* argv[]) {
+  constexpr size_t k_test_count = sizeof(k_c23_tests) / sizeof(k_c23_tests[0]);
+  if (argc == 1) {
+    for (size_t i = 0U; i < k_test_count; ++i) {
+      if (!k_c23_tests[i].fn()) {
+        return 1;
+      }
+    }
+    return 0;
   }
-  return 0;
+
+  if (argc == 2 && argv != nullptr && strcmp(argv[1], "--list-tests") == 0) {
+    for (size_t i = 0U; i < k_test_count; ++i) {
+      if (printf("%s\n", k_c23_tests[i].name) < 0) {
+        return 1;
+      }
+    }
+    return 0;
+  }
+
+  if (argc == 3 && argv != nullptr && strcmp(argv[1], "--run-test") == 0) {
+    const char* const target_name = argv[2];
+    for (size_t i = 0U; i < k_test_count; ++i) {
+      if (strcmp(k_c23_tests[i].name, target_name) == 0) {
+        return k_c23_tests[i].fn() ? 0 : 1;
+      }
+    }
+    (void)fprintf(stderr, "Unknown C23 test case: %s\n", target_name);
+    return 2;
+  }
+
+  const char* const prog = (argc > 0 && argv != nullptr && argv[0] != nullptr)
+                               ? argv[0]
+                               : "systems_c23_test";
+  (void)fprintf(stderr, "Usage: %s [--list-tests | --run-test <name>]\n", prog);
+  return 2;
 }

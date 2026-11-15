@@ -8,11 +8,8 @@ function(interop_add_cpp_demo target_name)
         message(FATAL_ERROR "interop_add_cpp_demo called without SOURCES for ${target_name}")
     endif()
 
-    add_executable(${target_name} ${ARG_SOURCES})
-    target_include_directories(
-        ${target_name}
-        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/include
-    )
+    add_executable(${target_name})
+    target_sources(${target_name} PRIVATE FILE_SET sources TYPE SOURCES FILES ${ARG_SOURCES})
     target_compile_features(${target_name} PRIVATE cxx_std_23)
     target_compile_options(${target_name} PRIVATE -stdlib=libc++)
     target_link_options(${target_name} PRIVATE -stdlib=libc++)

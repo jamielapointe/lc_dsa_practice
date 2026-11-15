@@ -61,7 +61,7 @@ Do not recreate the old top-level `include/`, `src/*.cpp`, or `tests/` paths, an
 ## Toolchain rules (Pixi only)
 
 - Run every tool via `pixi run` (standalone `pixi.toml`, `requires-pixi = ">=0.84.2"`). Never `pip install`, `uv`, global `cmake`, `cargo`, or system
-  compilers. Clang 23, CMake 4.4, Ninja, GoogleTest, rustc/cargo 1.99.1, Python 3.15, ruff, basedpyright, ty, pytest 9+, marimo, tombi, deptry,
+  compilers. Clang 23.1.5+, CMake 4.5+, Ninja, GoogleTest, Rust 1.100+ (MSRV 1.99.1), Python 3.15, ruff, basedpyright, ty, pytest 9+, marimo, tombi, deptry,
   pip-audit, prek, gersemi, and rumdl pin in `pixi.lock`.
 - Drive CMake only via presets: `pixi run cmake --workflow --preset <name>` (`ALLOW_NON_PIXI_TOOLCHAIN` overrides; avoid). Cargo build artifacts
   isolate to `build/cargo/` via `.cargo/config.toml` and `CARGO_TARGET_DIR`.
@@ -79,7 +79,7 @@ pixi run test-rust       # cargo test --workspace (all 4 tiers)
 pixi run clippy | clippy-fix # cargo clippy --all-targets -- -D warnings
 pixi run format-rust | format-rust-check # cargo fmt
 pixi run cov-rust        # cargo-llvm-cov, gate >= 85%
-pixi run cpp-release | cpp-asan | cpp-ubsan | cpp-tsan
+pixi run cpp-ci-debug | cpp-release | cpp-asan | cpp-ubsan | cpp-tsan
 pixi run cpp-benchmark | cpp-benchmark-build # local Google Benchmark suite
 pixi run cov-cpp | cov-python # llvm-cov / pytest-cov, gate >= 85%
 pixi run crubit-bootstrap # clone pinned Crubit, verify Rust 1.99.1 sysroot, build generators
@@ -92,8 +92,9 @@ pixi run lint | lint-fix | format | format-check | format-cmake | format-cpp | l
 pixi run pre-commit      # full gate via prek; run before every commit
 ```
 
-CMake presets: `dev-debug`, `dev-release`, `asan`, `ubsan`, `tsan`, `coverage`, `benchmark`, `interop-debug`, `interop-release` (each has configure, build,
-test, and workflow variants; build trees go to `build/<preset>`).
+CMake presets (Schema v13; `build/<preset>`): `dev-debug`, `ci-debug`, `dev-release`, `asan`, `ubsan`, `tsan`, `coverage`, `benchmark`, `interop-debug`,
+`interop-release`, `sysroot-release`, `cross-aarch64`, `cross-riscv64`. Root enforces `CMD_NON_TARGET_DIRECTIVE` (`SEND_ERROR`) and emits CPS
+`PACKAGE_INFO` + SPDX 3.0.1 `SBOM` (`INSTALL_LC_DSA=ON`).
 
 ## Track 1: C++ LeetCode
 
@@ -102,9 +103,8 @@ test, and workflow variants; build trees go to `build/<preset>`).
 - Header: `#pragma once`, `namespace leet_code`, Doxygen `@file`/`@brief`, a modern interface
   (`[[nodiscard]] auto f(...) -> ...`, `std::span`, `std::optional`/`std::expected`) and a LeetCode-compatible
   `class Solution` wrapper delegating to it.
-- CMake registration: `add_library(<slug> STATIC <slug>.cpp)`, alias `leet_code::<slug>`, include dir
-  `${PROJECT_SOURCE_DIR}/src/include`, link `project_options project_warnings project_sanitizers project_architecture`.
-  Tests use `add_project_test(<slug>_test SOURCES <slug>_test.cpp LIBS leet_code::<slug>)`.
+- CMake registration: `leet_code_add_library(<slug> SOURCES <slug>.cpp [HEADERS ...] [LIBS ...])` registers alias `leet_code::<slug>`,
+  `FILE_SET HEADERS`, and `FILE_SET sources TYPE SOURCES`. Tests use `add_project_test(<slug>_test SOURCES <slug>_test.cpp LIBS leet_code::<slug>)`.
 - Shared structures live in `src/include/leet_code/list_node.hpp` (`ListNode`, RAII `ScopedLinkedList`); reuse them.
 - Tests have four tiers: canonical examples, boundary cases, invariants, and a max-constraint stress test. New stubs
   compile cleanly and return dummy values, so tests start red without crashing (guard pointers with `ASSERT_NE`).
@@ -132,7 +132,7 @@ test, and workflow variants; build trees go to `build/<preset>`).
 Intent: portable building blocks that could move to a small target without redesign, implemented in both modern C++23 and strict ISO C23 (`-std=c23`).
 
 - C++23 headers in `src/include/systems/<name>.hpp`, sources in `src/cpp/systems/<name>.cpp`, tests in `test/cpp/systems/<name>_test.cpp`
-  (`systems_add_library`, alias `systems::<name>`).
+  (`systems_add_library` with `FILE_SET HEADERS`/`SOURCES`, alias `systems::<name>`).
 - ISO C23 headers in `src/include/systems/<name>.h`, sources in `src/c/systems/<name>.c`, tests in `test/c/systems/<name>_c_test.cpp` (GoogleTest via
   `extern "C"`) and `test/c/systems/systems_c23_test.c` (pure `-std=c23` CTest target) (`systems_c_add_library`, alias `systems_c::<name>`).
 - clang-tidy analyzes `src/include/systems/` headers and both `src/cpp/systems/` and `src/c/systems/` translation units.
@@ -217,7 +217,7 @@ Intent: intensive, TDD-driven Rust crash course and senior interview preparation
 - Exercises live in `src/rust/crash_course/<exercise_slug>/` as isolated sub-workspaces.
 - **Root workspace exclusion**: `src/rust/crash_course` is excluded from root `Cargo.toml` so active red-phase `todo!()`
   stubs and failing tests do not break root CI gates (`clippy`, `test-rust`, `cov-rust`).
-- Enforces Rust 1.99.1 and Edition 2024 (`edition = "2024"`, `resolver = "3"` in `Cargo.toml`),
+- Enforces Rust 1.99.1+ MSRV (Pixi 1.100+) and Edition 2024 (`edition = "2024"`, `resolver = "3"` in `Cargo.toml`),
   `#![deny(unsafe_op_in_unsafe_fn)]`, and bidirectional C++/Rust interop (`cxx`, raw C ABI, `Pin<&mut T>`).
 - Strict red-green-refactor TDD protocol: target methods stubbed solely with `todo!()` (anti-solution leakage); automated
   red-phase verification (`cargo test --no-run` -> `cargo clippy --no-deps` -> `cargo test` confirming failure strictly on

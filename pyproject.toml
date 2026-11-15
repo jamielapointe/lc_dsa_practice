@@ -18,7 +18,7 @@ dependencies = [
   "plotly>=7.1.0",
   "polars>=2.1.0",
   "pydantic>=2.14.3",
-  "pyyaml>=6.0.2",
+  "pyyaml>=6.0.3",
   "scipy>=1.18.1",
   "structlog>=26.1.0",
 ]
@@ -46,7 +46,7 @@ security = [
 test = [
   "hypothesis>=6.170.15",
   "pytest>=9.2.0",
-  "pytest-asyncio>=1.4.1",
+  "pytest-asyncio>=1.5.0",
   "pytest-cov>=7.1.0",
   "pytest-randomly>=5.1.0",
   "pytest-timeout>=2.4.0",
@@ -55,11 +55,11 @@ typecheck = [
   "basedpyright>=1.40.2",
   "scipy-stubs>=1.18.1.1",
   "ty>=0.0.104",
-  "types-pyyaml>=6.0.12",
+  "types-pyyaml>=6.0.12.20261113",
 ]
 
 [build-system]
-requires = ["uv_build>=0.12.0,<0.14.0"]
+requires = ["uv_build>=0.13.8,<0.14.0"]
 build-backend = "uv_build"
 
 [tool.basedpyright]

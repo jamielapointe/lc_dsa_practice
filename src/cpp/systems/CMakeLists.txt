@@ -2,24 +2,40 @@
 # live in src/include/systems/ and are included as <systems/...>.
 #
 # To add a component <name>: create src/cpp/systems/<name>.cpp and call systems_add_library(<name>
-# SOURCES <name>.cpp [LIBS ...]). Tests live in test/cpp/systems/ and link systems::<name>.
+# SOURCES <name>.cpp [HEADERS ...] [LIBS ...]). Tests live in test/cpp/systems/ and link
+# systems::<name>.
 
 find_package(Threads REQUIRED)
 
+set(_systems_spdx_license "Apache-2.0")
+if(DEFINED PROJECT_SPDX_LICENSE AND NOT "${PROJECT_SPDX_LICENSE}" STREQUAL "")
+    set(_systems_spdx_license "${PROJECT_SPDX_LICENSE}")
+endif()
+
 # Registers a static library `<name>` (alias `systems::<name>`) with the project-wide options.
 function(systems_add_library name)
-    cmake_parse_arguments(ARG "" "" "SOURCES;LIBS" ${ARGN})
+    cmake_parse_arguments(ARG "" "" "HEADERS;SOURCES;LIBS" ${ARGN})
 
     if(NOT ARG_SOURCES)
         message(FATAL_ERROR "systems_add_library called without SOURCES for target ${name}")
     endif()
 
-    add_library(${name} STATIC ${ARG_SOURCES})
+    if(NOT ARG_HEADERS)
+        set(ARG_HEADERS "${PROJECT_SOURCE_DIR}/src/include/systems/${name}.hpp")
+    endif()
+
+    set(spdx_license "Apache-2.0")
+    if(DEFINED PROJECT_SPDX_LICENSE AND NOT "${PROJECT_SPDX_LICENSE}" STREQUAL "")
+        set(spdx_license "${PROJECT_SPDX_LICENSE}")
+    endif()
+
+    add_library(${name} STATIC)
     add_library(systems::${name} ALIAS ${name})
 
-    target_include_directories(
+    target_sources(
         ${name}
-        PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/include> $<INSTALL_INTERFACE:include>
+        PUBLIC FILE_SET HEADERS BASE_DIRS "${PROJECT_SOURCE_DIR}/src/include" FILES ${ARG_HEADERS}
+        PRIVATE FILE_SET sources TYPE SOURCES FILES ${ARG_SOURCES}
     )
     target_compile_features(${name} PUBLIC cxx_std_23)
     target_link_libraries(
@@ -37,15 +53,32 @@ function(systems_add_library name)
                 CXX_CLANG_TIDY "${CMAKE_CXX_CLANG_TIDY};--header-filter=.*/src/include/systems/.*"
         )
     endif()
+
+    set_target_properties(
+        systems::${name}
+        PROPERTIES EXPORT_NAME "systems_${name}" SPDX_LICENSE "${spdx_license}"
+    )
+
+    if(INSTALL_LC_DSA)
+        install(
+            TARGETS systems::${name}
+            EXPORT lc_dsa_practice_targets
+            ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+            FILE_SET HEADERS
+        )
+    endif()
 endfunction()
 
 # Compile-time OS capability flags (header-only). Link systems::platform from components and
 # tests that branch on capabilities such as robust or process-shared mutexes.
 add_library(systems_platform INTERFACE)
 add_library(systems::platform ALIAS systems_platform)
-target_include_directories(
+target_sources(
     systems_platform
-    INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/include> $<INSTALL_INTERFACE:include>
+    INTERFACE
+        FILE_SET HEADERS
+            BASE_DIRS "${PROJECT_SOURCE_DIR}/src/include"
+            FILES "${PROJECT_SOURCE_DIR}/src/include/systems/platform.hpp"
 )
 target_compile_features(systems_platform INTERFACE cxx_std_23)
 if(SYSTEMS_POSIX_SUPPORTED)
@@ -58,7 +91,15 @@ endif()
 include(CheckLibraryExists)
 check_library_exists(rt shm_open "" SYSTEMS_HAVE_LIBRT_SHM_OPEN)
 if(SYSTEMS_HAVE_LIBRT_SHM_OPEN)
-    target_link_libraries(systems_platform INTERFACE rt)
+    target_link_libraries(systems_platform INTERFACE $<LINK_ONLY:rt>)
+endif()
+
+set_target_properties(
+    systems::platform
+    PROPERTIES EXPORT_NAME systems_platform SPDX_LICENSE "${_systems_spdx_license}"
+)
+if(INSTALL_LC_DSA)
+    install(TARGETS systems::platform EXPORT lc_dsa_practice_targets FILE_SET HEADERS)
 endif()
 
 # Fixed-capacity, thread-safe MPMC FIFO. The class is a header-only template; the .cpp provides an
@@ -90,4 +131,10 @@ systems_add_library(
 )
 
 # In-place horizontal flipping for 1-bpp monochrome bitmaps (spec: docs/systems/bitmap_flip.md).
-systems_add_library(bitmap_flip SOURCES bitmap_flip.cpp)
+systems_add_library(
+    bitmap_flip
+    HEADERS
+        "${PROJECT_SOURCE_DIR}/src/include/systems/bitmap_flip.hpp"
+        "${PROJECT_SOURCE_DIR}/src/include/systems/bitmap_utils.hpp"
+    SOURCES bitmap_flip.cpp
+)

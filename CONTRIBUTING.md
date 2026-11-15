@@ -21,6 +21,7 @@ This guide covers the development workflow, security policies, and dependency ma
 
    ```bash
    pixi run test-cpp        # GoogleTest via the dev-debug workflow preset (ASan, UBSan, clang-tidy)
+   pixi run cpp-ci-debug    # GoogleTest via ci-debug workflow preset (ASan, UBSan, clang-tidy off)
    pixi run test-python     # pytest 9+ (hypothesis, pytest-randomly)
    pixi run cov-python      # Python coverage, >= 85%
    pixi run cov-cpp         # C++ coverage, >= 85%
@@ -48,8 +49,11 @@ This guide covers the development workflow, security policies, and dependency ma
 
 ## Code conventions
 
-- C++23 and ISO C23 (`-std=c23`), Google style (`.clang-format`), strict `.clang-tidy`. Run CMake only through presets (`cmake --workflow --preset
-  <name>`), never an ad hoc configure.
+- C++23 and ISO C23 (`-std=c23`) with CMake 4.5+ (`CMD_NON_TARGET_DIRECTIVE SEND_ERROR`, `FILE_SET HEADERS` and `FILE_SET sources TYPE SOURCES`,
+  CPS `PACKAGE_INFO`, SPDX 3.0.1 `SBOM`), LLVM/Clang 23.1.5+, Google style (`.clang-format`), and strict `.clang-tidy`. Drive CMake only via
+  `CMakePresets.json` Schema v13 (`pixi run cmake --workflow --preset <name>` for `dev-debug`, `ci-debug`, `dev-release`, `asan`, `ubsan`, `tsan`,
+  `coverage`, `benchmark`, `interop-*`; plus `sysroot-release`, `cross-aarch64`, and `cross-riscv64` configure/build presets), never an ad hoc configure.
+- Rust crates target MSRV `1.99.1+` (Edition 2024; Pixi ships `1.100+`, while Crubit's hermetic sysroot pins `1.99.1`).
 - Python 3.15 (`PEP 649` native annotations; `TID251` bans `from __future__ import annotations`; `PEP 810` `lazy import`, `PEP 814` `frozendict`,
   `PEP 661`, `PEP 750`), double quotes, 88 columns, grouped imports, Google-style docstrings, 23 Ruff families (`RUF201` full rule names), and strict
   typing via `basedpyright` + `ty`.

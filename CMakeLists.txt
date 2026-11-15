@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.4.3 FATAL_ERROR)
+cmake_minimum_required(VERSION 4.5)
 
 # Deletion safety guard: ensure CCACHE_DIR resolves to an absolute path before project() compiler
 # checks.
@@ -13,25 +13,37 @@ endif()
 project(
     lc_dsa_practice
     VERSION 0.1.0
+    COMPAT_VERSION 0.1.0
+    SPDX_LICENSE "Apache-2.0"
     DESCRIPTION
         "ISO C23 and C++23 LeetCode and low-level systems practice with modern CMake and strict tooling"
     LANGUAGES CXX C
 )
 
 # Prevent in-source builds
-if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
+if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
     message(
         FATAL_ERROR
         "In-source builds are strictly prohibited. Use CMakePresets (build/<preset>)."
     )
 endif()
 
+# Enforce target-based commands (rejects include_directories, add_compile_options, etc.)
+cmake_diagnostic(SET CMD_NON_TARGET_DIRECTIVE SEND_ERROR)
+
+# Default C++20/23 module scanning OFF so ccache, clang-tidy, and misc-include-cleaner stay
+# deterministic; opt in explicitly for standalone CMake 4.5 GA `import std`.
+option(ENABLE_CXX_MODULES "Enable C++20/23 module scanning and GA import std" OFF)
+if(ENABLE_CXX_MODULES)
+    set(CMAKE_CXX_SCAN_FOR_MODULES ON)
+else()
+    set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
+endif()
+
 # Enforce C++23 standard globally
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
-set(CMAKE_CXX_MODULE_STD OFF)
 
 # Enforce C23 standard globally
 set(CMAKE_C_STANDARD 23)
@@ -40,6 +52,17 @@ set(CMAKE_C_EXTENSIONS OFF)
 
 # Export compilation database for clangd, clang-tidy, and pre-commit
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Optional CMake 4.3+ build telemetry and Chrome trace export
+option(ENABLE_BUILD_INSTRUMENTATION "Enable CMake build telemetry and Chrome trace export" OFF)
+if(ENABLE_BUILD_INSTRUMENTATION)
+    cmake_instrumentation(
+        API_VERSION 1
+        DATA_VERSION 1.2
+        HOOKS postGenerate preCMakeBuild postCMakeBuild
+        OPTIONS staticSystemInformation compileTrace trace
+    )
+endif()
 
 # Project-level switches for the C and C++ trees
 option(BUILD_LEET_CODE "Build the C and C++ LeetCode practice libraries and tests" ON)
@@ -52,14 +75,19 @@ option(BUILD_BENCHMARKS "Build the benchmark targets" OFF)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # Include modular configuration components
-include(ProjectOptions)
-include(CompilerWarnings)
-include(StaticAnalysis)
-include(Sanitizers)
-include(Coverage)
-include(Architecture)
-include(Dependencies)
-include(Formatting)
+block(SCOPE_FOR POLICIES DIAGNOSTICS)
+    include(ProjectOptions)
+    include(CompilerWarnings)
+    include(StaticAnalysis)
+    include(Sanitizers)
+    include(Coverage)
+    include(Architecture)
+    include(Dependencies)
+    include(Formatting)
+endblock()
+
+include(GNUInstallDirs)
+option(INSTALL_LC_DSA "Enable installation, CPS PACKAGE_INFO, and SPDX 3.0.1 SBOM generation" ON)
 
 # C and C++ libraries: src/{cpp,c}/<tree>/ with headers in src/include/<tree>/
 if(BUILD_LEET_CODE)
@@ -132,4 +160,22 @@ if(BUILD_BENCHMARKS)
             add_subdirectory(benchmarks/c/systems)
         endif()
     endif()
+endif()
+
+# Install internal interface targets, CPS PACKAGE_INFO descriptor, and SPDX 3.0.1 SBOM
+if(INSTALL_LC_DSA AND (BUILD_LEET_CODE OR BUILD_SYSTEMS))
+    install(
+        TARGETS project_options project_warnings project_sanitizers project_architecture
+        EXPORT lc_dsa_practice_targets
+    )
+    install(PACKAGE_INFO lc_dsa_practice EXPORT lc_dsa_practice_targets LOWER_CASE_FILE)
+    # gersemi: off
+    install(
+        SBOM lc_dsa_practice
+        EXPORTS lc_dsa_practice_targets
+        DATA_LICENSE "CC0-1.0"
+        DEFAULT_LICENSE "${PROJECT_SPDX_LICENSE}"
+        FORMAT spdx-3.0.1+json
+    )
+    # gersemi: on
 endif()

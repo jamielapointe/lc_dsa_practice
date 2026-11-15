@@ -13,9 +13,9 @@
 [![Platforms][platform-badge]][ci]
 [![prek][prek-badge]][prek]
 
-LeetCode data-structure and algorithm practice in **C++23**, **ISO C23**, **Python 3.15**, and **Rust 1.99.1+**, plus a **systems / embedded-style
-C++23, ISO C23, and Rust** tree for low-level components and **Crubit interop**. Everything (toolchain, dependencies, tasks, CI) is managed with
-[Pixi](https://pixi.sh) (`>= 0.84.2`) and conda-forge.
+LeetCode data-structure and algorithm practice in **C++23**, **ISO C23**, **Python 3.15**, and **Rust 1.99.1+** (Pixi ships Rust 1.100+; crate MSRV and Crubit
+sysroot pin 1.99.1), plus a **systems / embedded-style C++23, ISO C23, and Rust** tree for low-level components and **Crubit interop**. Everything (CMake
+4.5+, LLVM/Clang 23.1.5+, `CMakePresets.json` v13, dependencies, tasks, CI) is managed with [Pixi](https://pixi.sh) (`>= 0.84.2`) and conda-forge.
 
 ## Tracks
 
@@ -56,9 +56,10 @@ pixi run test                 # C++ and Python suites
 pixi run test-cpp             # cmake --workflow --preset dev-debug (ASan + UBSan + clang-tidy)
 pixi run test-python          # pytest 9+ with hypothesis and pytest-randomly (live-network tests deselected)
 
-# C++ presets
-pixi run cpp-debug            # configure, build, test (dev-debug)
-pixi run cpp-release          # dev-release (IPO)
+# C++ presets (CMake 4.5+, Schema v13)
+pixi run cpp-debug            # configure, build, test (dev-debug: ASan + UBSan + clang-tidy)
+pixi run cpp-ci-debug         # CI debug workflow (ci-debug: ASan + UBSan, clang-tidy off)
+pixi run cpp-release          # dev-release (IPO + SPDX 3.0.1 SBOM)
 pixi run cpp-asan             # AddressSanitizer
 pixi run cpp-ubsan            # UndefinedBehaviorSanitizer
 pixi run cpp-tsan             # ThreadSanitizer
@@ -67,6 +68,8 @@ pixi run cpp-benchmark-build  # build benchmark executable
 pixi run shm-pubsub-example   # multi-process SPMC shared-memory camera example + CRC-32 log verifier
 pixi run cov-cpp              # llvm-cov line coverage, gate >= 85%
 pixi run cov-python           # pytest-cov, gate >= 85%
+# Air-gapped & cross presets (inherit `base`): `sysroot-release`, `cross-aarch64`, `cross-riscv64`
+# via `pixi run cmake --preset <name>` / `cmake --install build/dev-release` (CPS `PACKAGE_INFO` + SPDX 3.0.1 `SBOM`)
 
 # Crubit C++23 <-> Rust 2024 Interop
 pixi run crubit-bootstrap     # clone pinned Crubit, verify Rust 1.99.1 sysroot, build generators
@@ -96,7 +99,7 @@ pixi run pre-commit           # prek over the whole tree
 ```text
 .
 ├── AGENTS.md                      # Agent guide (read this first when automating)
-├── CMakeLists.txt, CMakePresets.json, cmake/
+├── CMakeLists.txt, CMakePresets.json, cmake/ # CMake 4.5+ (CPS PACKAGE_INFO + SPDX 3.0.1 SBOM), Schema v13 presets, toolchains/
 ├── pixi.toml, pyproject.toml, pixi.lock # Standalone Pixi workspace + PEP 621/735 pyproject + single lockfile
 ├── notebooks/
 │   └── benchmark_telemetry_explorer.py # Reactive Marimo (0.25.2+) Bayesian BEST telemetry explorer
@@ -180,7 +183,8 @@ Rust crash course and senior interview preparation workflow tailored for veteran
 
 ## Quality gates
 
-- **C++**: clang-format (Google), clang-tidy (`WarningsAsErrors: "*"`), ASan, UBSan, TSan, 85% line coverage.
+- **C++**: CMake 4.5+ (`CMD_NON_TARGET_DIRECTIVE`, `FILE_SET HEADERS`/`SOURCES`, CPS `PACKAGE_INFO`, SPDX 3.0.1 `SBOM`), LLVM/Clang 23.1.5+, clang-format
+  (Google), clang-tidy (`WarningsAsErrors: "*"`), ASan, UBSan, TSan, 85% line coverage.
 - **Python**: Python 3.15 (`PEP 649` native annotations, `TID251` bans `from __future__ import annotations`), ruff (23 families, 88 cols, double quotes,
   `RUF201` full rule names), `basedpyright` strict + `ty`, pytest 9+ (`hypothesis`, `pytest-randomly`) with 85% coverage on `src/python/leet_code`,
   `deptry` + `pip-audit` (`audit`), and reactive Marimo (`notebook-check`).

@@ -6,8 +6,16 @@ find_package(Threads REQUIRED)
 # Reusable GoogleTest support for systems components: fork-based child processes with timeouts,
 # shared rendezvous memory, SIGKILL fault injection, unique shared-memory names, and a global
 # allocation counter. Headers are included as "systems_test/<name>.hpp".
-set(SYSTEMS_TEST_SUPPORT_SOURCES support/allocation_counter.cpp support/global_new_delete.cpp)
+set(SYSTEMS_TEST_SUPPORT_HEADERS support/systems_test/allocation_counter.hpp)
+set(SYSTEMS_TEST_SUPPORT_SOURCES support/allocation_counter.cpp)
 if(SYSTEMS_POSIX_SUPPORTED)
+    list(
+        APPEND SYSTEMS_TEST_SUPPORT_HEADERS
+        support/systems_test/process.hpp
+        support/systems_test/reap.hpp
+        support/systems_test/shared_region.hpp
+        support/systems_test/shm_name.hpp
+    )
     list(
         APPEND SYSTEMS_TEST_SUPPORT_SOURCES
         support/process.cpp
@@ -16,15 +24,20 @@ if(SYSTEMS_POSIX_SUPPORTED)
         support/shm_name.cpp
     )
 endif()
-add_library(systems_test_support STATIC ${SYSTEMS_TEST_SUPPORT_SOURCES})
+add_library(systems_test_support STATIC)
 add_library(systems::test_support ALIAS systems_test_support)
+target_sources(
+    systems_test_support
+    PUBLIC
+        FILE_SET HEADERS
+            BASE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/support"
+            FILES ${SYSTEMS_TEST_SUPPORT_HEADERS}
+    PRIVATE FILE_SET sources TYPE SOURCES FILES ${SYSTEMS_TEST_SUPPORT_SOURCES}
+    PRIVATE FILE_SET allocator_override TYPE SOURCES FILES support/global_new_delete.cpp
+)
 # libc++ declares the global allocation functions with reserved parameter names, which clang-tidy
 # reports against the library header; see the comment in global_new_delete.cpp.
-set_source_files_properties(support/global_new_delete.cpp PROPERTIES SKIP_LINTING ON)
-target_include_directories(
-    systems_test_support
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/support ${PROJECT_SOURCE_DIR}/src/include
-)
+set_property(FILE_SET allocator_override TARGET systems_test_support PROPERTY SKIP_LINTING ON)
 target_compile_features(systems_test_support PUBLIC cxx_std_23)
 target_link_libraries(
     systems_test_support

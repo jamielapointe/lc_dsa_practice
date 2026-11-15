@@ -11,7 +11,8 @@ function(add_project_benchmark benchmark_target)
         )
     endif()
 
-    add_executable(${benchmark_target} ${ARG_SOURCES})
+    add_executable(${benchmark_target})
+    target_sources(${benchmark_target} PRIVATE FILE_SET sources TYPE SOURCES FILES ${ARG_SOURCES})
 
     target_link_libraries(
         ${benchmark_target}

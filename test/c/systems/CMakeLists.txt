@@ -6,18 +6,15 @@ find_package(Threads REQUIRED)
 
 # Helper function to register pure-C23 CTest executables without GoogleTest/C++ dependencies
 function(add_project_c_test test_target)
-    cmake_parse_arguments(ARG "" "" "SOURCES;LIBS;LABELS" ${ARGN})
+    cmake_parse_arguments(ARG "NO_ADD_TEST" "" "SOURCES;LIBS;LABELS" ${ARGN})
 
     if(NOT ARG_SOURCES)
         message(FATAL_ERROR "add_project_c_test called without SOURCES for target ${test_target}")
     endif()
 
-    add_executable(${test_target} ${ARG_SOURCES})
+    add_executable(${test_target})
+    target_sources(${test_target} PRIVATE FILE_SET sources TYPE SOURCES FILES ${ARG_SOURCES})
     target_compile_features(${test_target} PRIVATE c_std_23)
-    target_include_directories(
-        ${test_target}
-        PRIVATE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/include>
-    )
     target_link_libraries(
         ${test_target}
         PRIVATE ${ARG_LIBS} project_options project_warnings project_sanitizers project_architecture
@@ -31,11 +28,13 @@ function(add_project_c_test test_target)
         )
     endif()
 
-    add_test(NAME ${test_target} COMMAND ${test_target})
-    if(ARG_LABELS)
-        set_tests_properties(${test_target} PROPERTIES TIMEOUT 60 LABELS "${ARG_LABELS}")
-    else()
-        set_tests_properties(${test_target} PROPERTIES TIMEOUT 60)
+    if(NOT ARG_NO_ADD_TEST AND (BUILD_TESTING OR CMAKE_TESTING_ENABLED))
+        add_test(NAME ${test_target} COMMAND ${test_target})
+        if(ARG_LABELS)
+            set_tests_properties(${test_target} PROPERTIES TIMEOUT 60 LABELS "${ARG_LABELS}")
+        else()
+            set_tests_properties(${test_target} PROPERTIES TIMEOUT 60)
+        endif()
     endif()
 endfunction()
 
@@ -130,8 +129,31 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/systems_c23_test.c")
 
     add_project_c_test(
         systems_c23_test
+        NO_ADD_TEST
         SOURCES systems_c23_test.c
         LIBS ${SYSTEMS_C23_TEST_LIBS}
         LABELS "systems;c23;pure_c"
     )
+
+    if(BUILD_TESTING OR CMAKE_TESTING_ENABLED)
+        if(
+            (NOT CMAKE_CROSSCOMPILING OR CMAKE_CROSSCOMPILING_EMULATOR)
+            AND CMAKE_VERSION VERSION_GREATER_EQUAL "4.5"
+        )
+            # gersemi: off
+            discover_tests(
+                COMMAND systems_c23_test
+                DISCOVERY_ARGS --list-tests
+                DISCOVERY_MATCH "^([A-Za-z0-9_]+)$"
+                TEST_NAME "systems_c23.\\1"
+                TEST_ARGS --run-test "\\1"
+                TEST_PROPERTIES TIMEOUT 60 LABELS "systems;c23;pure_c"
+                BUILD_DEPENDS systems_c23_test
+            )
+            # gersemi: on
+        else()
+            add_test(NAME systems_c23_test COMMAND systems_c23_test)
+            set_tests_properties(systems_c23_test PROPERTIES TIMEOUT 60 LABELS "systems;c23;pure_c")
+        endif()
+    endif()
 endif()

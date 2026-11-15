@@ -1,7 +1,7 @@
 # C++23 Header, Stub, and CMake Reference
 
-Used by `systems-setup` for Step 4. Follow `cpp-pro`, `cmake-pro`, and [safety.md](safety.md). Style reference for finished code:
-`src/include/systems/bounded_fifo.hpp`.
+Used by `systems-setup` for Step 4. Follow `cpp-pro` (LLVM/Clang 23.1.5+), `cmake-pro` (CMake 4.5+, Presets v13, `FILE_SET HEADERS`/`SOURCES`), and
+[safety.md](safety.md). Style reference for finished code: `src/include/systems/bounded_fifo.hpp`.
 
 ## Naming
 
@@ -59,9 +59,12 @@ the solution.
 4. `<name>_posix.cpp` is the only file allowed to include POSIX headers. In the stub, its functions also just return `kNotImplemented`.
 5. Header-only templates: still add `<name>.cpp` with an explicit instantiation (as `bounded_fifo.cpp` does) so clang-tidy analyzes the template.
 
-## CMake registration (target-based, gersemi-formatted)
+## CMake registration (target-based, CMake 4.5+, gersemi-formatted)
 
-`src/cpp/systems/CMakeLists.txt` (append; keep a two-line comment describing the component):
+`src/cpp/systems/CMakeLists.txt` (append; keep a two-line comment describing the component; do **not** use `target_include_directories` or non-target
+directives—`systems_add_library` creates `systems::<name>`, registers `PUBLIC FILE_SET HEADERS` and `PRIVATE FILE_SET sources TYPE SOURCES`, links
+`project_options` / `project_warnings` / `project_sanitizers` / `project_architecture`, and exports into `lc_dsa_practice_targets` for CPS `PACKAGE_INFO` and
+SPDX 3.0.1 `SBOM`):
 
 ```cmake
 # Shared-memory pub/sub ring buffer, safe across threads and processes (spec: docs/systems/shm_pubsub.md).
@@ -72,10 +75,12 @@ systems_add_library(
 )
 ```
 
-Add `rt` to `LIBS` only if `shm_open` fails to link on an old glibc (glibc 2.34+ does not need it; macOS and QNX never do). Guard with `if(CMAKE_SYSTEM_NAME
-STREQUAL "Linux")` when used.
+Pass `HEADERS <header1;...>` if the component exposes headers beyond `src/include/systems/<name>.hpp` (`CMAKE_VERIFY_INTERFACE_HEADER_SETS=ON` in Presets v13
+verifies standalone header compilation). Platform libraries such as `rt` are wrapped via `$<LINK_ONLY:...>` in `systems::platform` so `install(SBOM ...)` stays
+valid without per-component `if(CMAKE_SYSTEM_NAME STREQUAL "Linux")` link boilerplate.
 
-`test/cpp/systems/CMakeLists.txt`:
+`test/cpp/systems/CMakeLists.txt` (`add_project_test` registers `FILE_SET sources TYPE SOURCES` and discovers GTest cases via `POST_BUILD`, or `PRE_TEST` under
+cross-compilation emulators):
 
 ```cmake
 add_project_test(
