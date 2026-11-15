@@ -1,3 +1,11 @@
-line_length: 100
+# yaml-language-server: $schema=https://raw.githubusercontent.com/BlankSpruce/gersemi/0.29.2/gersemi/configuration.schema.json
+# Deterministic CMake 4.5+ formatting rules for gersemi (0.19.2+ / 0.29.2).
+# Keep `# gersemi: off` / `# gersemi: on` around `install(SBOM ...)` if using
+# gersemi 0.29.2 until its builtin command table updates to CMake 4.5 GA keywords.
+
+definitions: []
+extensions: []
 indent: 4
+line_length: 100
+list_expansion: favour-inlining
 warn_about_unknown_commands: false
