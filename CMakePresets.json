@@ -282,10 +282,10 @@
       },
       "execution": {
         "noTestsAction": "error",
-        "stopOnFailure": false,
-        "testPassthroughArguments": [
-          "--gtest_brief=1"
-        ]
+        "stopOnFailure": false
+      },
+      "environment": {
+        "GTEST_BRIEF": "1"
       }
     },
     {
@@ -298,10 +298,10 @@
       },
       "execution": {
         "noTestsAction": "error",
-        "stopOnFailure": false,
-        "testPassthroughArguments": [
-          "--gtest_brief=1"
-        ]
+        "stopOnFailure": false
+      },
+      "environment": {
+        "GTEST_BRIEF": "1"
       }
     },
     {
@@ -314,10 +314,10 @@
       },
       "execution": {
         "noTestsAction": "error",
-        "stopOnFailure": false,
-        "testPassthroughArguments": [
-          "--gtest_brief=1"
-        ]
+        "stopOnFailure": false
+      },
+      "environment": {
+        "GTEST_BRIEF": "1"
       }
     },
     {
@@ -330,10 +330,10 @@
       },
       "execution": {
         "noTestsAction": "error",
-        "stopOnFailure": false,
-        "testPassthroughArguments": [
-          "--gtest_brief=1"
-        ]
+        "stopOnFailure": false
+      },
+      "environment": {
+        "GTEST_BRIEF": "1"
       }
     },
     {
@@ -346,10 +346,10 @@
       },
       "execution": {
         "noTestsAction": "error",
-        "stopOnFailure": false,
-        "testPassthroughArguments": [
-          "--gtest_brief=1"
-        ]
+        "stopOnFailure": false
+      },
+      "environment": {
+        "GTEST_BRIEF": "1"
       }
     },
     {
@@ -367,10 +367,10 @@
       },
       "execution": {
         "noTestsAction": "error",
-        "stopOnFailure": false,
-        "testPassthroughArguments": [
-          "--gtest_brief=1"
-        ]
+        "stopOnFailure": false
+      },
+      "environment": {
+        "GTEST_BRIEF": "1"
       }
     },
     {
@@ -383,12 +383,10 @@
       },
       "execution": {
         "noTestsAction": "error",
-        "stopOnFailure": false,
-        "testPassthroughArguments": [
-          "--gtest_brief=1"
-        ]
+        "stopOnFailure": false
       },
       "environment": {
+        "GTEST_BRIEF": "1",
         "LLVM_PROFILE_FILE": "${sourceDir}/build/${configurePresetName}/profraw/%p-%m.profraw"
       }
     },
@@ -402,10 +400,10 @@
       },
       "execution": {
         "noTestsAction": "error",
-        "stopOnFailure": false,
-        "testPassthroughArguments": [
-          "--gtest_brief=1"
-        ]
+        "stopOnFailure": false
+      },
+      "environment": {
+        "GTEST_BRIEF": "1"
       }
     },
     {
