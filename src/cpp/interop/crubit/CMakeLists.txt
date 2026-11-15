@@ -2,16 +2,20 @@
 # generated bindings.
 
 function(interop_add_cpp_library target_name)
-    cmake_parse_arguments(ARG "" "" "SOURCES" ${ARGN})
+    cmake_parse_arguments(ARG "" "" "HEADERS;SOURCES" ${ARGN})
 
+    if(NOT ARG_HEADERS)
+        message(FATAL_ERROR "interop_add_cpp_library called without HEADERS for ${target_name}")
+    endif()
     if(NOT ARG_SOURCES)
         message(FATAL_ERROR "interop_add_cpp_library called without SOURCES for ${target_name}")
     endif()
 
-    add_library(${target_name} STATIC ${ARG_SOURCES})
-    target_include_directories(
+    add_library(${target_name} STATIC)
+    target_sources(
         ${target_name}
-        PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/include> $<INSTALL_INTERFACE:include>
+        PUBLIC FILE_SET HEADERS BASE_DIRS "${PROJECT_SOURCE_DIR}/src/include" FILES ${ARG_HEADERS}
+        PRIVATE FILE_SET sources TYPE SOURCES FILES ${ARG_SOURCES}
     )
     target_compile_features(${target_name} PUBLIC cxx_std_23)
     target_compile_options(${target_name} PUBLIC -stdlib=libc++)
@@ -35,11 +39,33 @@ function(interop_add_cpp_library target_name)
     endif()
 endfunction()
 
-interop_add_cpp_library(interop_cc_primitives_enums SOURCES primitives_and_enums.cpp)
-interop_add_cpp_library(interop_cc_references_views SOURCES references_and_views.cpp)
-interop_add_cpp_library(interop_cc_ownership_raii SOURCES ownership_and_raii.cpp)
-interop_add_cpp_library(interop_cc_traits_errors SOURCES traits_and_errors.cpp)
-interop_add_cpp_library(interop_cc_telemetry_bridge SOURCES telemetry_safety_bridge.cpp)
+interop_add_cpp_library(
+    interop_cc_primitives_enums
+    HEADERS "${PROJECT_SOURCE_DIR}/src/include/interop/crubit/primitives_and_enums.hpp"
+    SOURCES primitives_and_enums.cpp
+)
+interop_add_cpp_library(
+    interop_cc_references_views
+    HEADERS "${PROJECT_SOURCE_DIR}/src/include/interop/crubit/references_and_views.hpp"
+    SOURCES references_and_views.cpp
+)
+interop_add_cpp_library(
+    interop_cc_ownership_raii
+    HEADERS "${PROJECT_SOURCE_DIR}/src/include/interop/crubit/ownership_and_raii.hpp"
+    SOURCES ownership_and_raii.cpp
+)
+interop_add_cpp_library(
+    interop_cc_traits_errors
+    HEADERS
+        "${PROJECT_SOURCE_DIR}/src/include/interop/crubit/traits_and_errors.hpp"
+        "${PROJECT_SOURCE_DIR}/src/include/interop/crubit/traits_and_errors_expected.hpp"
+    SOURCES traits_and_errors.cpp
+)
+interop_add_cpp_library(
+    interop_cc_telemetry_bridge
+    HEADERS "${PROJECT_SOURCE_DIR}/src/include/interop/crubit/telemetry_safety_bridge.hpp"
+    SOURCES telemetry_safety_bridge.cpp
+)
 
 crubit_add_rust_api_from_cpp(
     cc_primitives_enums

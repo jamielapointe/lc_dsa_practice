@@ -54,14 +54,20 @@ endif()
 find_program(CRUBIT_CLANG_FORMAT_EXECUTABLE NAMES clang-format clang-format-23)
 
 if(NOT TARGET crubit_support_cc)
-    add_library(
-        crubit_support_cc
-        STATIC
-        "${CRUBIT_SOURCE_DIR}/support/internal/check_no_mutable_aliasing.cc"
-        "${CRUBIT_SOURCE_DIR}/support/rs_std/char.cc"
-        "${CRUBIT_SOURCE_DIR}/support/rs_std/waker.cc"
-    )
+    add_library(crubit_support_cc STATIC)
     add_library(crubit::support_cc ALIAS crubit_support_cc)
+    target_sources(
+        crubit_support_cc
+        PRIVATE
+            FILE_SET generated_sources
+                TYPE SOURCES
+                BASE_DIRS "${CRUBIT_SOURCE_DIR}"
+                FILES
+                    "${CRUBIT_SOURCE_DIR}/support/internal/check_no_mutable_aliasing.cc"
+                    "${CRUBIT_SOURCE_DIR}/support/rs_std/char.cc"
+                    "${CRUBIT_SOURCE_DIR}/support/rs_std/waker.cc"
+    )
+    set_property(FILE_SET generated_sources TARGET crubit_support_cc PROPERTY SKIP_LINTING ON)
     set_target_properties(
         crubit_support_cc
         PROPERTIES
@@ -71,7 +77,6 @@ if(NOT TARGET crubit_support_cc)
             CXX_STANDARD_REQUIRED ON
             CXX_EXTENSIONS OFF
             CXX_SCAN_FOR_MODULES OFF
-            CXX_MODULE_STD OFF
     )
     target_include_directories(crubit_support_cc SYSTEM PUBLIC "${CRUBIT_SOURCE_DIR}")
     target_compile_options(crubit_support_cc PUBLIC -stdlib=libc++ PRIVATE -Wno-everything)
@@ -146,21 +151,44 @@ function(_crubit_collect_link_targets out_var)
     set(${out_var} "${ordered}" PARENT_SCOPE)
 endfunction()
 
-# Internal helper: clean generator-wrapped include directories from a C++ target.
+# Internal helper: extract build-tree include directories from a C++ target's
+# INTERFACE_INCLUDE_DIRECTORIES and FILE_SET HEADERS BASE_DIRS.
 function(_crubit_extract_include_dirs out_var cpp_target)
-    set(dirs "")
+    set(raw_candidates "")
     get_target_property(raw_dirs "${cpp_target}" INTERFACE_INCLUDE_DIRECTORIES)
     if(raw_dirs)
-        foreach(entry IN LISTS raw_dirs)
-            if(entry MATCHES "^\\$<INSTALL_INTERFACE:.*>$")
-                continue()
-            elseif(entry MATCHES "^\\$<BUILD_INTERFACE:(.*)>$")
-                list(APPEND dirs "${CMAKE_MATCH_1}")
-            elseif(NOT entry MATCHES "^\\$<")
-                list(APPEND dirs "${entry}")
+        list(APPEND raw_candidates ${raw_dirs})
+    endif()
+    get_target_property(header_sets "${cpp_target}" INTERFACE_HEADER_SETS)
+    if(header_sets)
+        foreach(hset IN LISTS header_sets)
+            get_property(base_dirs FILE_SET "${hset}" TARGET "${cpp_target}" PROPERTY BASE_DIRS)
+            if(base_dirs)
+                list(APPEND raw_candidates ${base_dirs})
+            else()
+                get_property(
+                    hdr_dirs
+                    FILE_SET "${hset}"
+                    TARGET "${cpp_target}"
+                    PROPERTY HEADER_DIRS
+                )
+                if(hdr_dirs)
+                    list(APPEND raw_candidates ${hdr_dirs})
+                endif()
             endif()
         endforeach()
     endif()
+
+    set(dirs "")
+    foreach(entry IN LISTS raw_candidates)
+        if(entry MATCHES "^\\$<INSTALL_INTERFACE:.*>$")
+            continue()
+        elseif(entry MATCHES "^\\$<BUILD_INTERFACE:(.*)>$")
+            list(APPEND dirs "${CMAKE_MATCH_1}")
+        elseif(NOT entry MATCHES "^\\$<")
+            list(APPEND dirs "${entry}")
+        endif()
+    endforeach()
     list(REMOVE_DUPLICATES dirs)
     set(${out_var} "${dirs}" PARENT_SCOPE)
 endfunction()
@@ -415,7 +443,12 @@ function(crubit_add_rust_api_from_cpp target_name)
 
     add_custom_target(${target_name}_crubit_gen DEPENDS "${rs_out}" "${cc_out}" "${cargo_toml_out}")
 
-    add_library(${target_name}_impl_cc STATIC "${cc_out}")
+    add_library(${target_name}_impl_cc STATIC)
+    target_sources(
+        ${target_name}_impl_cc
+        PRIVATE FILE_SET generated_sources TYPE SOURCES BASE_DIRS "${out_dir}" FILES "${cc_out}"
+    )
+    set_property(FILE_SET generated_sources TARGET ${target_name}_impl_cc PROPERTY SKIP_LINTING ON)
     set_target_properties(
         ${target_name}_impl_cc
         PROPERTIES
@@ -425,7 +458,6 @@ function(crubit_add_rust_api_from_cpp target_name)
             CXX_STANDARD_REQUIRED ON
             CXX_EXTENSIONS OFF
             CXX_SCAN_FOR_MODULES OFF
-            CXX_MODULE_STD OFF
     )
     target_compile_options(${target_name}_impl_cc PUBLIC -stdlib=libc++ PRIVATE -Wno-everything)
     target_link_options(${target_name}_impl_cc PUBLIC -stdlib=libc++)

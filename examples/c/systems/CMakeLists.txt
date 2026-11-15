@@ -2,7 +2,7 @@
 # track.
 
 function(systems_c_add_example target_name)
-    cmake_parse_arguments(ARG "" "" "SOURCES;LIBS" ${ARGN})
+    cmake_parse_arguments(ARG "" "" "PRIVATE_HEADERS;SOURCES;LIBS" ${ARGN})
 
     if(NOT ARG_SOURCES)
         message(
@@ -11,12 +11,23 @@ function(systems_c_add_example target_name)
         )
     endif()
 
-    add_executable(${target_name} ${ARG_SOURCES})
-    target_include_directories(
-        ${target_name}
-        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/include
-    )
+    add_executable(${target_name})
+    target_sources(${target_name} PRIVATE FILE_SET sources TYPE SOURCES FILES ${ARG_SOURCES})
+    if(ARG_PRIVATE_HEADERS)
+        target_sources(
+            ${target_name}
+            PRIVATE
+                FILE_SET private_headers
+                    TYPE HEADERS
+                    BASE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}"
+                    FILES ${ARG_PRIVATE_HEADERS}
+        )
+    endif()
     target_compile_features(${target_name} PRIVATE c_std_23)
+    target_compile_options(
+        ${target_name}
+        PRIVATE $<$<COMPILE_LANGUAGE:C>:-ftrivial-auto-var-init=zero>
+    )
     target_link_libraries(
         ${target_name}
         PRIVATE ${ARG_LIBS} project_options project_warnings project_sanitizers project_architecture
@@ -34,6 +45,7 @@ endfunction()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/shm_pubsub_producer.c")
     systems_c_add_example(
         shm_pubsub_producer_c
+        PRIVATE_HEADERS camera_frame.h
         SOURCES shm_pubsub_producer.c
         LIBS systems_c::shm_pubsub systems_c::process_rendezvous
     )
@@ -42,6 +54,7 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/shm_pubsub_consumer.c")
     systems_c_add_example(
         shm_pubsub_consumer_c
+        PRIVATE_HEADERS camera_frame.h
         SOURCES shm_pubsub_consumer.c
         LIBS systems_c::shm_pubsub systems_c::process_rendezvous
     )
