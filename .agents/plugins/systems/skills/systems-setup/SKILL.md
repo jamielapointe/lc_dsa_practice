@@ -7,10 +7,11 @@ description: Scaffolds a low-level / embedded-style C++23 or Rust 1.99.1+ practi
 
 ## 🔗 Related Skills
 
-- **cpp-pro**: Modern C++23, RAII, concurrency, sanitizer-clean code (C++ path).
-- **cmake-pro**: Target-based CMake 4.4.3+, presets, CTest labels, gersemi (C++ path).
-- **rust-pro**: Modern Rust 1.99.1+ safety-critical systems software, zero-allocation real-time paths, lock-free concurrency, Google Rust Styleguide (Rust
-  path).
+- **cpp-pro**: Modern C++23 (LLVM/Clang 23.1.5+), RAII, concurrency, sanitizer-clean code (C++ path).
+- **cmake-pro**: Target-based CMake 4.5+, Presets v13, `FILE_SET` (`HEADERS`/`SOURCES`), `systems_add_library`, CPS `PACKAGE_INFO`, SPDX 3.0.1 `SBOM`, CTest
+  labels, gersemi (C++ path).
+- **rust-pro**: Modern Rust 1.99.1+ MSRV (Pixi 1.100+) safety-critical systems software, zero-allocation real-time paths, lock-free concurrency, Google Rust
+  Styleguide (Rust path).
 - **python-pro**: Only for the traceability checker (`scripts/ci/check_systems_traceability.py`).
 
 ---

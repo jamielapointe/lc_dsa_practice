@@ -1,6 +1,6 @@
 # C++23 LeetCode Scaffolding Reference
 
-Used by the `leetcode-setup` skill when the user chose **`cpp`**. Follow `cpp-pro` and `cmake-pro`.
+Used by the `leetcode-setup` skill when the user chose **`cpp`**. Follow `cpp-pro` (LLVM/Clang 23.1.5+) and `cmake-pro` (CMake 4.5+, Presets v13).
 
 ## Naming conventions
 
@@ -49,28 +49,22 @@ Link `leet_code::list_node` in CMake. For other shared types (for example `TreeN
 3. TDD-red safety: tests must not dereference a stub `nullptr`. Use `ASSERT_NE(result, nullptr);` first, or `linked_list_to_vector(result)` which returns `{}`
    for `nullptr`, so failures are clean assertions, not SIGSEGV.
 
-## Register in CMake (target-based, `cmake-pro`)
+## Register in CMake (target-based, `cmake-pro` / CMake 4.5+)
 
-`src/cpp/leet_code/CMakeLists.txt`:
+`src/cpp/leet_code/CMakeLists.txt` (do **not** write `target_include_directories` or raw `add_library` boilerplate; `leet_code_add_library` registers alias
+`leet_code::<slug_snake>`, `PUBLIC FILE_SET HEADERS`, `PRIVATE FILE_SET sources TYPE SOURCES`, links `project_options` / `project_warnings` /
+`project_sanitizers` / `project_architecture`, and exports into `lc_dsa_practice_targets` for CPS `PACKAGE_INFO` and SPDX 3.0.1 `SBOM`):
 
 ```cmake
-add_library(<slug_snake> STATIC <slug_snake>.cpp)
-add_library(leet_code::<slug_snake> ALIAS <slug_snake>)
-
-target_include_directories(
+leet_code_add_library(
     <slug_snake>
-    PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/include> $<INSTALL_INTERFACE:include>
-)
-
-target_compile_features(<slug_snake> PUBLIC cxx_std_23)
-
-target_link_libraries(
-    <slug_snake>
-    PRIVATE project_options project_warnings project_sanitizers project_architecture
+    SOURCES <slug_snake>.cpp
 )
 ```
 
-(Add `PUBLIC leet_code::list_node` when the problem uses `ListNode`.)
+- When the problem uses `ListNode`, pass `LIBS leet_code::list_node`.
+- When the problem defines extra public headers beyond `src/include/leet_code/<slug_snake>.hpp`, pass explicit `HEADERS` paths so every header belongs to
+  `FILE_SET HEADERS` (`CMAKE_VERIFY_INTERFACE_HEADER_SETS=ON` checks standalone compilation).
 
 `test/cpp/leet_code/CMakeLists.txt`:
 
@@ -78,14 +72,14 @@ target_link_libraries(
 add_project_test(<slug_snake>_test SOURCES <slug_snake>_test.cpp LIBS leet_code::<slug_snake>)
 ```
 
-## Verify (always through Pixi and presets)
+## Verify (always through Pixi and Schema v13 presets)
 
 ```bash
 pixi run cmake --preset dev-debug
-pixi run cmake --build --preset dev-debug --target <slug_snake>_test     # zero warnings under -Werror and clang-tidy
+pixi run cmake --build --preset dev-debug --target <slug_snake>_test     # zero warnings under -Werror, clang-tidy, and header verification
 pixi run ctest --preset dev-debug -R <slug_snake> --output-on-failure    # must FAIL cleanly (TDD red)
 pixi run clang-format -i src/include/leet_code/<slug_snake>.hpp src/cpp/leet_code/<slug_snake>.cpp test/cpp/leet_code/<slug_snake>_test.cpp
-pixi run format-cmake                                                    # gersemi
+pixi run format-cmake                                                    # gersemi (4-space indent, 100 columns)
 ```
 
 ## Integer types

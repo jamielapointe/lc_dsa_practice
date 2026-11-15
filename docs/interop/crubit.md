@@ -5,8 +5,8 @@ suite in `lc_dsa_practice`.
 
 ## Architecture Overview
 
-The interop track provides **bidirectional** bindings between modern C++23 (`-std=c++23`, `-stdlib=libc++`) and idiomatic Rust 2024 (`edition = "2024"`,
-`rust-version = "1.99.1"`) using Google Crubit:
+The interop track provides **bidirectional** bindings between modern C++23 (`-std=c++23`, `-stdlib=libc++`, LLVM/Clang `23.1.5+`, CMake `4.5+`) and idiomatic
+Rust 2024 (`edition = "2024"`, `rust-version = "1.99.1"`; Pixi provides `1.100+`, while Crubit pins `1.99.1` in its hermetic sysroot) using Google Crubit:
 
 - **C++23 -> Rust 2024 (`rs_bindings_from_cc`)**: Generates Rust FFI bindings (`src/lib.rs`), C++ thunk implementations (`*_rust_api_impl.cc`), and a standalone
   generated `Cargo.toml` so Rust crates call C++23 APIs safely.
@@ -33,11 +33,12 @@ attributes.
 ### `-stdlib=libc++` Isolation & CMake Integration
 
 Crubit's C++ support runtime and generated thunks require LLVM `libc++` (`-stdlib=libc++`). Because `lc_dsa_practice` isolates interop builds behind
-`BUILD_INTEROP=ON` (used by the `interop-debug` and `interop-release` CMake presets):
+`BUILD_INTEROP=ON` (used by the `interop-debug` and `interop-release` presets in `CMakePresets.json` Schema v13):
 
-- Pixi installs `libcxx >= 23.1.4` and `libcxx-devel >= 23.1.4` on `linux-64` and `osx-arm64` (plus `libcxxabi >= 23.1.4` on `linux-64`).
-- `cmake/CrubitInterop.cmake` compiles `crubit::support_cc` and all generated `*_impl_cc` targets with `-stdlib=libc++`, `SYSTEM` includes, and
-  `CXX_CLANG_TIDY ""` so third-party/generated Crubit code is exempt from project `WarningsAsErrors`.
+- Pixi installs `libcxx >= 23.1.5` and `libcxx-devel >= 23.1.5` on `linux-64` and `osx-arm64` (plus `libcxxabi >= 23.1.5` on `linux-64`).
+- `cmake/CrubitInterop.cmake` compiles `crubit::support_cc` and all generated `*_impl_cc` targets (`PRIVATE FILE_SET generated_sources TYPE SOURCES` with
+  `SKIP_LINTING ON`) using `-stdlib=libc++`, `SYSTEM` includes, and `CXX_CLANG_TIDY ""` so third-party/generated Crubit code is exempt from project
+  `WarningsAsErrors`.
 - Public C++23 headers parsed by `rs_bindings_from_cc` under `src/include/interop/crubit/` stay free of heavy STL headers such as `<string>`, `<vector>`,
   `<memory>`, `<optional>`, and `<expected>` (Crubit CMake mode does not use Bazel `cc_std`; `<cstdint>` and `<cstddef>` are supported). C++23 tests and demos
   that use `std::expected` include a separate companion header (`traits_and_errors_expected.hpp`) that is not passed to `rs_bindings_from_cc`.
