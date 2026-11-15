@@ -368,6 +368,9 @@ allowed-elements = [
   "sup",
 ]
 
+[tool.tombi.extensions."tombi-toml/cargo".lint.rules]
+missing-path-dependency = "warn"
+
 [tool.ty.environment]
 python-version = "3.15"
 extra-paths = [
