@@ -140,8 +140,10 @@ class TestTier4ReferenceProblems:
         test_cmake = (
             REPO_ROOT / "test" / "cpp" / "leet_code" / "CMakeLists.txt"
         ).read_text(encoding="utf-8")
-        assert "add_library(two_sum STATIC two_sum.cpp)" in src_cmake
-        assert "add_library(leet_code::two_sum ALIAS two_sum)" in src_cmake
+        assert "function(leet_code_add_library name)" in src_cmake
+        assert "add_library(${name} STATIC)" in src_cmake
+        assert "add_library(leet_code::${name} ALIAS ${name})" in src_cmake
+        assert "leet_code_add_library(two_sum SOURCES two_sum.cpp)" in src_cmake
         assert "two_sum_test" in test_cmake
 
     def test_python_two_sum_artifacts(self) -> None:
