@@ -13,9 +13,9 @@
 [![Platforms][platform-badge]][ci]
 [![prek][prek-badge]][prek]
 
-LeetCode data-structure and algorithm practice in **C++23**, **ISO C23**, **Python 3.15**, and **Rust 1.99.1+** (Pixi ships Rust 1.100+; crate MSRV and Crubit
-sysroot pin 1.99.1), plus a **systems / embedded-style C++23, ISO C23, and Rust** tree for low-level components and **Crubit interop**. Everything (CMake
-4.5+, LLVM/Clang 23.1.5+, `CMakePresets.json` v13, dependencies, tasks, CI) is managed with [Pixi](https://pixi.sh) (`>= 0.84.2`) and conda-forge.
+LeetCode data-structure and algorithm practice in **C++23**, **ISO C23**, **Python 3.15**, and **Rust 1.100+** (Edition 2024), plus a **systems /
+embedded-style C++23, ISO C23, and Rust** tree for low-level components and **Crubit interop**. Everything (CMake 4.5+, LLVM/Clang 23.1.5+,
+`CMakePresets.json` v13, dependencies, tasks, CI) is managed with [Pixi](https://pixi.sh) (`>= 0.84.2`) and conda-forge.
 
 ## Tracks
 
@@ -72,7 +72,7 @@ pixi run cov-python           # pytest-cov, gate >= 85%
 # via `pixi run cmake --preset <name>` / `cmake --install build/dev-release` (CPS `PACKAGE_INFO` + SPDX 3.0.1 `SBOM`)
 
 # Crubit C++23 <-> Rust 2024 Interop
-pixi run crubit-bootstrap     # clone pinned Crubit, verify Rust 1.99.1 sysroot, build generators
+pixi run crubit-bootstrap     # clone pinned Crubit, verify Rust 1.100.0 sysroot, build generators
 pixi run test-interop         # configure, build, and test interop suite (interop-debug)
 pixi run interop-release      # configure, build, and test interop suite with LTO (interop-release)
 pixi run examples-interop     # build C++23 and Rust 2024 interop showcase demos
@@ -183,8 +183,11 @@ Rust crash course and senior interview preparation workflow tailored for veteran
 
 ## Quality gates
 
-- **C++**: CMake 4.5+ (`CMD_NON_TARGET_DIRECTIVE`, `FILE_SET HEADERS`/`SOURCES`, CPS `PACKAGE_INFO`, SPDX 3.0.1 `SBOM`), LLVM/Clang 23.1.5+, clang-format
-  (Google), clang-tidy (`WarningsAsErrors: "*"`), ASan, UBSan, TSan, 85% line coverage.
+- **C++23 & ISO C23**: CMake 4.5+ (`CMD_NON_TARGET_DIRECTIVE`, `FILE_SET HEADERS`/`SOURCES`, CPS `PACKAGE_INFO`, SPDX 3.0.1 `SBOM`), LLVM/Clang 23.1.5+,
+  clang-format (Google), clang-tidy (`WarningsAsErrors: "*"`), pure `-std=c23` ABI/feature checks (`systems_c23_test`), ASan, UBSan, TSan, 85% line coverage.
+- **Rust**: Rust 1.100+ (Edition 2024, `resolver = "3"`), `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` (`unsafe_op_in_unsafe_fn` and
+  `undocumented_unsafe_blocks` denied), `cargo test --workspace`, 85% line coverage (`cov-rust`), and bidirectional Crubit interop (`test-interop`,
+  `interop-release`, `clippy-interop`).
 - **Python**: Python 3.15 (`PEP 649` native annotations, `TID251` bans `from __future__ import annotations`), ruff (23 families, 88 cols, double quotes,
   `RUF201` full rule names), `basedpyright` strict + `ty`, pytest 9+ (`hypothesis`, `pytest-randomly`) with 85% coverage on `src/python/leet_code`,
   `deptry` + `pip-audit` (`audit`), and reactive Marimo (`notebook-check`).

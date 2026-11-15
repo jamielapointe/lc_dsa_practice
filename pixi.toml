@@ -1,7 +1,7 @@
 [workspace]
 name = "lc-dsa-practice"
 version = "0.1.0"
-description = "Multi-language LeetCode / DSA & systems engineering practice (C++23, C23, Python 3.15, Rust 1.99.1+, Crubit)"
+description = "Multi-language LeetCode / DSA & systems engineering practice (C++23, C23, Python 3.15, Rust 1.100+, Crubit)"
 authors = ["Jamie LaPointe <jamielapointe@google.com>"]
 channels = ["conda-forge"]
 platforms = ["linux-64", "linux-aarch64", "osx-arm64"]

@@ -9,7 +9,6 @@
 #include "systems/shm_pubsub.h"
 
 #include <stdatomic.h>
-#include <stdbool.h>
 #include <stdckdint.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -185,6 +184,9 @@ enum shm_read_outcome : uint8_t {
   SHM_READ_OVERWRITTEN = 2U,
   SHM_READ_NOT_READY = 3U,
 };
+
+static_assert(sizeof(enum shm_read_outcome) == 1U,
+              "shm_read_outcome must be 8-bit");
 
 [[nodiscard]] static enum shm_read_outcome read_slot(
     struct shm_channel_view view, uint64_t sequence, uint8_t* buffer,
@@ -378,9 +380,9 @@ static void backoff_wait(struct shm_backoff* backoff, int64_t deadline_ns) {
   backoff->sleep_ns = doubled < kMaxSleepNs ? doubled : kMaxSleepNs;
 }
 
-enum shm_pubsub_error shm_channel_create(struct shm_channel* channel,
-                                         const char* name,
-                                         struct shm_pubsub_config config) {
+[[nodiscard]] enum shm_pubsub_error shm_channel_create(
+    struct shm_channel* channel, const char* name,
+    struct shm_pubsub_config config) {
   if (channel == nullptr) {
     return SHM_PUBSUB_ERR_INVALID_ARGUMENT;
   }
@@ -401,8 +403,8 @@ enum shm_pubsub_error shm_channel_create(struct shm_channel* channel,
   return SHM_PUBSUB_OK;
 }
 
-enum shm_pubsub_error shm_channel_open(struct shm_channel* channel,
-                                       const char* name) {
+[[nodiscard]] enum shm_pubsub_error shm_channel_open(
+    struct shm_channel* channel, const char* name) {
   if (channel == nullptr) {
     return SHM_PUBSUB_ERR_INVALID_ARGUMENT;
   }
@@ -422,7 +424,7 @@ enum shm_pubsub_error shm_channel_open(struct shm_channel* channel,
   return SHM_PUBSUB_OK;
 }
 
-enum shm_pubsub_error shm_channel_unlink(const char* name) {
+[[nodiscard]] enum shm_pubsub_error shm_channel_unlink(const char* name) {
   const enum shm_pubsub_error name_err = validate_name(name);
   if (name_err != SHM_PUBSUB_OK) {
     return name_err;
@@ -430,7 +432,8 @@ enum shm_pubsub_error shm_channel_unlink(const char* name) {
   return shm_pubsub_posix_unlink(name);
 }
 
-struct shm_pubsub_config shm_channel_config(const struct shm_channel* channel) {
+[[nodiscard]] struct shm_pubsub_config shm_channel_config(
+    const struct shm_channel* channel) {
   if (channel == nullptr || channel->base == nullptr) {
     return (struct shm_pubsub_config){};
   }
@@ -449,7 +452,7 @@ void shm_channel_close(struct shm_channel* channel) {
                         memory_order_release);
 }
 
-bool shm_channel_is_closed(const struct shm_channel* channel) {
+[[nodiscard]] bool shm_channel_is_closed(const struct shm_channel* channel) {
   if (channel == nullptr || channel->base == nullptr) {
     return false;
   }
@@ -461,8 +464,8 @@ void shm_channel_destroy(struct shm_channel* channel) {
   shm_pubsub_posix_unmap(channel);
 }
 
-enum shm_pubsub_error shm_publisher_attach(struct shm_publisher* publisher,
-                                           struct shm_channel* channel) {
+[[nodiscard]] enum shm_pubsub_error shm_publisher_attach(
+    struct shm_publisher* publisher, struct shm_channel* channel) {
   if (publisher == nullptr || channel == nullptr || channel->base == nullptr) {
     return SHM_PUBSUB_ERR_INVALID_ARGUMENT;
   }
@@ -494,10 +497,9 @@ enum shm_pubsub_error shm_publisher_attach(struct shm_publisher* publisher,
   return SHM_PUBSUB_OK;
 }
 
-enum shm_pubsub_error shm_publisher_publish(struct shm_publisher* publisher,
-                                            const void* payload,
-                                            size_t payload_size,
-                                            uint64_t* out_sequence) {
+[[nodiscard]] enum shm_pubsub_error shm_publisher_publish(
+    struct shm_publisher* publisher, const void* payload, size_t payload_size,
+    uint64_t* out_sequence) {
   if (publisher == nullptr || publisher->view.base == nullptr) {
     return SHM_PUBSUB_ERR_INVALID_ARGUMENT;
   }
@@ -547,9 +549,9 @@ void shm_publisher_destroy(struct shm_publisher* publisher) {
   *publisher = (struct shm_publisher){};
 }
 
-enum shm_pubsub_error shm_subscriber_attach(struct shm_subscriber* subscriber,
-                                            struct shm_channel* channel,
-                                            enum shm_read_mode mode) {
+[[nodiscard]] enum shm_pubsub_error shm_subscriber_attach(
+    struct shm_subscriber* subscriber, struct shm_channel* channel,
+    enum shm_read_mode mode) {
   if (subscriber == nullptr || channel == nullptr || channel->base == nullptr) {
     return SHM_PUBSUB_ERR_INVALID_ARGUMENT;
   }
@@ -565,7 +567,7 @@ enum shm_pubsub_error shm_subscriber_attach(struct shm_subscriber* subscriber,
   return SHM_PUBSUB_OK;
 }
 
-enum shm_pubsub_error shm_subscriber_try_receive(
+[[nodiscard]] enum shm_pubsub_error shm_subscriber_try_receive(
     struct shm_subscriber* subscriber, void* buffer, size_t buffer_size,
     struct shm_sample* out_sample) {
   if (subscriber == nullptr || subscriber->view.base == nullptr ||
@@ -637,7 +639,7 @@ enum shm_pubsub_error shm_subscriber_try_receive(
   }
 }
 
-enum shm_pubsub_error shm_subscriber_receive_for(
+[[nodiscard]] enum shm_pubsub_error shm_subscriber_receive_for(
     struct shm_subscriber* subscriber, void* buffer, size_t buffer_size,
     int64_t timeout_ns, struct shm_sample* out_sample) {
   const int64_t now_ns = monotonic_now_ns();
@@ -651,9 +653,9 @@ enum shm_pubsub_error shm_subscriber_receive_for(
                        out_sample);
 }
 
-enum shm_pubsub_error shm_subscriber_receive(struct shm_subscriber* subscriber,
-                                             void* buffer, size_t buffer_size,
-                                             struct shm_sample* out_sample) {
+[[nodiscard]] enum shm_pubsub_error shm_subscriber_receive(
+    struct shm_subscriber* subscriber, void* buffer, size_t buffer_size,
+    struct shm_sample* out_sample) {
   return receive_until(subscriber, buffer, buffer_size, INT64_MAX, out_sample);
 }
 

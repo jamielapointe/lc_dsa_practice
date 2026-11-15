@@ -135,9 +135,17 @@ pub struct ChannelView {
     pub slot_stride: usize,
 }
 
-// SAFETY: The shared mapping contains only thread-safe atomics and immutable geometry.
+// SAFETY:
+// 1. `ChannelView` holds the base address and immutable geometry of an `Arc<SharedMemoryRegion>`-backed
+//    POSIX `MAP_SHARED` mapping that remains mapped for the lifetime of the owning handle.
+// 2. All mutable fields in the mapped region are accessed exclusively through atomic operations
+//    (`AtomicU64`, `AtomicU32`, `AtomicI64`) and the lock-free seqlock protocol.
 unsafe impl Send for ChannelView {}
-// SAFETY: The shared mapping contains only thread-safe atomics and immutable geometry.
+
+// SAFETY:
+// 1. Concurrent access across threads via `&ChannelView` reads only immutable geometry fields or
+//    performs synchronization via atomic loads/stores on `ChannelHeader` and `SlotHeader`.
+// 2. No unsynchronized interior mutation occurs through `self.base`.
 unsafe impl Sync for ChannelView {}
 
 impl ChannelView {
@@ -145,8 +153,11 @@ impl ChannelView {
     #[must_use]
     #[allow(clippy::cast_ptr_alignment)]
     pub fn header(&self) -> &ChannelHeader {
-        // SAFETY: self.base points to a valid mapped segment of at least HEADER_BYTES,
-        // properly aligned to at least CACHE_LINE_SIZE (mmap guarantees page alignment).
+        // SAFETY:
+        // 1. `self.base` is a non-null, page-aligned (`>= CACHE_LINE_SIZE`) pointer to a valid
+        //    shared-memory segment of at least `HEADER_BYTES` (`size_of::<ChannelHeader>()`).
+        // 2. All fields modified after initialization (`magic`, `published`, `publisher_pid`,
+        //    `closed`) use interior-mutable atomic types, preventing aliasing violations.
         unsafe { &*(self.base.cast::<ChannelHeader>()) }
     }
 
@@ -157,9 +168,14 @@ impl ChannelView {
         let index = ((sequence.wrapping_sub(1)) as usize) & self.slot_mask;
         let slot_offset = HEADER_BYTES + (index * self.slot_stride);
 
-        // SAFETY: slot_offset is strictly bounded within the mapped region because
-        // index <= slot_mask < slot_count, and slot starts are cache-line aligned (at least 8-byte aligned).
-        // payload_ptr is 8-byte aligned at offset 16 from slot start, with word_count words within the slot.
+        // SAFETY:
+        // 1. `index <= self.slot_mask < slot_count`, so `slot_offset + self.slot_stride` is
+        //    strictly within the mapped region size `region_bytes(config)`.
+        // 2. `HEADER_BYTES` and `self.slot_stride` are multiples of `CACHE_LINE_SIZE` (>= 64),
+        //    and `SLOT_HEADER_BYTES` is 16, guaranteeing 8-byte alignment for both `SlotHeader`
+        //    and the `AtomicU64` payload slice.
+        // 3. Both `SlotHeader` and the payload words use atomic types (`AtomicU64`, `AtomicU32`),
+        //    so shared references across publisher and subscribers are free of data races.
         let (header, words) = unsafe {
             let slot_ptr = self.base.add(slot_offset);
             let header = &*(slot_ptr.cast::<SlotHeader>());
@@ -226,17 +242,24 @@ pub fn recover_next_sequence(view: &ChannelView) -> u64 {
 #[allow(clippy::cast_ptr_alignment, clippy::cast_possible_truncation)]
 pub fn initialize_layout(base: *mut u8, config: &ShmPubSubConfig) {
     let slot_stride = slot_stride_for(config.slot_size);
-    // SAFETY: base is a newly mapped, page-aligned segment of size region_bytes(config).
-    let header = unsafe { &mut *(base.cast::<ChannelHeader>()) };
+    let header_ptr = base.cast::<ChannelHeader>();
 
-    header.magic.store(0, Ordering::Relaxed);
-    header.layout_version = LAYOUT_VERSION;
-    header.slot_count = config.slot_count as u32;
-    header.slot_size = config.slot_size as u32;
-    header.slot_stride = slot_stride as u32;
-    header.published.store(0, Ordering::Relaxed);
-    header.publisher_pid.store(0, Ordering::Relaxed);
-    header.closed.store(0, Ordering::Relaxed);
+    // SAFETY:
+    // 1. `base` is a newly created, page-aligned mapping of size `region_bytes(config) >= HEADER_BYTES`.
+    // 2. Non-atomic field writes use `&raw mut` pointer projections and atomic fields use interior-mutable
+    //    stores without materializing a long-lived `&mut ChannelHeader` reference that would alias `ChannelView`.
+    // 3. `magic` remains `0` until the final `Release` store, so any concurrent `open()` rejects the
+    //    segment until all geometry fields and slot headers are initialized.
+    unsafe {
+        (*header_ptr).magic.store(0, Ordering::Relaxed);
+        (&raw mut (*header_ptr).layout_version).write(LAYOUT_VERSION);
+        (&raw mut (*header_ptr).slot_count).write(config.slot_count as u32);
+        (&raw mut (*header_ptr).slot_size).write(config.slot_size as u32);
+        (&raw mut (*header_ptr).slot_stride).write(slot_stride as u32);
+        (*header_ptr).published.store(0, Ordering::Relaxed);
+        (*header_ptr).publisher_pid.store(0, Ordering::Relaxed);
+        (*header_ptr).closed.store(0, Ordering::Relaxed);
+    }
 
     let view = ChannelView {
         base,
@@ -252,7 +275,10 @@ pub fn initialize_layout(base: *mut u8, config: &ShmPubSubConfig) {
     }
 
     // Release store magic last so concurrent `open()` sees fully initialized fields.
-    header.magic.store(MAGIC, Ordering::Release);
+    // SAFETY: `header_ptr` points to the valid `ChannelHeader` at offset 0 of `base`.
+    unsafe {
+        (*header_ptr).magic.store(MAGIC, Ordering::Release);
+    }
 }
 
 /// Checks if an existing mapped region conforms to a valid `ShmChannel` layout (SHMPS-REQ-005).
@@ -263,7 +289,11 @@ pub fn layout_is_valid(base: *mut u8, size: usize) -> bool {
         return false;
     }
 
-    // SAFETY: base is non-null and size >= HEADER_BYTES.
+    // SAFETY:
+    // 1. `base` is non-null, page-aligned by `mmap`, and `size >= HEADER_BYTES`.
+    // 2. Reading `magic` with `Acquire` ordering synchronizes-with the `Release` store in
+    //    `initialize_layout`, guaranteeing that `layout_version`, `slot_count`, `slot_size`,
+    //    and `slot_stride` are fully initialized and immutable if `magic == MAGIC`.
     let header = unsafe { &*(base.cast::<ChannelHeader>()) };
     if header.magic.load(Ordering::Acquire) != MAGIC || header.layout_version != LAYOUT_VERSION {
         return false;

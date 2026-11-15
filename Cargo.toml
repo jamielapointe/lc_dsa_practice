@@ -15,7 +15,7 @@ exclude = [
 version = "0.1.0"
 authors = ["Jamie LaPointe <jamielapointe@google.com>"]
 edition = "2024"
-rust-version = "1.99.1"
+rust-version = "1.100"
 license = "Apache-2.0"
 publish = false
 
@@ -68,6 +68,7 @@ non_ascii_idents = "deny"
 rust_2024_compatibility = { level = "warn", priority = -1 }
 unreachable_pub = "warn"
 unsafe_code = "deny"
+unsafe_op_in_unsafe_fn = "deny"
 
 [profile.dev]
 opt-level = 0
@@ -82,3 +83,8 @@ overflow-checks = true
 lto = "fat"
 panic = "abort"
 codegen-units = 1
+
+[profile.release-rt]
+inherits = "release"
+debug = "line-tables-only"
+strip = "none"

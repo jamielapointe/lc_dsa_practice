@@ -1,31 +1,18 @@
 //! Integration tests calling all 5 C++23 libraries from Rust 2024 via Google Crubit.
 
-use core::sync::atomic::AtomicBool;
-use core::sync::atomic::Ordering;
+use core::sync::atomic::{AtomicBool, Ordering};
 
 use cc_ownership_raii::interop::crubit::LeaseGuard;
-use cc_primitives_enums::interop::crubit::FlightPhase;
-use cc_primitives_enums::interop::crubit::Waypoint3d;
-use cc_primitives_enums::interop::crubit::advance_phase;
-use cc_primitives_enums::interop::crubit::euclidean_distance;
-use cc_references_views::interop::crubit::SignalWindow;
-use cc_references_views::interop::crubit::scale_in_place;
-use cc_telemetry_bridge::interop::crubit::ActuatorSink;
-use cc_telemetry_bridge::interop::crubit::compute_frame_crc32;
-use cc_telemetry_bridge::interop::crubit::make_verified_frame;
-use cc_traits_errors::interop::crubit::CalibrationCode;
-use cc_traits_errors::interop::crubit::GainVector2d;
-use cc_traits_errors::interop::crubit::calibrate_pd_controller;
-use crubit_cpp_from_rust_tests::dominant_window_summary;
-use crubit_cpp_from_rust_tests::read_window_peak;
-use ctor::Assign;
-use ctor::CtorNew;
-use rs_telemetry_validator::AUTH_RESET_TOKEN;
-use rs_telemetry_validator::FAULT_CRC_MISMATCH;
-use rs_telemetry_validator::FAULT_TORQUE_OUT_OF_RANGE;
-use rs_telemetry_validator::FAULT_WATCHDOG_EXPIRED;
-use rs_telemetry_validator::SafetyInterceptor;
-use rs_telemetry_validator::SafetyState;
+use cc_primitives_enums::interop::crubit::{FlightPhase, Waypoint3d, advance_phase, euclidean_distance};
+use cc_references_views::interop::crubit::{SignalWindow, scale_in_place};
+use cc_telemetry_bridge::interop::crubit::{ActuatorSink, compute_frame_crc32, make_verified_frame};
+use cc_traits_errors::interop::crubit::{CalibrationCode, GainVector2d, calibrate_pd_controller};
+use crubit_cpp_from_rust_tests::{dominant_window_summary, read_window_peak};
+use ctor::{Assign, CtorNew};
+use rs_telemetry_validator::{
+    AUTH_RESET_TOKEN, FAULT_CRC_MISMATCH, FAULT_TORQUE_OUT_OF_RANGE, FAULT_WATCHDOG_EXPIRED, SafetyInterceptor,
+    SafetyState,
+};
 
 #[test]
 fn primitives_and_enums_roundtrip() {

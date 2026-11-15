@@ -171,7 +171,7 @@ def test_download_verified_file_reuses_valid_cache(
 
     monkeypatch.setattr(httpx, "stream", _unexpected_stream)
     result = bootstrap_crubit.download_verified_file(
-        "https://static.rust-lang.org/dist/2026-10-15/rust.tar.xz",
+        "https://static.rust-lang.org/dist/2026-11-12/rust.tar.xz",
         dest,
         _sha256_bytes(payload),
     )

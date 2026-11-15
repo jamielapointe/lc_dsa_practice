@@ -1,6 +1,6 @@
 # LeetCode Practice Antigravity Plugin (C++23, Python & Rust) and MCP Server
 
-Automates setting up LeetCode DSA practice problems in modern **C++23** (CMake + Google Test), **Python 3.15** (pytest 9+), or **Rust 1.99.1+**
+Automates setting up LeetCode DSA practice problems in modern **C++23** (CMake + Google Test), **Python 3.15** (pytest 9+), or **Rust 1.100+**
 (cargo test). The user must tell the skill which language to use (`cpp`, `python`, or `rust`).
 
 ## Architecture
@@ -18,7 +18,7 @@ The plugin bundles a custom Python MCP server (`leetcode-mcp`) and the `leetcode
 │   └── references/
 │       ├── cpp.md         # C++23 / CMake / Google Test templates
 │       ├── python.md      # Python 3.15 / pytest 9+ templates
-│       └── rust.md        # Rust 1.99.1+ / cargo test templates
+│       └── rust.md        # Rust 1.100+ / cargo test templates
 ├── src/leetcode_mcp/      # MCP server (client.py, models.py, server.py, exceptions.py)
 └── tests/                 # Unit tests (mocked + hypothesis) & opt-in live tests (-m live)
 ```

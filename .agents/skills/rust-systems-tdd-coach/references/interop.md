@@ -1,7 +1,7 @@
 # C++ and Rust Bidirectional Interoperability Architecture
 
 An exhaustive architectural reference for veteran C and C++ systems engineers designing zero-overhead, memory-safe interoperability layers between modern C++23
-and Rust 1.99.1 (Edition 2024).
+and Rust 1.100+ (Edition 2024).
 
 ---
 
@@ -36,7 +36,7 @@ The `cxx` crate eliminates the fragility of manual FFI by constructing a bidirec
              |                                          |
              v                                          v
 +-----------------------------+            +-----------------------------+
-| C++ Compiler (Clang++ 23)   |            | Rust Compiler (rustc 1.99)  |
+| C++ Compiler (Clang++ 23)   |            | Rust Compiler (rustc 1.100) |
 | - static_assert(sizeof)     |            | - static_assert(sizeof)     |
 | - static_assert(alignof)    |            | - static_assert(alignof)    |
 | - Inlines inline wrappers   |            | - Generates safe wrappers   |

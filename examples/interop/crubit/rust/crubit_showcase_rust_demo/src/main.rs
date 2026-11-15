@@ -4,28 +4,20 @@ use core::pin::Pin;
 use std::process::ExitCode;
 
 use cc_ownership_raii::interop::crubit::LeaseGuard;
-use cc_primitives_enums::interop::crubit::FlightPhase;
-use cc_primitives_enums::interop::crubit::Waypoint3d;
-use cc_primitives_enums::interop::crubit::advance_phase;
-use cc_primitives_enums::interop::crubit::euclidean_distance;
-use cc_references_views::interop::crubit::SignalWindow;
-use cc_references_views::interop::crubit::scale_in_place;
-use cc_references_views::interop::crubit::select_dominant_window;
-use cc_telemetry_bridge::interop::crubit::ActuatorSink;
-use cc_telemetry_bridge::interop::crubit::compute_frame_crc32;
-use cc_telemetry_bridge::interop::crubit::make_verified_frame;
-use cc_traits_errors::interop::crubit::CalibrationCode;
-use cc_traits_errors::interop::crubit::calibrate_pd_controller;
+use cc_primitives_enums::interop::crubit::{FlightPhase, Waypoint3d, advance_phase, euclidean_distance};
+use cc_references_views::interop::crubit::{SignalWindow, scale_in_place, select_dominant_window};
+use cc_telemetry_bridge::interop::crubit::{ActuatorSink, compute_frame_crc32, make_verified_frame};
+use cc_traits_errors::interop::crubit::{CalibrationCode, calibrate_pd_controller};
 use cref::CRef;
 use ctor::CtorNew;
-use rs_telemetry_validator::AUTH_RESET_TOKEN;
-use rs_telemetry_validator::SafetyInterceptor;
-use rs_telemetry_validator::SafetyState;
+use rs_telemetry_validator::{AUTH_RESET_TOKEN, SafetyInterceptor, SafetyState};
 
 #[allow(unsafe_code)]
 fn read_peak_value(window: &SignalWindow) -> f64 {
     let peak_ref = window.peak_ref();
-    // SAFETY: `peak_ref` is lifetime-bound to `window`, which is immutable for this scope.
+    // SAFETY:
+    // 1. `peak_ref` is a valid non-null reference inside `window` bound to `window`'s borrow lifetime.
+    // 2. `window` is borrowed immutably (`&SignalWindow`) for the entire scope of `pinned`.
     let pinned: Pin<&f64> = unsafe { CRef::unchanging(peak_ref) };
     *pinned
 }
@@ -33,7 +25,9 @@ fn read_peak_value(window: &SignalWindow) -> f64 {
 #[allow(unsafe_code)]
 fn read_dominant_peak(lhs: &SignalWindow, rhs: &SignalWindow) -> (f64, i32) {
     let dom_ref = select_dominant_window(lhs, rhs);
-    // SAFETY: `dom_ref` is lifetime-bound to `lhs` and `rhs`, neither of which is mutated here.
+    // SAFETY:
+    // 1. `dom_ref` aliases either `lhs` or `rhs` and is lifetime-bound to both shared borrows.
+    // 2. Neither `lhs` nor `rhs` is mutated while `dom` is live.
     let dom: Pin<&SignalWindow> = unsafe { CRef::unchanging(dom_ref) };
     let peak = read_peak_value(&dom);
     let count = dom.count();

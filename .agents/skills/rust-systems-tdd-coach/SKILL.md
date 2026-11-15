@@ -1,19 +1,19 @@
 ---
 name: rust-systems-tdd-coach
-description: Delivers an intensive, TDD-driven Rust crash course and interview preparation workflow tailored for veteran C/C++ systems architects. Operates in Autonomous Curriculum Mode (progressive systems modules) and Custom Task Mode. Enforces Rust 1.99.1, Edition 2024 standards, bidirectional C++/Rust interop (cxx, raw C ABI, Pin), strict red-phase anti-solution-leakage stubs with todo!(), and interview-grade green-phase critique with clippy and Miri.
+description: Delivers an intensive, TDD-driven Rust crash course and interview preparation workflow tailored for veteran C/C++ systems architects. Operates in Autonomous Curriculum Mode (progressive systems modules) and Custom Task Mode. Enforces Rust 1.100+, Edition 2024 standards, bidirectional C++/Rust interop (cxx, raw C ABI, Pin), strict red-phase anti-solution-leakage stubs with todo!(), and interview-grade green-phase critique with clippy and Miri.
 ---
 
 # Rust Systems TDD Coach Skill
 
 An intensive, TDD-driven Rust crash course and senior interview preparation workflow designed specifically for veteran C, C++, and low-level systems architects.
 This skill operates with zero basic programming tutorials, framing every Rust mechanic directly through C++20/23 and Python mental models, enforcing modern
-**Rust 1.99.1** and **Rust Edition 2024** standards, and guaranteeing strict TDD integrity with an automated anti-solution-leakage gate.
+**Rust 1.100+** and **Rust Edition 2024** standards, and guaranteeing strict TDD integrity with an automated anti-solution-leakage gate.
 
 ---
 
 ## 🔗 Related Skills
 
-- **rust-pro**: Modern Rust 1.99.1+ safety-critical systems software, zero-allocation real-time paths, lock-free concurrency, and Google Rust Styleguide.
+- **rust-pro**: Modern Rust 1.100+ safety-critical systems software, zero-allocation real-time paths, lock-free concurrency, and Google Rust Styleguide.
 - **cpp-pro**: Modern C++23 systems code, RAII, move semantics, template metaprogramming, and sanitizer-clean execution.
 - **c-pro**: Strict ISO C23 systems code, zero-allocation patterns, raw memory layout, and POSIX / kernel ABI compatibility.
 - **systems-setup**: Scaffolds production systems components (`src/{cpp,c,rust}/systems/`) with ASPICE-style traceable requirements and test suites.
@@ -56,7 +56,7 @@ conditions occur. Always state the Rust semantic immediately, explain its loweri
 
 ### 3. Core Mental Model Delta Mappings
 
-| Rust 1.99.1 Mechanic | C++20/23 Mental Model | Python 3.14 Mental Model | Low-Level Systems Reality |
+| Rust 1.100+ Mechanic | C++20/23 Mental Model | Python 3.14 Mental Model | Low-Level Systems Reality |
 | :--- | :--- | :--- | :--- |
 | **Destructive Move** | Non-destructive `std::move`. Source remains alive and will run `~T()`. | Name rebinding (`y = x`). Increments `ob_refcnt`. | Bitwise `memcpy` of struct bytes. Source statically marked dead; drop omitted. Stack drop flags for dynamic branches. |
 | **Borrow Checker (`&T` / `&mut T`)** | Const references (`const T&`) vs. exclusive pointers (`__restrict__`). | Ubiquitous shared mutable references; GIL / per-thread locks. | `&T` emits LLVM `readonly`. `&mut T` emits LLVM `noalias`, allowing the compiler to cache values in CPU registers across calls. |
@@ -65,11 +65,11 @@ conditions occur. Always state the Rust semantic immediately, explain its loweri
 | **Address Invariance (`Pin<P>`)** | Non-movable types (`T(T&&) = delete`). Relies on stable address `this`. | Objects pinned in heap memory; address `id(obj)` is immutable. | Prevents bitwise moves of self-referential or C++ objects across memory. Required for safe C++ FFI mutation. |
 | **Error Handling (`Result<T, E>`)** | `std::expected<T, E>` in C++23. Explicit, algebraic, zero-cost. | Exceptions (`try...except`). High frame-allocation overhead. | Return via CPU registers. Discriminant optimized via pointer niche (e.g. `Result<&T, ()>` is 8 bytes; null is `Err`). |
 
-### 4. Rust 1.99.1 & Edition 2024 Invariants
+### 4. Rust 1.100+ & Edition 2024 Invariants
 
 All scaffolded code, templates, and compiler configurations must strictly enforce Edition 2024 invariants:
 
-- **Manifest Standards**: `edition = "2024"`, `resolver = "3"`, and `rust-version = "1.99.1"` in `Cargo.toml`.
+- **Manifest Standards**: `edition = "2024"`, `resolver = "3"`, and `rust-version = "1.100"` in `Cargo.toml`.
 - **`unsafe extern "C"` Blocks**: Declaring foreign function interfaces requires explicit `unsafe` qualification on the extern block:
 
   ```rust
@@ -202,7 +202,7 @@ name = "<exercise_slug>"
 version = "0.1.0"
 edition = "2024"
 resolver = "3"
-rust-version = "1.99.1"
+rust-version = "1.100"
 publish = false
 
 [workspace]

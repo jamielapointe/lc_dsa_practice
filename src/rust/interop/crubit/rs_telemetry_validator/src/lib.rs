@@ -30,6 +30,7 @@ pub enum SafetyState {
 }
 
 /// Output of validating a single telemetry actuation frame.
+#[must_use]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ValidationDecision {
     /// Resulting interceptor state after processing the frame.

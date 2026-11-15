@@ -5,6 +5,7 @@ use core::fmt;
 const NOMINAL_GAINS: [f64; 8] = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0];
 
 /// Identifier pairing a PID controller ID with a gain profile slot.
+#[must_use]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct PidScheduleId {
     /// Controller identifier.
@@ -20,6 +21,7 @@ impl fmt::Display for PidScheduleId {
 }
 
 /// Errors produced when parsing a [`PidScheduleId`] from text.
+#[must_use]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ParseScheduleError {
     /// Input string was empty.

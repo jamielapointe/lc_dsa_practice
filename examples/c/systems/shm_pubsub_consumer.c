@@ -4,7 +4,7 @@
 
 #include <errno.h>  // IWYU pragma: keep
 #include <inttypes.h>
-#include <stdbool.h>
+#include <stdckdint.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -84,8 +84,8 @@ struct consumer_options {
   return true;
 }
 
-static uint32_t consumer_delay_ms(const struct consumer_options* opts,
-                                  uint64_t receive_index) {
+[[nodiscard]] static uint32_t consumer_delay_ms(
+    const struct consumer_options* opts, uint64_t receive_index) {
   static constexpr uint32_t kJitterMs[5] = {0U, 4U, 8U, 2U, 6U};
   const uint32_t jitter = kJitterMs[receive_index % 5ULL];
   if (receive_index % 3ULL == 2ULL) {
@@ -95,7 +95,10 @@ static uint32_t consumer_delay_ms(const struct consumer_options* opts,
 }
 
 static void sleep_ms(uint32_t ms) {
-  const uint64_t total_ns = (uint64_t)ms * 1'000'000ULL;
+  uint64_t total_ns = 0ULL;
+  if (ckd_mul(&total_ns, (uint64_t)ms, 1'000'000ULL)) {
+    total_ns = UINT64_MAX;
+  }
   struct timespec req = {
       .tv_sec = (time_t)(total_ns / 1'000'000'000ULL),
       .tv_nsec = (long)(total_ns % 1'000'000'000ULL),
@@ -103,7 +106,7 @@ static void sleep_ms(uint32_t ms) {
   nanosleep(&req, nullptr);
 }
 
-static int run_consumer(const struct consumer_options* opts) {
+[[nodiscard]] static int run_consumer(const struct consumer_options* opts) {
   const int64_t timeout_ns = (int64_t)opts->timeout_ms * 1'000'000LL;
 
   struct process_rendezvous rendezvous = {};

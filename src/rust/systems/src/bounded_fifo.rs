@@ -3,12 +3,11 @@
 //! Storage lives entirely inline within the struct using const generics, eliminating
 //! steady-state heap allocations and making it ideal for deterministic robotics and systems software.
 
-use std::sync::Condvar;
-use std::sync::Mutex;
-use std::time::Duration;
-use std::time::Instant;
+use std::sync::{Condvar, Mutex};
+use std::time::{Duration, Instant};
 
 /// Error returned when a push operation fails.
+#[must_use]
 #[derive(Clone, Debug, Eq, PartialEq, thiserror::Error)]
 pub enum PushError<T> {
     /// The queue has reached its maximum configured capacity. Contains the rejected item.
@@ -30,6 +29,7 @@ impl<T> PushError<T> {
 }
 
 /// Error returned when a timed push operation fails.
+#[must_use]
 #[derive(Clone, Debug, Eq, PartialEq, thiserror::Error)]
 pub enum PushTimeoutError<T> {
     /// Timed out waiting for available queue space. Contains the rejected item.
@@ -51,6 +51,7 @@ impl<T> PushTimeoutError<T> {
 }
 
 /// Error returned when a pop operation fails.
+#[must_use]
 #[derive(Clone, Copy, Debug, Eq, PartialEq, thiserror::Error)]
 pub enum PopError {
     /// The queue contains no items.
@@ -62,6 +63,7 @@ pub enum PopError {
 }
 
 /// Error returned when a timed pop operation fails.
+#[must_use]
 #[derive(Clone, Copy, Debug, Eq, PartialEq, thiserror::Error)]
 pub enum PopTimeoutError {
     /// Timed out waiting for an element.

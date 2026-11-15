@@ -92,7 +92,10 @@ impl ShmChannel {
             return Err(ShmPubSubError::LayoutMismatch);
         }
 
-        // SAFETY: region is validated by layout_is_valid.
+        // SAFETY:
+        // 1. `layout_is_valid` verified that `region.base()` is non-null, `region.size() >= HEADER_BYTES`,
+        //    and `magic == MAGIC` with `Acquire` ordering.
+        // 2. Geometry fields (`slot_count`, `slot_size`, `slot_stride`) are immutable after `magic` is published.
         let header = unsafe { &*(region.base().cast::<layout::ChannelHeader>()) };
         let slot_count = header.slot_count as usize;
         let slot_size = header.slot_size as usize;

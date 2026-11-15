@@ -2,7 +2,7 @@
   "name": "leetcode",
   "displayName": "LeetCode Practice (C++23, Python & Rust)",
   "version": "0.3.0",
-  "description": "Automates setting up LeetCode DSA practice problems in modern C++23 (CMake + Google Test), Python 3.14 (pytest), or Rust 1.99.1+ (cargo test). The language must be specified by the user.",
+  "description": "Automates setting up LeetCode DSA practice problems in modern C++23 (CMake + Google Test), Python 3.15 (pytest), or Rust 1.100+ (cargo test). The language must be specified by the user.",
   "suggestedPrompts": [
     "Set up LeetCode #2 in C++",
     "Set up LeetCode #1 in Python",

@@ -38,7 +38,10 @@ pub const HAS_MAP_POPULATE: bool = IS_LINUX;
 #[must_use]
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 pub fn page_size() -> usize {
-    // SAFETY: sysconf is a safe POSIX query.
+    // SAFETY:
+    // 1. `_SC_PAGESIZE` is a standard POSIX sysconf selector requiring no pointer arguments.
+    // 2. `libc::sysconf` is thread-safe and does not mutate any shared or Rust-owned memory.
+    // 3. A negative return value indicates failure and is guarded by `size > 0` before casting.
     let size = unsafe { libc::sysconf(libc::_SC_PAGESIZE) };
     if size > 0 {
         size as usize

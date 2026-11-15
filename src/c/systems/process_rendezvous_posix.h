@@ -4,7 +4,6 @@
 /// @brief Internal POSIX adapter declarations for process_rendezvous in ISO
 /// C23.
 
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -33,5 +32,5 @@ void process_rendezvous_posix_wait_slice(const struct process_rendezvous* rdv,
 void process_rendezvous_posix_sleep_us(uint32_t us);
 
 #ifdef __cplusplus
-}
+}  // extern "C"
 #endif

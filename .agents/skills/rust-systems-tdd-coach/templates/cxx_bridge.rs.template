@@ -1,6 +1,6 @@
 //! # CXX Bidirectional Interoperability Bridge Template
 //!
-//! Illustrates compile-time verified bidirectional bridging between Rust 1.99.1
+//! Illustrates compile-time verified bidirectional bridging between Rust 1.100+
 //! (Edition 2024) and ISO C++23 using the `cxx` crate.
 //!
 //! Key invariants demonstrated:

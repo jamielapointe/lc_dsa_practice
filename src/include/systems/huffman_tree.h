@@ -56,7 +56,6 @@
 /// Dual-language safe: can be included by both ISO C23 and C++23 translation
 /// units.
 
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -107,6 +106,12 @@ struct huffman_symbol_length {
   uint8_t symbol;
   uint8_t length;
 };
+
+static_assert(sizeof(struct huffman_symbol_length) == 2U,
+              "ABI requires 2-byte huffman_symbol_length");
+static_assert(HUFFMAN_MAX_NODES >=
+                  ((2U * HUFFMAN_MAX_SYMBOLS) + HUFFMAN_MAX_CODE_LENGTH - 2U),
+              "Node arena capacity must hold worst-case left-aligned tree");
 
 /// @brief A single node in the binary prefix tree, allocated from
 /// `huffman_tree::nodes`.

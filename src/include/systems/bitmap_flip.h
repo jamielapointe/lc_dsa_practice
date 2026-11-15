@@ -36,6 +36,9 @@ typedef enum bitmap_flip_error : int32_t {
   BITMAP_FLIP_ERR_INVALID_ROI = 7,
 } bitmap_flip_error;
 
+static_assert(sizeof(enum bitmap_flip_error) == 4U,
+              "ABI requires 32-bit bitmap_flip_error");
+
 /// @brief Returns a human-readable description of a bitmap_flip_error.
 [[nodiscard]] const char* bitmap_flip_error_to_string(
     enum bitmap_flip_error error);
@@ -48,6 +51,9 @@ struct bitmap_roi {
   size_t height;
 };
 typedef struct bitmap_roi bitmap_roi;
+
+static_assert(sizeof(struct bitmap_roi) == 4U * sizeof(size_t),
+              "bitmap_roi must pack four size_t fields without extra padding");
 
 /// @brief Reverses the bits of a single byte using an arithmetic loop.
 [[nodiscard]] uint8_t bitmap_reverse_bits(uint8_t value);
@@ -88,5 +94,5 @@ typedef struct bitmap_roi bitmap_roi;
     size_t stride_bytes, struct bitmap_roi roi);
 
 #ifdef __cplusplus
-}
+}  // extern "C"
 #endif

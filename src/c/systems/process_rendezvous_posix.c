@@ -13,7 +13,6 @@
 #include <fcntl.h>      // IWYU pragma: keep
 #include <semaphore.h>  // IWYU pragma: keep
 #include <stdatomic.h>
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -35,7 +34,7 @@ static constexpr int kMlockRetries = 3;
 static constexpr uint64_t kMlockFirstDelayUs = 1000U;
 static constexpr size_t kFallbackPageSize = 4096U;
 
-static size_t get_page_size() {
+[[nodiscard]] static size_t get_page_size() {
   // NOLINTNEXTLINE(google-runtime-int): sysconf's POSIX return type is long.
   const long sz = sysconf(_SC_PAGESIZE);
   return sz > 0 ? (size_t)sz : kFallbackPageSize;
@@ -63,7 +62,7 @@ static void prefault_memory_read(const void* base, size_t bytes) {
   (void)sink;
 }
 
-static bool lock_mapped_pages(void* base, size_t bytes) {
+[[nodiscard]] static bool lock_mapped_pages(void* base, size_t bytes) {
   uint64_t delay_us = kMlockFirstDelayUs;
   for (int attempt = 0; attempt <= kMlockRetries; ++attempt) {
     if (mlock(base, bytes) == 0) {
@@ -78,7 +77,7 @@ static bool lock_mapped_pages(void* base, size_t bytes) {
   return false;
 }
 
-static sem_t* open_named_semaphore(const char* name, bool fresh) {
+[[nodiscard]] static sem_t* open_named_semaphore(const char* name, bool fresh) {
   if (fresh) {
     (void)sem_unlink(name);
   }
@@ -91,7 +90,7 @@ static sem_t* open_named_semaphore(const char* name, bool fresh) {
   return sem;
 }
 
-enum process_rendezvous_error process_rendezvous_posix_create(
+[[nodiscard]] enum process_rendezvous_error process_rendezvous_posix_create(
     struct process_rendezvous* rdv, const char* name, size_t bytes) {
   // NOLINTBEGIN(*-vararg): POSIX shm_open is variadic.
   int fd = -1;
@@ -150,7 +149,7 @@ enum process_rendezvous_error process_rendezvous_posix_create(
   return PROCESS_RENDEZVOUS_OK;
 }
 
-enum process_rendezvous_error process_rendezvous_posix_open(
+[[nodiscard]] enum process_rendezvous_error process_rendezvous_posix_open(
     struct process_rendezvous* rdv, const char* name) {
   // NOLINTBEGIN(*-vararg): POSIX shm_open is variadic.
   int fd = -1;
@@ -206,7 +205,7 @@ enum process_rendezvous_error process_rendezvous_posix_open(
   return PROCESS_RENDEZVOUS_OK;
 }
 
-enum process_rendezvous_error process_rendezvous_posix_unlink(
+[[nodiscard]] enum process_rendezvous_error process_rendezvous_posix_unlink(
     const char* name) {
   (void)sem_unlink(name);
   if (shm_unlink(name) != 0) {

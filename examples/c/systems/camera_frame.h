@@ -29,6 +29,9 @@ struct camera_frame_payload {
   uint32_t pixels[CAMERA_PIXEL_COUNT];
 };
 
+static_assert(sizeof(struct camera_frame_payload) ==
+                  32U + (CAMERA_PIXEL_COUNT * sizeof(uint32_t)),
+              "camera_frame_payload must have no unexpected padding");
 static_assert(sizeof(struct camera_frame_payload) <= SHM_MAX_SLOT_SIZE,
               "camera_frame_payload must fit inside a single ShmPubSub slot");
 

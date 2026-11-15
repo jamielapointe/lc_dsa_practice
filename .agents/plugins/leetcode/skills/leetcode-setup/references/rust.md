@@ -1,6 +1,6 @@
 # Rust LeetCode Scaffolding Reference
 
-Used by the `leetcode-setup` skill when the user chose **`rust`**. Follow `rust-pro` (Rust 1.99.1+, Google Rust Styleguide, Clippy clean).
+Used by the `leetcode-setup` skill when the user chose **`rust`**. Follow `rust-pro` (Rust 1.100+, Google Rust Styleguide, Clippy clean).
 
 ## Naming conventions
 

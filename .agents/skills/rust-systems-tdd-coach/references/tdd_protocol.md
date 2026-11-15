@@ -72,7 +72,7 @@ would immediately break repository-wide pre-commit hooks and remote CI.
    version = "0.1.0"
    edition = "2024"
    resolver = "3"
-   rust-version = "1.99.1"
+   rust-version = "1.100"
    publish = false
 
    [workspace]

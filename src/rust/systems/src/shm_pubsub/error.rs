@@ -5,6 +5,7 @@
 use thiserror::Error;
 
 /// Errors reported by `shm_pubsub` operations.
+#[must_use]
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Error)]
 pub enum ShmPubSubError {
     /// The requested operation has not been implemented yet.
