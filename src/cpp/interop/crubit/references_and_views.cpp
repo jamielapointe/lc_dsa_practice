@@ -32,7 +32,9 @@ auto SignalWindow::peak_ref() const noexcept -> const double& {
   return samples_[peak_index];
 }
 
-auto SignalWindow::count() const noexcept -> int { return count_; }
+auto SignalWindow::count() const noexcept -> int {
+  return count_;
+}
 
 auto select_dominant_window(const SignalWindow& lhs [[clang::lifetimebound]],
                             const SignalWindow& rhs

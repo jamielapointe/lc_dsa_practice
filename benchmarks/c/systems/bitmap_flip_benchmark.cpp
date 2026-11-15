@@ -24,7 +24,7 @@ namespace {
 constexpr uint64_t kDeterministicBenchmarkSeed = 0x5EED'B17A'F119'2026ULL;
 
 [[nodiscard]] constexpr auto bytes_per_row(size_t width) noexcept -> size_t {
-  return (width / 8U) + ((width % 8U != 0U) ? 1U : 0U);
+  return (width / 8uz) + ((width % 8uz != 0uz) ? 1uz : 0uz);
 }
 
 [[nodiscard]] auto make_test_buffer(size_t byte_count) -> std::vector<uint8_t> {

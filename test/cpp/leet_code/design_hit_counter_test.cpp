@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include <chrono>
+#include <memory>
 
 namespace {
 
@@ -42,11 +43,10 @@ TEST(DesignHitCounterTest, EdgeCases) {
 
 // Tier 3: Sanitizer & Memory Invariants
 TEST(DesignHitCounterTest, MemoryInvariants) {
-  auto* counter = new leet_code::HitCounter();
+  auto counter = std::make_unique<leet_code::HitCounter>();
   counter->hit(10);
   counter->hit(20);
   EXPECT_EQ(counter->getHits(30), 2);
-  delete counter;  // Ensure no leaks
 }
 
 // Tier 4: Stress Workloads & OJ Simulation

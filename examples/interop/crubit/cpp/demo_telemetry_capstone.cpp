@@ -1,5 +1,5 @@
 #include <cstdint>
-#include <iostream>
+#include <print>
 
 #include "crubit/rs_telemetry_validator.h"
 #include "interop/crubit/telemetry_safety_bridge.hpp"
@@ -44,9 +44,9 @@ auto main() -> int {
     return 1;
   }
 
-  std::cout
-      << "[CRUBIT_CPP_DEMO] module=telemetry_capstone status=ok committed="
-      << sink.committed_count()
-      << " last_torque_nm=" << sink.last_safe_torque_nm() << '\n';
+  std::println(
+      "[CRUBIT_CPP_DEMO] module=telemetry_capstone status=ok committed={} "
+      "last_torque_nm={}",
+      sink.committed_count(), sink.last_safe_torque_nm());
   return 0;
 }

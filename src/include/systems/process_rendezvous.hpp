@@ -122,14 +122,14 @@ class RendezvousOsHandle {
 
   RendezvousOsHandle(RendezvousOsHandle&& other) noexcept
       : base_{std::exchange(other.base_, nullptr)},
-        size_{std::exchange(other.size_, 0)},
+        size_{std::exchange(other.size_, 0uz)},
         sem_{std::exchange(other.sem_, nullptr)} {}
 
   auto operator=(RendezvousOsHandle&& other) noexcept -> RendezvousOsHandle& {
     if (this != &other) {
       RendezvousOsHandle discarded{std::move(*this)};
       base_ = std::exchange(other.base_, nullptr);
-      size_ = std::exchange(other.size_, 0);
+      size_ = std::exchange(other.size_, 0uz);
       sem_ = std::exchange(other.sem_, nullptr);
     }
     return *this;
@@ -163,7 +163,7 @@ class RendezvousOsHandle {
       : base_{base}, size_{size}, sem_{sem} {}
 
   std::byte* base_{nullptr};
-  size_t size_{0};
+  size_t size_{0uz};
   void* sem_{nullptr};
 };
 

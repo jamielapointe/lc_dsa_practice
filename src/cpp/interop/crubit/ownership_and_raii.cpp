@@ -47,7 +47,9 @@ LeaseGuard::~LeaseGuard() noexcept {
   }
 }
 
-auto LeaseGuard::lease_id() const noexcept -> int { return lease_id_; }
+auto LeaseGuard::lease_id() const noexcept -> int {
+  return lease_id_;
+}
 
 auto LeaseGuard::renew(int extra_epochs) noexcept -> int {
   if (active_ && extra_epochs > 0) {

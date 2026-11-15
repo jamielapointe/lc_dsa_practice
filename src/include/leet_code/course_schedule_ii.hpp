@@ -62,7 +62,8 @@ namespace leet_code {
 
 class Solution {
  public:
-  auto findOrder(int numCourses, std::vector<std::vector<int>>& prerequisites)
+  [[nodiscard]] auto findOrder(int numCourses,
+                               std::vector<std::vector<int>>& prerequisites)
       -> std::vector<int>;
 };
 

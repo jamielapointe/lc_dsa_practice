@@ -10,11 +10,11 @@
 namespace systems::internal {
 
 /// @brief Number of bits (pixels) in one byte of a 1-bpp bitmap.
-inline constexpr size_t kBitsPerByte = 8;
+inline constexpr size_t kBitsPerByte = 8uz;
 
 /// @brief Maximum number of distinct values for an 8-bit unsigned integer
 /// (2^8).
-inline constexpr size_t kMaxUint8Combinations = 256;
+inline constexpr size_t kMaxUint8Combinations = 256uz;
 
 /// @brief Swaps the byte values pointed to by left and right.
 /// @param left Pointer to the first byte.
@@ -43,7 +43,7 @@ inline void swap_bytes(uint8_t* left, uint8_t* right) noexcept {
 [[nodiscard]] consteval auto generate_bit_reverse_table() noexcept
     -> std::array<uint8_t, kMaxUint8Combinations> {
   std::array<uint8_t, kMaxUint8Combinations> table{};
-  for (size_t i = 0; i < kMaxUint8Combinations; ++i) {
+  for (size_t i = 0uz; i < kMaxUint8Combinations; ++i) {
     table[i] = compute_reversed_bits(static_cast<uint8_t>(i));
   }
   return table;

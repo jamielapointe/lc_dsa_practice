@@ -42,7 +42,9 @@ constexpr auto kWait = std::chrono::seconds{10};
 
 /// Keeps the optimizer from eliding a heap allocation (clang may remove
 /// matched new/delete pairs otherwise).
-void escape(const void* ptr) { asm volatile("" : : "r"(ptr) : "memory"); }
+void escape(const void* ptr) {
+  asm volatile("" : : "r"(ptr) : "memory");
+}
 
 // ---------------------------------------------------------------- platform
 
@@ -54,12 +56,12 @@ TEST(PlatformTest, CapabilityFlagsAreConsistent) {
   static_assert(!systems::platform::kHasRobustMutex ||
                     systems::platform::kIsProductionTarget,
                 "robust mutexes are only expected on Linux / QNX");
-  static_assert(systems::platform::kMaxShmNameLength <= 31);
-  static_assert(systems::platform::kCacheLineSize >= 32);
+  static_assert(systems::platform::kMaxShmNameLength <= 31uz);
+  static_assert(systems::platform::kCacheLineSize >= 32uz);
   if constexpr (systems::platform::kIsMacos) {
     EXPECT_FALSE(systems::platform::kHasRobustMutex);
     EXPECT_TRUE(systems::platform::kIsAarch64);
-    EXPECT_EQ(systems::platform::kCacheLineSize, 128U);
+    EXPECT_EQ(systems::platform::kCacheLineSize, 128uz);
   }
   EXPECT_TRUE(systems::platform::kHasPosixSharedMemory);
   EXPECT_TRUE(systems::platform::kIsSupportedTarget);
@@ -275,11 +277,11 @@ TEST(ShmNameTest, NamesAreUniquePortableAndSanitized) {
     const auto name = systems_test::unique_shm_name("a-very/long:prefix");
     EXPECT_EQ(name.front(), '/');
     EXPECT_LE(name.size(), systems::platform::kMaxShmNameLength);
-    EXPECT_EQ(name.find('/', 1), std::string::npos) << name;
+    EXPECT_EQ(name.find('/', 1uz), std::string::npos) << name;
     EXPECT_EQ(name.find(':'), std::string::npos) << name;
     names.insert(name);
   }
-  EXPECT_EQ(names.size(), 100U);
+  EXPECT_EQ(names.size(), 100uz);
 }
 
 TEST(ShmNameTest, ScopedUnlinkRemovesObject) {
@@ -303,14 +305,14 @@ TEST(AllocationScopeTest, CountsHeapAllocationsInsideScope) {
   {
     auto one = std::make_unique<int>(1);
     escape(one.get());
-    auto many = std::make_unique<uint64_t[]>(16);  // NOLINT(*-c-arrays)
+    auto many = std::make_unique<uint64_t[]>(16uz);  // NOLINT(*-c-arrays)
     escape(many.get());
   }
-  EXPECT_EQ(scope.allocations(), 2U);
+  EXPECT_EQ(scope.allocations(), 2uz);
 }
 
 TEST(AllocationScopeTest, CountsAlignedAndNothrowAllocations) {
-  struct alignas(128) Wide {
+  struct alignas(128uz) Wide {
     uint8_t byte{0};
   };
   const systems_test::AllocationScope scope;
@@ -320,20 +322,20 @@ TEST(AllocationScopeTest, CountsAlignedAndNothrowAllocations) {
     std::unique_ptr<int> nothrow{new (std::nothrow) int{4}};
     escape(nothrow.get());
   }
-  EXPECT_EQ(scope.allocations(), 2U);
+  EXPECT_EQ(scope.allocations(), 2uz);
 }
 
 TEST(AllocationScopeTest, IgnoresAllocationsOutsideScope) {
   auto before = std::make_unique<int>(1);
   escape(before.get());
-  size_t count = 0;
+  size_t count = 0uz;
   {
     const systems_test::AllocationScope scope;
     count = scope.allocations();
   }
   auto after = std::make_unique<int>(2);
   escape(after.get());
-  EXPECT_EQ(count, 0U);
+  EXPECT_EQ(count, 0uz);
 }
 
 TEST(AllocationScopeTest, NestedScopeIsReported) {
@@ -345,7 +347,7 @@ TEST(AllocationScopeTest, NestedScopeIsReported) {
 
 TEST(AllocationScopeTest, CountsAllocationsFromOtherThreads) {
   const systems_test::AllocationScope scope;
-  size_t after_thread_start = 0;
+  size_t after_thread_start = 0uz;
   {
     std::thread worker{[] {
       auto value = std::make_unique<int>(5);
@@ -355,7 +357,7 @@ TEST(AllocationScopeTest, CountsAllocationsFromOtherThreads) {
     after_thread_start = scope.allocations();
   }
   // At least the worker's allocation (std::thread may allocate its state).
-  EXPECT_GE(after_thread_start, 1U);
+  EXPECT_GE(after_thread_start, 1uz);
 }
 
 }  // namespace

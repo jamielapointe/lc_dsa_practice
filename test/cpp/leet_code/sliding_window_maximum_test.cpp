@@ -38,9 +38,9 @@ TEST(SlidingWindowMaximumTest, Example2) {
 // ============================================================================
 
 TEST(SlidingWindowMaximumTest, AllSameElements) {
-  std::vector<int> nums(10, 5);
+  std::vector<int> nums(10uz, 5);
   int k = 3;
-  std::vector<int> expected(8, 5);
+  std::vector<int> expected(8uz, 5);
 
   EXPECT_EQ(leet_code::sliding_window_maximum(nums, k), expected);
 }
@@ -84,10 +84,10 @@ TEST(SlidingWindowMaximumTest, StressTestMaxConstraints) {
   constexpr int kNumElements = 100'000;
   constexpr int kWindowSize = 50'000;
 
-  std::vector<int> nums(kNumElements);
+  std::vector<int> nums(static_cast<size_t>(kNumElements));
   // Fill with alternating values to prevent trivial branch prediction
-  for (size_t i = 0; i < nums.size(); ++i) {
-    nums[i] = (i % 2 == 0) ? static_cast<int>(i) : -static_cast<int>(i);
+  for (size_t i = 0uz; i < nums.size(); ++i) {
+    nums[i] = (i % 2uz == 0uz) ? static_cast<int>(i) : -static_cast<int>(i);
   }
 
   // Pre-calculate expected result for the first window to ensure we don't
@@ -108,7 +108,7 @@ TEST(SlidingWindowMaximumTest, StressTestMaxConstraints) {
       << "Algorithm is likely O(N*k) instead of O(N)";
 
   // The stub returns an empty vector, so this size check will fail cleanly.
-  EXPECT_EQ(result.size(), kNumElements - kWindowSize + 1);
+  EXPECT_EQ(result.size(), static_cast<size_t>(kNumElements - kWindowSize + 1));
 }
 
 }  // namespace

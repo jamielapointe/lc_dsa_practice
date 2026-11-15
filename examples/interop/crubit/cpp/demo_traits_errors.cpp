@@ -1,5 +1,5 @@
-#include <iostream>
 #include <optional>
+#include <print>
 
 #include "crubit/rs_traits_errors.h"
 #include "interop/crubit/traits_and_errors.hpp"
@@ -18,15 +18,17 @@ auto main() -> int {
   if (!parsed.has_value()) {
     return 1;
   }
+  const auto& schedule = *parsed;
 
   const std::optional<double> nominal =
-      rs_traits_errors::lookup_nominal_gain(parsed.value().profile_slot);
+      rs_traits_errors::lookup_nominal_gain(schedule.profile_slot);
   if (!nominal.has_value()) {
     return 1;
   }
 
-  std::cout << "[CRUBIT_CPP_DEMO] module=traits_errors status=ok schedule="
-            << parsed.value() << " nominal_gain=" << *nominal
-            << " kp=" << cal->kp << '\n';
+  std::println(
+      "[CRUBIT_CPP_DEMO] module=traits_errors status=ok schedule={}:{} "
+      "nominal_gain={} kp={}",
+      schedule.controller_id, schedule.profile_slot, *nominal, cal->kp);
   return 0;
 }

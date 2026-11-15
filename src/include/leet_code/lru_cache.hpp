@@ -57,7 +57,7 @@ class LruCache {
     int key;
     int value;
   };
-  size_t capacity_;
+  size_t capacity_{0uz};
   using List = std::list<Entry>;
   List lru_list_;
   std::unordered_map<int, List::iterator> cache_;

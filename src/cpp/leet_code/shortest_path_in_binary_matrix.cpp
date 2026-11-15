@@ -18,22 +18,22 @@ struct Node {
   int col{0};
   int distance_from_start{0};
 
-  Node(int r, int c, int dist) : row(r), col(c), distance_from_start(dist) {}
-  Node(int r, int c) : row(r), col(c) {}
-  Node() = default;
+  constexpr Node(int r, int c, int dist) noexcept
+      : row(r), col(c), distance_from_start(dist) {}
+  constexpr Node(int r, int c) noexcept : row(r), col(c) {}
+  constexpr Node() noexcept = default;
 
-  friend bool operator==(const Node& lhs, const Node& rhs) {
+  [[nodiscard]] friend constexpr auto operator==(const Node& lhs,
+                                                 const Node& rhs) noexcept
+      -> bool {
     return lhs.row == rhs.row && lhs.col == rhs.col;
   }
-
-  // friend bool operator!=(const Node& lhs, const Node& rhs) {
-  //   return !(lhs == rhs);
-  // }
 };
 
 struct NodeHasher {
-  size_t operator()(const Node& node) const {
-    return std::hash<int>()(node.row) ^ (std::hash<int>()(node.col) << 1U);
+  [[nodiscard]] constexpr auto operator()(const Node& node) const noexcept
+      -> size_t {
+    return std::hash<int>()(node.row) ^ (std::hash<int>()(node.col) << 1uz);
   }
 };
 
@@ -41,8 +41,8 @@ using Grid = std::span<const std::vector<int>>;
 using Visited = std::unordered_set<Node, NodeHasher>;
 using Queue = std::deque<Node>;
 
-inline bool is_valid(const Grid& grid, const Visited& visited, int row,
-                     int col) {
+[[nodiscard]] constexpr auto is_valid(const Grid& grid, const Visited& visited,
+                                      int row, int col) noexcept -> bool {
   int length = static_cast<int>(grid.size());
   if (row < 0 || col < 0 || row >= length || col >= length) {
     return false;
@@ -56,7 +56,7 @@ inline bool is_valid(const Grid& grid, const Visited& visited, int row,
   return true;
 }
 
-constexpr std::array<std::pair<int, int>, 8> directions{
+constexpr std::array<std::pair<int, int>, 8uz> directions{
     {
         {-1, -1},
         {-1, 0},
@@ -69,8 +69,8 @@ constexpr std::array<std::pair<int, int>, 8> directions{
     },
 };
 
-inline auto next_node(const Node& node, const std::pair<int, int>& direction)
-    -> Node {
+[[nodiscard]] constexpr auto next_node(
+    const Node& node, const std::pair<int, int>& direction) noexcept -> Node {
   return {node.row + direction.first, node.col + direction.second,
           node.distance_from_start + 1};
 }
@@ -80,7 +80,7 @@ inline auto next_node(const Node& node, const std::pair<int, int>& direction)
 auto shortest_path_in_binary_matrix(Grid grid) -> int {
   // Problem statement says that the grid is always non-empty and square... so
   // don't waste time checking for this.
-  if (grid[0][0] != 0) {
+  if (grid[0uz][0uz] != 0) {
     return -1;
   }
   if (grid.back().back() != 0) {
@@ -89,7 +89,7 @@ auto shortest_path_in_binary_matrix(Grid grid) -> int {
 
   Node start(0, 0, 1);
   Node end(static_cast<int>(grid.size()) - 1,
-           static_cast<int>(grid[0].size()) - 1);
+           static_cast<int>(grid[0uz].size()) - 1);
   if (start == end) {
     return 1;
   }

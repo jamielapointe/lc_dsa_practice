@@ -61,7 +61,9 @@ auto operator new[](size_t bytes, std::align_val_t align,
                     const std::nothrow_t& /*tag*/) noexcept -> void* {
   return systems_test::detail::checked_aligned(bytes, align);
 }
-void operator delete(void* ptr) noexcept { systems_test::detail::release(ptr); }
+void operator delete(void* ptr) noexcept {
+  systems_test::detail::release(ptr);
+}
 void operator delete[](void* ptr) noexcept {
   systems_test::detail::release(ptr);
 }

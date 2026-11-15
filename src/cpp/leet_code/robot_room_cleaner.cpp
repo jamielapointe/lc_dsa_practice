@@ -41,7 +41,7 @@ using Stack = std::stack<State, std::vector<State>>;
 
 /// @brief The directions the robot can move in, ordered in a specific way to
 /// facilitate the DFS traversal.
-constexpr std::array<Direction, 4> kDirections{
+constexpr std::array<Direction, 4uz> kDirections{
     Direction::Down,
     Direction::Right,
     Direction::Up,
@@ -76,8 +76,8 @@ void rotate_robot_to_match(Robot& robot, Direction curr_dir,
     return;
   }
 
-  auto const curr = static_cast<int>(curr_dir);
-  auto const desired = static_cast<int>(desired_dir);
+  auto const curr = std::to_underlying(curr_dir);
+  auto const desired = std::to_underlying(desired_dir);
 
   switch ((desired - curr + 4) % 4) {
     case 1:
@@ -126,7 +126,7 @@ auto robot_room_cleaner(Robot& robot) -> void {
     }
 
     if (optional_next_point.has_value()) {
-      Point next_point = optional_next_point.value();
+      Point next_point = *optional_next_point;
       rotate_robot_to_match(robot, facing_direction, next_direction);
       visited.insert(next_point);
       if (robot.move()) {
@@ -149,6 +149,8 @@ auto robot_room_cleaner(Robot& robot) -> void {
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-void Solution::cleanRoom(Robot& robot) { robot_room_cleaner(robot); }
+void Solution::cleanRoom(Robot& robot) {
+  robot_room_cleaner(robot);
+}
 
 }  // namespace leet_code

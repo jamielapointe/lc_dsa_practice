@@ -188,7 +188,7 @@ TEST(AddTwoNumbersTest, AddressSanitizerMemoryLeakFree) {
 
 // T4-ADD-01: Maximum LeetCode constraint (100 nodes each)
 TEST(AddTwoNumbersTest, MaximumConstraint100Nodes) {
-  const std::vector<int> digits_9(100, 9);
+  const std::vector<int> digits_9(100uz, 9);
   const std::vector<int> digits_1 = {1};
 
   const leet_code::ScopedLinkedList list1(digits_9);
@@ -201,7 +201,7 @@ TEST(AddTwoNumbersTest, MaximumConstraint100Nodes) {
 
   // 99...99 (100 digits) + 1 = 100...00 (1 followed by 100 zeros)
   // Reversed: [0, 0, ..., 0 (100 zeros), 1]
-  std::vector<int> expected(100, 0);
+  std::vector<int> expected(100uz, 0);
   expected.push_back(1);
 
   EXPECT_EQ(leet_code::linked_list_to_vector(result), expected);

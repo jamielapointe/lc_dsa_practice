@@ -26,10 +26,10 @@ namespace systems_test {
 
 auto unique_shm_name(std::string_view prefix) -> std::string {
   static std::atomic<uint32_t> counter{0};
-  constexpr size_t kMaxPrefix = 8;
+  constexpr size_t kMaxPrefix = 8uz;
 
   std::string clean;
-  for (const char c : prefix.substr(0, kMaxPrefix)) {
+  for (const char c : prefix.substr(0uz, kMaxPrefix)) {
     const auto uc = static_cast<uint8_t>(c);
     clean.push_back((std::isalnum(uc) != 0 || c == '_') ? c : '_');
   }

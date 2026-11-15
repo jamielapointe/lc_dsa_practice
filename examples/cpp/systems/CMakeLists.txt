@@ -25,6 +25,10 @@ function(systems_add_example target_name)
         ${target_name}
         PRIVATE ${ARG_LIBS} project_options project_warnings project_sanitizers project_architecture
     )
+
+    if(CMAKE_CXX_CLANG_TIDY)
+        set_target_properties(${target_name} PROPERTIES CXX_CLANG_TIDY "${CMAKE_CXX_CLANG_TIDY}")
+    endif()
 endfunction()
 
 systems_add_example(

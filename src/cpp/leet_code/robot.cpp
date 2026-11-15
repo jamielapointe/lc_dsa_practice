@@ -39,8 +39,9 @@ namespace {
 DefaultRobot::DefaultRobot(Grid grid, Point start_cell)
     : grid_(std::move(grid)),
       current_cell_(start_cell),
-      width_{static_cast<int>(grid_[0].size())},
-      height_{static_cast<int>(grid_.size())} {}
+      width_{static_cast<int>(grid_[0uz].size())},
+      height_{static_cast<int>(grid_.size())} {
+}
 
 bool DefaultRobot::move() {
   Point tmp_cell = current_cell_ + direction_;
@@ -51,10 +52,16 @@ bool DefaultRobot::move() {
   return true;
 }
 
-void DefaultRobot::turnLeft() { direction_ = rotate_left(direction_); }
+void DefaultRobot::turnLeft() {
+  direction_ = rotate_left(direction_);
+}
 
-void DefaultRobot::turnRight() { direction_ = rotate_right(direction_); }
+void DefaultRobot::turnRight() {
+  direction_ = rotate_right(direction_);
+}
 
-void DefaultRobot::clean() { current_cell_value() = CellValue::OpenClean; }
+void DefaultRobot::clean() {
+  current_cell_value() = CellValue::OpenClean;
+}
 
 }  // namespace leet_code

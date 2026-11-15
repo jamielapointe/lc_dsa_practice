@@ -1,4 +1,3 @@
-#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <utility>
@@ -38,16 +37,14 @@ auto main() -> int {
 
   // Verify Rust TelemetryPacketBuffer RAII Drop counter via stack &
   // std::unique_ptr.
-  INTEROP_EXPECT_EQ(ctx, rs_ownership_raii::live_packet_buffers(),
-                    static_cast<size_t>(0));
+  INTEROP_EXPECT_EQ(ctx, rs_ownership_raii::live_packet_buffers(), 0uz);
   {
     auto buf = rs_ownership_raii::TelemetryPacketBuffer::create(
         rs::StrRef{"imu_primary"}, 16);
-    INTEROP_EXPECT_EQ(ctx, rs_ownership_raii::live_packet_buffers(),
-                      static_cast<size_t>(1));
-    INTEROP_EXPECT_EQ(ctx, buf.label_len(), static_cast<size_t>(11));
-    INTEROP_EXPECT_EQ(ctx, buf.append_byte(0xAAU), static_cast<size_t>(1));
-    INTEROP_EXPECT_EQ(ctx, buf.append_byte(0x55U), static_cast<size_t>(2));
+    INTEROP_EXPECT_EQ(ctx, rs_ownership_raii::live_packet_buffers(), 1uz);
+    INTEROP_EXPECT_EQ(ctx, buf.label_len(), 11uz);
+    INTEROP_EXPECT_EQ(ctx, buf.append_byte(0xAAU), 1uz);
+    INTEROP_EXPECT_EQ(ctx, buf.append_byte(0x55U), 2uz);
     INTEROP_EXPECT_EQ(ctx, buf.checksum(), static_cast<uint32_t>(0xFFU));
 
     // TelemetryPacketBuffer has deleted C++ move ctor, so std::make_unique
@@ -56,15 +53,12 @@ auto main() -> int {
         new rs_ownership_raii::TelemetryPacketBuffer(
             rs_ownership_raii::TelemetryPacketBuffer::create(rs::StrRef{"aux"},
                                                              8)));
-    INTEROP_EXPECT_EQ(ctx, rs_ownership_raii::live_packet_buffers(),
-                      static_cast<size_t>(2));
-    INTEROP_EXPECT_EQ(ctx, heap_buf->label_len(), static_cast<size_t>(3));
+    INTEROP_EXPECT_EQ(ctx, rs_ownership_raii::live_packet_buffers(), 2uz);
+    INTEROP_EXPECT_EQ(ctx, heap_buf->label_len(), 3uz);
     heap_buf.reset();
-    INTEROP_EXPECT_EQ(ctx, rs_ownership_raii::live_packet_buffers(),
-                      static_cast<size_t>(1));
+    INTEROP_EXPECT_EQ(ctx, rs_ownership_raii::live_packet_buffers(), 1uz);
   }
-  INTEROP_EXPECT_EQ(ctx, rs_ownership_raii::live_packet_buffers(),
-                    static_cast<size_t>(0));
+  INTEROP_EXPECT_EQ(ctx, rs_ownership_raii::live_packet_buffers(), 0uz);
 
   return ctx.exit_code();
 }

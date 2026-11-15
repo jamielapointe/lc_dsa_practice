@@ -123,13 +123,13 @@ constexpr int kMlockRetries = 3;
 /// First retry delay; doubles per retry (1, 2, 4 ms).
 constexpr auto kMlockFirstDelay = std::chrono::milliseconds{1};
 /// Fallback when `sysconf` cannot report the page size.
-constexpr size_t kFallbackPageSize = 4096;
+constexpr size_t kFallbackPageSize = 4096uz;
 
 /// NUL-terminated copy of a name for the C API. Bounded, no heap
 /// (SHMPS-REQ-018 does not apply to init, but we stay heap-free anyway).
 /// Callers validate names to `platform::kMaxShmNameLength`; the buffer is
 /// sized for that limit.
-using CName = std::array<char, platform::kMaxShmNameLength + 1>;
+using CName = std::array<char, platform::kMaxShmNameLength + 1uz>;
 
 [[nodiscard]] auto to_c_name(std::string_view name) noexcept
     -> std::optional<CName> {
@@ -202,7 +202,7 @@ class FileDescriptor {
 /// well-defined access.
 void prefault_by_writing(std::span<std::byte> region) noexcept {
   const size_t step = page_size();
-  for (size_t offset = 0; offset < region.size(); offset += step) {
+  for (size_t offset = 0uz; offset < region.size(); offset += step) {
     std::atomic_ref{region[offset]}.store(std::byte{0},
                                           std::memory_order_relaxed);
   }
@@ -218,7 +218,7 @@ void prefault_by_writing(std::span<std::byte> region) noexcept {
 void prefault_by_reading(std::span<std::byte> region) noexcept {
   const size_t step = page_size();
   std::byte sink{0};
-  for (size_t offset = 0; offset < region.size(); offset += step) {
+  for (size_t offset = 0uz; offset < region.size(); offset += step) {
     sink |= std::atomic_ref{region[offset]}.load(std::memory_order_relaxed);
   }
   // Make the loads observable so they are not optimized away.
@@ -260,13 +260,13 @@ void prefault_by_reading(std::span<std::byte> region) noexcept {
 [[nodiscard]] auto is_zombie(int64_t pid) noexcept -> bool {
   if constexpr (platform::kIsMacos) {
 #if defined(__APPLE__)
-    std::array<int, 4> mib{CTL_KERN, KERN_PROC, KERN_PROC_PID,
-                           static_cast<int>(pid)};
+    std::array<int, 4uz> mib{CTL_KERN, KERN_PROC, KERN_PROC_PID,
+                             static_cast<int>(pid)};
     struct kinfo_proc info{};
     size_t length = sizeof(info);
     if (::sysctl(mib.data(), static_cast<uint32_t>(mib.size()), &info, &length,
-                 nullptr, 0) != 0 ||
-        length == 0) {
+                 nullptr, 0uz) != 0 ||
+        length == 0uz) {
       return false;
     }
     return info.kp_proc.p_stat == SZOMB;
@@ -280,10 +280,10 @@ void prefault_by_reading(std::span<std::byte> region) noexcept {
     // terminator is implicit).
     constexpr std::string_view kPrefix = "/proc/";
     constexpr std::string_view kSuffix = "/stat";
-    std::array<char, 48> path{};
+    std::array<char, 48uz> path{};
     kPrefix.copy(path.data(), kPrefix.size());
     const std::span<char> digits = std::span{path}.subspan(
-        kPrefix.size(), path.size() - kPrefix.size() - kSuffix.size() - 1);
+        kPrefix.size(), path.size() - kPrefix.size() - kSuffix.size() - 1uz);
     const auto [end, ec] =
         std::to_chars(digits.data(), std::to_address(digits.end()), pid);
     if (ec != std::errc{}) {
@@ -298,9 +298,9 @@ void prefault_by_reading(std::span<std::byte> region) noexcept {
     if (!fd.valid()) {
       return false;
     }
-    std::array<char, 512> stat{};
+    std::array<char, 512uz> stat{};
     const auto bytes = retry_on_eintr(
-        [&] { return ::read(fd.get(), stat.data(), stat.size() - 1); });
+        [&] { return ::read(fd.get(), stat.data(), stat.size() - 1uz); });
     if (bytes <= 0) {
       return false;
     }
@@ -309,10 +309,10 @@ void prefault_by_reading(std::span<std::byte> region) noexcept {
     const std::string_view text{stat.data(), static_cast<size_t>(bytes)};
     const auto close_paren = text.rfind(')');
     if (close_paren == std::string_view::npos ||
-        close_paren + 2 >= text.size()) {
+        close_paren + 2uz >= text.size()) {
       return false;
     }
-    const char state = text[close_paren + 2];
+    const char state = text[close_paren + 2uz];
     return state == 'Z' || state == 'X';
   }
 }
@@ -330,7 +330,7 @@ SharedMemoryRegion::~SharedMemoryRegion() {
 auto SharedMemoryRegion::create(std::string_view name, size_t bytes) noexcept
     -> std::expected<SharedMemoryRegion, ShmPubSubError> {
   const auto c_name = to_c_name(name);
-  if (!c_name || bytes == 0) {
+  if (!c_name || bytes == 0uz) {
     return std::unexpected(ShmPubSubError::kInvalidArgument);
   }
 
@@ -390,7 +390,7 @@ auto SharedMemoryRegion::open(std::string_view name) noexcept
     return std::unexpected(ShmPubSubError::kOsError);
   }
   const auto bytes = static_cast<size_t>(info.st_size);
-  if (bytes == 0) {
+  if (bytes == 0uz) {
     // mmap rejects length 0. Report an empty region and let the layout
     // check classify it (a half-created or foreign object).
     return SharedMemoryRegion{};

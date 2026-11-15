@@ -14,10 +14,9 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
-#include <cstring>
-#include <iomanip>
-#include <iostream>
+#include <cstdio>
 #include <optional>
+#include <print>
 #include <span>
 #include <string_view>
 #include <system_error>
@@ -62,10 +61,10 @@ struct ConsumerOptions {
 [[nodiscard]] auto parse_args(std::span<char*> args) noexcept
     -> std::optional<ConsumerOptions> {
   ConsumerOptions opts{};
-  for (size_t i = 1; i < args.size(); ++i) {
+  for (size_t i = 1uz; i < args.size(); ++i) {
     const std::string_view flag{args[i]};
     auto next_arg = [&] -> std::optional<std::string_view> {
-      if (i + 1 >= args.size()) {
+      if (i + 1uz >= args.size()) {
         return std::nullopt;
       }
       ++i;
@@ -120,7 +119,7 @@ struct ConsumerOptions {
 [[nodiscard]] constexpr auto consumer_delay_ms(const ConsumerOptions& opts,
                                                uint64_t receive_index) noexcept
     -> uint32_t {
-  constexpr std::array<uint32_t, 5> kJitterMs{0U, 4U, 8U, 2U, 6U};
+  constexpr std::array<uint32_t, 5uz> kJitterMs{0U, 4U, 8U, 2U, 6U};
   const uint32_t jitter = kJitterMs[receive_index % kJitterMs.size()];
   if (receive_index % 3U == 2U) {
     return opts.lag_sleep_ms + jitter;
@@ -133,44 +132,52 @@ auto run_consumer(const ConsumerOptions& opts) -> int {
 
   auto rendezvous = ProcessRendezvous::attach(opts.sync_name, timeout);
   if (!rendezvous) {
-    std::cerr << "[CONSUMER] event=error stage=rendezvous_attach reason=\""
-              << systems::to_string(rendezvous.error()) << "\"\n";
+    std::println(stderr,
+                 "[CONSUMER] event=error stage=rendezvous_attach reason=\"{}\"",
+                 systems::to_string(rendezvous.error()));
     return 1;
   }
 
-  std::cout << "[CONSUMER] event=init_waiting_for_channel channel="
-            << opts.channel_name << " sync=" << opts.sync_name << '\n'
-            << std::flush;
+  std::println("[CONSUMER] event=init_waiting_for_channel channel={} sync={}",
+               opts.channel_name, opts.sync_name);
+  static_cast<void>(std::fflush(stdout));
 
   if (auto wait_prod = rendezvous->wait_producer_ready_for(timeout);
       !wait_prod) {
-    std::cerr << "[CONSUMER] event=error stage=wait_producer_ready reason=\""
-              << systems::to_string(wait_prod.error()) << "\"\n";
+    std::println(
+        stderr,
+        "[CONSUMER] event=error stage=wait_producer_ready reason=\"{}\"",
+        systems::to_string(wait_prod.error()));
     return 1;
   }
 
   auto channel = ShmChannel::open(opts.channel_name);
   if (!channel) {
-    std::cerr << "[CONSUMER] event=error stage=channel_open reason=\""
-              << systems::to_string(channel.error()) << "\"\n";
+    std::println(stderr,
+                 "[CONSUMER] event=error stage=channel_open reason=\"{}\"",
+                 systems::to_string(channel.error()));
     return 1;
   }
 
   auto subscriber = ShmSubscriber::attach(*channel, ShmReadMode::kLatest);
   if (!subscriber) {
-    std::cerr << "[CONSUMER] event=error stage=subscriber_attach reason=\""
-              << systems::to_string(subscriber.error()) << "\"\n";
+    std::println(stderr,
+                 "[CONSUMER] event=error stage=subscriber_attach reason=\"{}\"",
+                 systems::to_string(subscriber.error()));
     return 1;
   }
 
   const auto cfg = channel->config();
-  std::cout << "[CONSUMER] event=ready_and_waiting mode=kLatest slots="
-            << cfg.slot_count << " slot_size=" << cfg.slot_size << '\n'
-            << std::flush;
+  std::println(
+      "[CONSUMER] event=ready_and_waiting mode=kLatest slots={} slot_size={}",
+      cfg.slot_count, cfg.slot_size);
+  static_cast<void>(std::fflush(stdout));
 
   if (auto sig = rendezvous->signal_consumer_ready(); !sig) {
-    std::cerr << "[CONSUMER] event=error stage=signal_consumer_ready reason=\""
-              << systems::to_string(sig.error()) << "\"\n";
+    std::println(
+        stderr,
+        "[CONSUMER] event=error stage=signal_consumer_ready reason=\"{}\"",
+        systems::to_string(sig.error()));
     return 1;
   }
 
@@ -178,7 +185,7 @@ auto run_consumer(const ConsumerOptions& opts) -> int {
   // via lock-free seqlock until channel is closed and drained.
   CameraFramePayload frame{};
   auto frame_bytes =
-      std::as_writable_bytes(std::span<CameraFramePayload, 1>{&frame, 1});
+      std::as_writable_bytes(std::span<CameraFramePayload, 1uz>{&frame, 1uz});
   uint64_t received_count = 0;
   uint64_t missed_total = 0;
   uint64_t crc_errors = 0;
@@ -189,8 +196,8 @@ auto run_consumer(const ConsumerOptions& opts) -> int {
       if (sample.error() == ShmPubSubError::kClosed) {
         break;
       }
-      std::cerr << "[CONSUMER] event=error stage=receive reason=\""
-                << systems::to_string(sample.error()) << "\"\n";
+      std::println(stderr, "[CONSUMER] event=error stage=receive reason=\"{}\"",
+                   systems::to_string(sample.error()));
       return 1;
     }
 
@@ -206,13 +213,12 @@ auto run_consumer(const ConsumerOptions& opts) -> int {
       ++crc_errors;
     }
 
-    std::cout << "[CONSUMER] event=frame_received seq=" << sample->sequence
-              << " missed=" << sample->missed << " size=" << sample->size
-              << " header_crc32=0x" << std::hex << std::setw(8)
-              << std::setfill('0') << frame.pixel_crc32 << " computed_crc32=0x"
-              << std::setw(8) << std::setfill('0') << computed_crc << std::dec
-              << " crc_ok=" << (crc_ok ? "true" : "false") << '\n'
-              << std::flush;
+    std::println(
+        "[CONSUMER] event=frame_received seq={} missed={} size={} "
+        "header_crc32=0x{:08x} computed_crc32=0x{:08x} crc_ok={}",
+        sample->sequence, sample->missed, sample->size, frame.pixel_crc32,
+        computed_crc, crc_ok ? "true" : "false");
+    static_cast<void>(std::fflush(stdout));
 
     const uint32_t delay_ms = consumer_delay_ms(opts, received_count);
     std::this_thread::sleep_for(std::chrono::milliseconds{delay_ms});
@@ -223,10 +229,11 @@ auto run_consumer(const ConsumerOptions& opts) -> int {
     static_cast<void>(ProcessRendezvous::unlink(opts.sync_name));
   }
 
-  std::cout << "[CONSUMER] event=shutdown received_count=" << received_count
-            << " missed_total=" << missed_total << " crc_errors=" << crc_errors
-            << '\n'
-            << std::flush;
+  std::println(
+      "[CONSUMER] event=shutdown received_count={} missed_total={} "
+      "crc_errors={}",
+      received_count, missed_total, crc_errors);
+  static_cast<void>(std::fflush(stdout));
 
   return (received_count > 0 && crc_errors == 0) ? 0 : 1;
 }
@@ -237,9 +244,10 @@ auto main(int argc, char* argv[]) -> int {
   const std::span<char*> args{argv, static_cast<size_t>(argc)};
   const auto opts = parse_args(args);
   if (!opts) {
-    std::cerr << "Usage: shm_pubsub_consumer [--channel /name] [--sync /name] "
+    std::println(stderr,
+                 "Usage: shm_pubsub_consumer [--channel /name] [--sync /name] "
                  "[--base-sleep-ms MS] [--lag-sleep-ms MS] [--timeout-ms MS] "
-                 "[--cleanup]\n";
+                 "[--cleanup]");
     return 2;
   }
   return run_consumer(*opts);

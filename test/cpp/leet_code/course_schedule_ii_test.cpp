@@ -14,7 +14,7 @@ TEST(CourseScheduleIiTest, Example1) {
   std::vector<std::vector<int>> prerequisites = {{1, 0}};
   std::vector<int> expected = {0, 1};
 
-  EXPECT_EQ(leet_code::course_schedule_ii(2, prerequisites), expected);
+  EXPECT_EQ(leet_code::course_schedule_ii(2uz, prerequisites), expected);
   EXPECT_EQ(solution.findOrder(2, prerequisites), expected);
 }
 
@@ -25,7 +25,7 @@ TEST(CourseScheduleIiTest, Example2) {
   std::vector<int> expected1 = {0, 1, 2, 3};
   std::vector<int> expected2 = {0, 2, 1, 3};
 
-  auto result = leet_code::course_schedule_ii(4, prerequisites);
+  auto result = leet_code::course_schedule_ii(4uz, prerequisites);
   EXPECT_TRUE(result == expected1 || result == expected2);
 
   auto result_sol = solution.findOrder(4, prerequisites);
@@ -37,7 +37,7 @@ TEST(CourseScheduleIiTest, Example3) {
   std::vector<std::vector<int>> prerequisites = {};
   std::vector<int> expected = {0};
 
-  EXPECT_EQ(leet_code::course_schedule_ii(1, prerequisites), expected);
+  EXPECT_EQ(leet_code::course_schedule_ii(1uz, prerequisites), expected);
   EXPECT_EQ(solution.findOrder(1, prerequisites), expected);
 }
 
@@ -45,13 +45,13 @@ TEST(CourseScheduleIiTest, Example3) {
 TEST(CourseScheduleIiTest, ImpossibleSchedule) {
   std::vector<std::vector<int>> prerequisites = {{1, 0}, {0, 1}};
   std::vector<int> expected = {};
-  EXPECT_EQ(leet_code::course_schedule_ii(2, prerequisites), expected);
+  EXPECT_EQ(leet_code::course_schedule_ii(2uz, prerequisites), expected);
 }
 
 TEST(CourseScheduleIiTest, DisconnectedGraph) {
   std::vector<std::vector<int>> prerequisites = {{1, 0}, {3, 2}};
-  auto result = leet_code::course_schedule_ii(4, prerequisites);
-  EXPECT_EQ(result.size(), 4);  // Dummy implementation will fail here
+  auto result = leet_code::course_schedule_ii(4uz, prerequisites);
+  EXPECT_EQ(result.size(), 4uz);  // Dummy implementation will fail here
 }
 
 // Tier 4: Stress Workloads & OJ Simulation
@@ -67,7 +67,8 @@ TEST(CourseScheduleIiTest, MaxConstraints) {
                                               prerequisites);
   auto end = std::chrono::high_resolution_clock::now();
 
-  EXPECT_EQ(result.size(), num_courses);  // Dummy returns {} so will fail
+  EXPECT_EQ(result.size(),
+            static_cast<size_t>(num_courses));  // Dummy returns {} so will fail
   EXPECT_LT(end - start, std::chrono::milliseconds(200));
 }
 

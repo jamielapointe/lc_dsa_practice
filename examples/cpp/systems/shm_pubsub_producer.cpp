@@ -12,9 +12,9 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
-#include <iomanip>
-#include <iostream>
+#include <cstdio>
 #include <optional>
+#include <print>
 #include <random>
 #include <span>
 #include <string_view>
@@ -50,8 +50,9 @@ struct ProducerOptions {
     return std::nullopt;
   }
   int base = 10;
-  if (text.size() > 2 && text[0] == '0' && (text[1] == 'x' || text[1] == 'X')) {
-    text.remove_prefix(2);
+  if (text.size() > 2uz && text[0] == '0' &&
+      (text[1] == 'x' || text[1] == 'X')) {
+    text.remove_prefix(2uz);
     base = 16;
   }
   uint32_t value = 0;
@@ -66,10 +67,10 @@ struct ProducerOptions {
 [[nodiscard]] auto parse_args(std::span<char*> args) noexcept
     -> std::optional<ProducerOptions> {
   ProducerOptions opts{};
-  for (size_t i = 1; i < args.size(); ++i) {
+  for (size_t i = 1uz; i < args.size(); ++i) {
     const std::string_view flag{args[i]};
     auto next_arg = [&] -> std::optional<std::string_view> {
-      if (i + 1 >= args.size()) {
+      if (i + 1uz >= args.size()) {
         return std::nullopt;
       }
       ++i;
@@ -143,49 +144,55 @@ auto run_producer(const ProducerOptions& opts) -> int {
   };
   auto channel = ShmChannel::create(opts.channel_name, config);
   if (!channel) {
-    std::cerr << "[PRODUCER] event=error stage=channel_create reason=\""
-              << systems::to_string(channel.error()) << "\"\n";
+    std::println(stderr,
+                 "[PRODUCER] event=error stage=channel_create reason=\"{}\"",
+                 systems::to_string(channel.error()));
     return 1;
   }
 
   auto publisher = ShmPublisher::attach(*channel);
   if (!publisher) {
-    std::cerr << "[PRODUCER] event=error stage=publisher_attach reason=\""
-              << systems::to_string(publisher.error()) << "\"\n";
+    std::println(stderr,
+                 "[PRODUCER] event=error stage=publisher_attach reason=\"{}\"",
+                 systems::to_string(publisher.error()));
     return 1;
   }
 
   auto rendezvous = ProcessRendezvous::attach(opts.sync_name, timeout);
   if (!rendezvous) {
-    std::cerr << "[PRODUCER] event=error stage=rendezvous_attach reason=\""
-              << systems::to_string(rendezvous.error()) << "\"\n";
+    std::println(stderr,
+                 "[PRODUCER] event=error stage=rendezvous_attach reason=\"{}\"",
+                 systems::to_string(rendezvous.error()));
     return 1;
   }
 
-  std::cout << "[PRODUCER] event=channel_created channel=" << opts.channel_name
-            << " slots=" << config.slot_count
-            << " slot_size=" << config.slot_size << '\n'
-            << std::flush;
+  std::println(
+      "[PRODUCER] event=channel_created channel={} slots={} slot_size={}",
+      opts.channel_name, config.slot_count, config.slot_size);
+  static_cast<void>(std::fflush(stdout));
 
   if (auto sig = rendezvous->signal_producer_ready(); !sig) {
-    std::cerr << "[PRODUCER] event=error stage=signal_producer_ready reason=\""
-              << systems::to_string(sig.error()) << "\"\n";
+    std::println(
+        stderr,
+        "[PRODUCER] event=error stage=signal_producer_ready reason=\"{}\"",
+        systems::to_string(sig.error()));
     return 1;
   }
 
-  std::cout << "[PRODUCER] event=waiting_for_consumer sync=" << opts.sync_name
-            << '\n'
-            << std::flush;
+  std::println("[PRODUCER] event=waiting_for_consumer sync={}", opts.sync_name);
+  static_cast<void>(std::fflush(stdout));
 
   if (auto wait_res = rendezvous->wait_consumer_ready_for(timeout); !wait_res) {
-    std::cerr << "[PRODUCER] event=error stage=wait_consumer_ready reason=\""
-              << systems::to_string(wait_res.error()) << "\"\n";
+    std::println(
+        stderr,
+        "[PRODUCER] event=error stage=wait_consumer_ready reason=\"{}\"",
+        systems::to_string(wait_res.error()));
     return 1;
   }
 
-  std::cout << "[PRODUCER] event=consumer_ready_starting_loop total_frames="
-            << opts.frames << '\n'
-            << std::flush;
+  std::println("[PRODUCER] event=consumer_ready_starting_loop total_frames={}",
+               opts.frames);
+  static_cast<void>(std::fflush(stdout));
 
   // Main sensor production loop: zero inter-process coordination here.
   std::mt19937 rng{opts.seed};
@@ -204,29 +211,28 @@ auto run_producer(const ProducerOptions& opts) -> int {
     frame.pixel_crc32 = systems::examples::compute_pixel_crc32(frame.pixels);
 
     const auto payload_bytes =
-        std::as_bytes(std::span<const CameraFramePayload, 1>{&frame, 1});
+        std::as_bytes(std::span<const CameraFramePayload, 1uz>{&frame, 1uz});
     const auto published = publisher->publish(payload_bytes);
     if (!published) {
-      std::cerr << "[PRODUCER] event=error stage=publish frame=" << idx
-                << " reason=\"" << systems::to_string(published.error())
-                << "\"\n";
+      std::println(
+          stderr, "[PRODUCER] event=error stage=publish frame={} reason=\"{}\"",
+          idx, systems::to_string(published.error()));
       return 1;
     }
 
-    std::cout << "[PRODUCER] event=frame_published frame=" << idx
-              << " seq=" << *published << " size=" << payload_bytes.size()
-              << " crc32=0x" << std::hex << std::setw(8) << std::setfill('0')
-              << frame.pixel_crc32 << std::dec << '\n'
-              << std::flush;
+    std::println(
+        "[PRODUCER] event=frame_published frame={} seq={} size={} "
+        "crc32=0x{:08x}",
+        idx, *published, payload_bytes.size(), frame.pixel_crc32);
+    static_cast<void>(std::fflush(stdout));
 
     std::this_thread::sleep_for(std::chrono::milliseconds{opts.sleep_ms});
   }
 
   channel->close();
   rendezvous->close();
-  std::cout << "[PRODUCER] event=shutdown published_count=" << opts.frames
-            << '\n'
-            << std::flush;
+  std::println("[PRODUCER] event=shutdown published_count={}", opts.frames);
+  static_cast<void>(std::fflush(stdout));
   return 0;
 }
 
@@ -236,9 +242,10 @@ auto main(int argc, char* argv[]) -> int {
   const std::span<char*> args{argv, static_cast<size_t>(argc)};
   const auto opts = parse_args(args);
   if (!opts) {
-    std::cerr << "Usage: shm_pubsub_producer [--channel /name] [--sync /name] "
+    std::println(stderr,
+                 "Usage: shm_pubsub_producer [--channel /name] [--sync /name] "
                  "[--frames N] [--slots N] [--sleep-ms MS] [--seed SEED] "
-                 "[--timeout-ms MS]\n";
+                 "[--timeout-ms MS]");
     return 2;
   }
   return run_producer(*opts);

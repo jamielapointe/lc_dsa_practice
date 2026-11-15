@@ -89,7 +89,7 @@ auto make_payload(uint64_t tag, size_t size) -> std::vector<std::byte> {
   std::vector<std::byte> bytes(size);
   std::array<std::byte, sizeof(tag)> tag_bytes{};
   std::memcpy(tag_bytes.data(), &tag, sizeof(tag));
-  for (size_t i = 0; i < size; ++i) {
+  for (size_t i = 0uz; i < size; ++i) {
     bytes[i] = i < tag_bytes.size()
                    ? tag_bytes[i]
                    : static_cast<std::byte>(((tag * 31U) + i) & 0xFFU);
@@ -183,7 +183,7 @@ TEST(ShmPubSubTest, RejectsMalformedAndOverlongNames) {
   }
 
   const std::string longest =
-      "/" + std::string(systems::platform::kMaxShmNameLength - 1, 'n');
+      "/" + std::string(systems::platform::kMaxShmNameLength - 1uz, 'n');
   const systems_test::ScopedShmUnlink cleanup{longest};
   const auto ok = ShmChannel::create(longest, kSmall);
   EXPECT_TRUE(ok.has_value()) << error_text(ok.error());
@@ -220,7 +220,7 @@ TEST(ShmPubSubTest, OpenMissingChannelReturnsNotFound) {
 
 TEST(ShmPubSubTest, OpenRejectsForeignSegments) {
   RecordProperty("requirements", "SHMPS-REQ-005");
-  for (const size_t size : {size_t{0}, size_t{4096}}) {
+  for (const size_t size : {0uz, 4096uz}) {
     const TestName name;
     // NOLINTBEGIN(*-vararg): POSIX shm_open is variadic.
     const int fd =
@@ -228,7 +228,7 @@ TEST(ShmPubSubTest, OpenRejectsForeignSegments) {
     // NOLINTEND(*-vararg)
     ASSERT_GE(fd, 0);
     ASSERT_EQ(::ftruncate(fd, static_cast<off_t>(size)), 0);
-    if (size > 0) {
+    if (size > 0uz) {
       void* base =
           ::mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
       // NOLINTNEXTLINE(*-cstyle-cast,performance-no-int-to-ptr): MAP_FAILED.
@@ -370,14 +370,14 @@ TEST(ShmPubSubTest, SubscriberReceivesInOrderWithExactBytes) {
   auto subscriber = ShmSubscriber::attach(*channel);
   ASSERT_TRUE(subscriber.has_value()) << error_text(subscriber.error());
 
-  const std::vector<size_t> sizes{8, 1, 64, 17, 33};
+  const std::vector<size_t> sizes{8uz, 1uz, 64uz, 17uz, 33uz};
   std::vector<std::vector<std::byte>> sent;
-  for (size_t i = 0; i < sizes.size(); ++i) {
+  for (size_t i = 0uz; i < sizes.size(); ++i) {
     sent.push_back(make_payload(100 + i, sizes[i]));
     ASSERT_TRUE(publisher->publish(sent.back()).has_value());
   }
   std::vector<std::byte> buffer(kSmall.slot_size);
-  for (size_t i = 0; i < sent.size(); ++i) {
+  for (size_t i = 0uz; i < sent.size(); ++i) {
     const auto sample = subscriber->try_receive(buffer);
     ASSERT_TRUE(sample.has_value()) << i << ": " << error_text(sample.error());
     EXPECT_EQ(sample->sequence, i + 1);
@@ -656,7 +656,7 @@ TEST(ShmPubSubTest, NoHeapAllocationAfterInitialization) {
 
   int publish_ok = 0;
   int receive_ok = 0;
-  size_t allocations = 0;
+  size_t allocations = 0uz;
   {
     const systems_test::AllocationScope scope;
     for (int i = 0; i < 1000; ++i) {
@@ -670,7 +670,7 @@ TEST(ShmPubSubTest, NoHeapAllocationAfterInitialization) {
     static_cast<void>(subscriber->receive(buffer));
     allocations = scope.allocations();
   }
-  EXPECT_EQ(allocations, 0U);
+  EXPECT_EQ(allocations, 0uz);
   EXPECT_EQ(publish_ok, 1000);
   EXPECT_EQ(receive_ok, 1000);
 }
@@ -1012,7 +1012,7 @@ TEST(ShmPubSubResidencyTest, PublishAndReceiveTakeNoPageFaults) {
   // Control: prove the probe can see faults at all. A plain shared mapping
   // without pre-faulting takes a fault on the first touch of each page.
   {
-    constexpr size_t kControlBytes = size_t{64} * 4096;
+    constexpr size_t kControlBytes = 64uz * 4096uz;
     const TestName raw;
     // NOLINTBEGIN(*-vararg): POSIX shm_open is variadic.
     const int fd =
@@ -1026,7 +1026,7 @@ TEST(ShmPubSubResidencyTest, PublishAndReceiveTakeNoPageFaults) {
     ASSERT_NE(base, MAP_FAILED);
     const std::span bytes{static_cast<std::byte*>(base), kControlBytes};
     const auto before = page_faults_this_thread();
-    for (size_t offset = 0; offset < bytes.size(); offset += 4096) {
+    for (size_t offset = 0uz; offset < bytes.size(); offset += 4096uz) {
       bytes[offset] = std::byte{1};
     }
     const auto control_faults = page_faults_this_thread() - before;
@@ -1507,7 +1507,7 @@ TEST(ShmPubSubMultiProcessTest, ManySubscriberProcessesNeverSeeTornSamples) {
         publisher->publish(make_payload(seq, 8 + (seq % 500))).has_value());
   }
   channel->close();
-  for (size_t i = 0; i < children.size(); ++i) {
+  for (size_t i = 0uz; i < children.size(); ++i) {
     const auto result = children[i].wait_for(kChildWait);
     EXPECT_TRUE(result.succeeded()) << "child " << i << ": " << result;
     EXPECT_GT(tallies[i]->received.load(), 0U);

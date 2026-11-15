@@ -37,8 +37,8 @@ TEST(TwoSumTest, StandardCanonicalPair) {
   const auto result = leet_code::two_sum(nums, kTarget);
 
   ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(result->first, 0U);
-  EXPECT_EQ(result->second, 1U);
+  EXPECT_EQ(result->first, 0uz);
+  EXPECT_EQ(result->second, 1uz);
 }
 
 // T1-LIB-02: Pair situated at the very beginning of the vector
@@ -48,8 +48,8 @@ TEST(TwoSumTest, PairAtBeginning) {
   const auto result = leet_code::two_sum(nums, kTarget);
 
   ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(result->first, 0U);
-  EXPECT_EQ(result->second, 1U);
+  EXPECT_EQ(result->first, 0uz);
+  EXPECT_EQ(result->second, 1uz);
   EXPECT_EQ(nums[result->first] + nums[result->second], kTarget);
 }
 
@@ -60,8 +60,8 @@ TEST(TwoSumTest, PairInMiddle) {
   const auto result = leet_code::two_sum(nums, kTarget);
 
   ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(result->first, 1U);
-  EXPECT_EQ(result->second, 2U);
+  EXPECT_EQ(result->first, 1uz);
+  EXPECT_EQ(result->second, 2uz);
   EXPECT_EQ(nums[result->first] + nums[result->second], kTarget);
 }
 
@@ -72,8 +72,8 @@ TEST(TwoSumTest, PairAtEnd) {
   const auto result = leet_code::two_sum(nums, kTarget);
 
   ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(result->first, 3U);
-  EXPECT_EQ(result->second, 4U);
+  EXPECT_EQ(result->first, 3uz);
+  EXPECT_EQ(result->second, 4uz);
   EXPECT_EQ(nums[result->first] + nums[result->second], kTarget);
 }
 
@@ -84,8 +84,8 @@ TEST(TwoSumTest, PairAtEndpoints) {
   const auto result = leet_code::two_sum(nums, kTarget);
 
   ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(result->first, 0U);
-  EXPECT_EQ(result->second, 6U);
+  EXPECT_EQ(result->first, 0uz);
+  EXPECT_EQ(result->second, 6uz);
   EXPECT_EQ(nums[result->first] + nums[result->second], kTarget);
 }
 
@@ -96,19 +96,19 @@ TEST(TwoSumTest, NonAdjacentIndices) {
   const auto result = leet_code::two_sum(nums, kTarget);
 
   ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(result->first, 1U);
-  EXPECT_EQ(result->second, 2U);
+  EXPECT_EQ(result->first, 1uz);
+  EXPECT_EQ(result->second, 2uz);
 }
 
 // T1-LIB-07: Non-owning span compatibility with stack-allocated std::array
 TEST(TwoSumTest, NonOwningSpanCompatibilityStdArray) {
-  constexpr std::array<int, 4> arr = {10, 20, 35, 40};
+  constexpr std::array<int, 4uz> arr = {10, 20, 35, 40};
   constexpr int kTarget = 50;
   const auto result = leet_code::two_sum(arr, kTarget);
 
   ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(result->first, 0U);
-  EXPECT_EQ(result->second, 3U);
+  EXPECT_EQ(result->first, 0uz);
+  EXPECT_EQ(result->second, 3uz);
 }
 
 // T1-LIB-08: Non-owning span compatibility with raw C-style array view
@@ -120,8 +120,8 @@ TEST(TwoSumTest, NonOwningSpanCompatibilityRawArray) {
   const auto result = leet_code::two_sum(span_view, kTarget);
 
   ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(result->first, 0U);
-  EXPECT_EQ(result->second, 2U);
+  EXPECT_EQ(result->first, 0uz);
+  EXPECT_EQ(result->second, 2uz);
 }
 
 // T1-LIB-09: LeetCode compatibility wrapper success (returns std::vector<int>)
@@ -130,9 +130,9 @@ TEST(TwoSumTest, LeetCodeCompatibilityWrapperSuccess) {
   constexpr int kTarget = 9;
   const auto res = leet_code::solve_leetcode_two_sum(nums, kTarget);
 
-  ASSERT_EQ(res.size(), 2U);
-  EXPECT_EQ(res[0], 0);
-  EXPECT_EQ(res[1], 1);
+  ASSERT_EQ(res.size(), 2uz);
+  EXPECT_EQ(res[0uz], 0);
+  EXPECT_EQ(res[1uz], 1);
 }
 
 // ============================================================================
@@ -146,8 +146,8 @@ TEST(TwoSumTest, ZeroElementsPair) {
   const auto result = leet_code::two_sum(nums, kTarget);
 
   ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(result->first, 0U);
-  EXPECT_EQ(result->second, 3U);
+  EXPECT_EQ(result->first, 0uz);
+  EXPECT_EQ(result->second, 3uz);
 }
 
 // T2-ALG-02: Single zero paired with positive element
@@ -157,8 +157,8 @@ TEST(TwoSumTest, SingleZeroWithPositive) {
   const auto result = leet_code::two_sum(nums, kTarget);
 
   ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(result->first, 0U);
-  EXPECT_EQ(result->second, 1U);
+  EXPECT_EQ(result->first, 0uz);
+  EXPECT_EQ(result->second, 1uz);
 }
 
 // T2-ALG-03: Single zero paired with negative element
@@ -168,8 +168,8 @@ TEST(TwoSumTest, SingleZeroWithNegative) {
   const auto result = leet_code::two_sum(nums, kTarget);
 
   ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(result->first, 1U);
-  EXPECT_EQ(result->second, 2U);
+  EXPECT_EQ(result->first, 1uz);
+  EXPECT_EQ(result->second, 2uz);
 }
 
 // T2-ALG-04: INT_MIN paired with zero
@@ -179,8 +179,8 @@ TEST(TwoSumTest, IntMinAndZeroPair) {
   const auto result = leet_code::two_sum(nums, kTarget);
 
   ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(result->first, 0U);
-  EXPECT_EQ(result->second, 1U);
+  EXPECT_EQ(result->first, 0uz);
+  EXPECT_EQ(result->second, 1uz);
 }
 
 // T2-ALG-05: INT_MAX paired with zero
@@ -190,8 +190,8 @@ TEST(TwoSumTest, IntMaxAndZeroPair) {
   const auto result = leet_code::two_sum(nums, kTarget);
 
   ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(result->first, 0U);
-  EXPECT_EQ(result->second, 1U);
+  EXPECT_EQ(result->first, 0uz);
+  EXPECT_EQ(result->second, 1uz);
 }
 
 // T2-ALG-06: Negative numbers and negative target
@@ -201,8 +201,8 @@ TEST(TwoSumTest, NegativeNumbersAndNegativeTarget) {
   const auto result = leet_code::two_sum(nums, kTarget);
 
   ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(result->first, 0U);
-  EXPECT_EQ(result->second, 2U);
+  EXPECT_EQ(result->first, 0uz);
+  EXPECT_EQ(result->second, 2uz);
   EXPECT_EQ(nums[result->first] + nums[result->second], kTarget);
 }
 
@@ -213,8 +213,8 @@ TEST(TwoSumTest, MixedSignsWithZeroSum) {
   const auto result = leet_code::two_sum(nums, kTarget);
 
   ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(result->first, 0U);
-  EXPECT_EQ(result->second, 3U);
+  EXPECT_EQ(result->first, 0uz);
+  EXPECT_EQ(result->second, 3uz);
   EXPECT_EQ(nums[result->first] + nums[result->second], kTarget);
 }
 
@@ -225,8 +225,8 @@ TEST(TwoSumTest, MixedSignsWithPositiveTarget) {
   const auto result = leet_code::two_sum(nums, kTarget);
 
   ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(result->first, 0U);
-  EXPECT_EQ(result->second, 1U);
+  EXPECT_EQ(result->first, 0uz);
+  EXPECT_EQ(result->second, 1uz);
   EXPECT_EQ(nums[result->first] + nums[result->second], kTarget);
 }
 
@@ -237,8 +237,8 @@ TEST(TwoSumTest, MixedSignsWithNegativeTarget) {
   const auto result = leet_code::two_sum(nums, kTarget);
 
   ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(result->first, 0U);
-  EXPECT_EQ(result->second, 2U);
+  EXPECT_EQ(result->first, 0uz);
+  EXPECT_EQ(result->second, 2uz);
   EXPECT_EQ(nums[result->first] + nums[result->second], kTarget);
 }
 
@@ -249,8 +249,8 @@ TEST(TwoSumTest, DuplicateElementsSummingToTarget) {
   const auto result = leet_code::two_sum(nums, kTarget);
 
   ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(result->first, 0U);
-  EXPECT_EQ(result->second, 1U);
+  EXPECT_EQ(result->first, 0uz);
+  EXPECT_EQ(result->second, 1uz);
 }
 
 // T2-ALG-11: Array with multiple duplicate candidates
@@ -260,8 +260,8 @@ TEST(TwoSumTest, MultipleDuplicateCandidates) {
   const auto result = leet_code::two_sum(nums, kTarget);
 
   ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(result->first, 0U);
-  EXPECT_EQ(result->second, 1U);
+  EXPECT_EQ(result->first, 0uz);
+  EXPECT_EQ(result->second, 1uz);
 }
 
 // T2-ALG-12: Duplicate values present but do not sum to target
@@ -271,8 +271,8 @@ TEST(TwoSumTest, DuplicatesPresentButNotSummingToTarget) {
   const auto result = leet_code::two_sum(nums, kTarget);
 
   ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(result->first, 0U);
-  EXPECT_EQ(result->second, 3U);
+  EXPECT_EQ(result->first, 0uz);
+  EXPECT_EQ(result->second, 3uz);
   EXPECT_EQ(nums[result->first] + nums[result->second], kTarget);
 }
 
@@ -294,8 +294,8 @@ TEST(TwoSumTest, LargePositiveValuesNearIntMax) {
   const auto result = leet_code::two_sum(nums, kTarget);
 
   ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(result->first, 0U);
-  EXPECT_EQ(result->second, 2U);
+  EXPECT_EQ(result->first, 0uz);
+  EXPECT_EQ(result->second, 2uz);
   EXPECT_EQ(nums[result->first] + nums[result->second], kTarget);
 }
 
@@ -307,8 +307,8 @@ TEST(TwoSumTest, LargeNegativeValuesNearIntMin) {
   const auto result = leet_code::two_sum(nums, kTarget);
 
   ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(result->first, 0U);
-  EXPECT_EQ(result->second, 2U);
+  EXPECT_EQ(result->first, 0uz);
+  EXPECT_EQ(result->second, 2uz);
   EXPECT_EQ(nums[result->first] + nums[result->second], kTarget);
 }
 
@@ -452,12 +452,12 @@ TEST(TwoSumTest, LeetCodeWrapperExceptionMessageMatches) {
 
 // T4-STRESS-01: 10,000 Elements Large-Scale Performance Workload Test
 TEST(TwoSumTest, LargeScale10kElementsPerformance) {
-  constexpr size_t kSize = 10'000;
+  constexpr size_t kSize = 10'000uz;
   std::vector<int> nums(kSize);
   std::ranges::iota(nums, 1);  // 1, 2, 3, ..., 10000
 
   // Target requires first element (1) and last element (10000)
-  const int target = nums[0] + nums[kSize - 1];
+  const int target = nums[0uz] + nums[kSize - 1uz];
 
   const auto start = std::chrono::steady_clock::now();
   const auto result = leet_code::two_sum(nums, target);
@@ -473,14 +473,14 @@ TEST(TwoSumTest, LargeScale10kElementsPerformance) {
 
 // T4-STRESS-02: 100,000 Elements Extreme-Scale Performance Workload Test
 TEST(TwoSumTest, LargeScale100kElementsPerformance) {
-  constexpr size_t kSize = 100'000;
+  constexpr size_t kSize = 100'000uz;
   std::vector<int> nums(kSize);
-  for (size_t i = 0; i < kSize; ++i) {
-    nums[i] = static_cast<int>(i * 2);  // Even numbers: 0, 2, 4, ...
+  for (size_t i = 0uz; i < kSize; ++i) {
+    nums[i] = static_cast<int>(i * 2uz);  // Even numbers: 0, 2, 4, ...
   }
 
   // Target requires elements at index 49999 and index 99999
-  const int target = nums[49'999] + nums[99'999];
+  const int target = nums[49'999uz] + nums[99'999uz];
 
   const auto start = std::chrono::steady_clock::now();
   const auto result = leet_code::two_sum(nums, target);
@@ -501,9 +501,9 @@ struct TestCase {
 
 void VerifyOnlineJudgeSolution(const std::vector<int>& solution,
                                const TestCase& test_case) {
-  ASSERT_EQ(solution.size(), 2U);
-  const int idx1 = solution[0];
-  const int idx2 = solution[1];
+  ASSERT_EQ(solution.size(), 2uz);
+  const int idx1 = solution[0uz];
+  const int idx2 = solution[1uz];
 
   EXPECT_NE(idx1, idx2);
   const bool bounds_valid =

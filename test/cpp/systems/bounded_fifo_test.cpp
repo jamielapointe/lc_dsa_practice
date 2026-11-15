@@ -74,44 +74,46 @@ struct MayThrow {
 // ---------------------------------------------------------------------------
 
 TEST(BoundedFifoTest, StartsEmptyWithConfiguredCapacity) {
-  BoundedFifo<int, 4> fifo;
+  BoundedFifo<int, 4uz> fifo;
   EXPECT_TRUE(fifo.empty());
   EXPECT_FALSE(fifo.full());
-  EXPECT_EQ(fifo.size(), 0U);
-  EXPECT_EQ((BoundedFifo<int, 4>::capacity()), 4U);
+  EXPECT_EQ(fifo.size(), 0uz);
+  EXPECT_EQ((BoundedFifo<int, 4uz>::capacity()), 4uz);
   EXPECT_FALSE(fifo.closed());
 }
 
 TEST(BoundedFifoTest, PreservesFifoOrder) {
-  BoundedFifo<int, 8> fifo;
+  BoundedFifo<int, 8uz> fifo;
   for (int i = 0; i < 5; ++i) {
     ASSERT_TRUE(fifo.try_push(i));
   }
-  EXPECT_EQ(fifo.size(), 5U);
+  EXPECT_EQ(fifo.size(), 5uz);
   for (int i = 0; i < 5; ++i) {
     const auto value = fifo.try_pop();
     ASSERT_TRUE(value.has_value());
-    EXPECT_EQ(*value, i);
+    if (value.has_value()) {
+      EXPECT_EQ(*value, i);
+    }
   }
   EXPECT_TRUE(fifo.empty());
 }
 
 TEST(BoundedFifoTest, TryPushFailsWhenFull) {
-  BoundedFifo<int, 2> fifo;
+  BoundedFifo<int, 2uz> fifo;
   EXPECT_TRUE(fifo.try_push(1));
   EXPECT_TRUE(fifo.try_push(2));
   EXPECT_TRUE(fifo.full());
   EXPECT_FALSE(fifo.try_push(3));
-  EXPECT_EQ(fifo.size(), 2U);
+  EXPECT_EQ(fifo.size(), 2uz);
 }
 
 TEST(BoundedFifoTest, TryPopReturnsNulloptWhenEmpty) {
-  BoundedFifo<int, 2> fifo;
+  BoundedFifo<int, 2uz> fifo;
   EXPECT_EQ(fifo.try_pop(), std::nullopt);
 }
 
 TEST(BoundedFifoTest, WrapsAroundTheRingBuffer) {
-  BoundedFifo<int, 3> fifo;
+  BoundedFifo<int, 3uz> fifo;
   int next_in = 0;
   int next_out = 0;
   for (int round = 0; round < 20; ++round) {
@@ -123,7 +125,9 @@ TEST(BoundedFifoTest, WrapsAroundTheRingBuffer) {
     for (int i = 0; i < 2; ++i) {
       const auto value = fifo.try_pop();
       ASSERT_TRUE(value.has_value());
-      EXPECT_EQ(*value, next_out++);
+      if (value.has_value()) {
+        EXPECT_EQ(*value, next_out++);
+      }
     }
   }
   while (const auto value = fifo.try_pop()) {
@@ -133,7 +137,7 @@ TEST(BoundedFifoTest, WrapsAroundTheRingBuffer) {
 }
 
 TEST(BoundedFifoTest, BlockingPushAndPopWorkWithoutContention) {
-  BoundedFifo<std::string, 2> fifo;
+  BoundedFifo<std::string, 2uz> fifo;
   ASSERT_TRUE(fifo.push(std::string{"a"}));
   const std::string b = "b";
   ASSERT_TRUE(fifo.push(b));
@@ -146,7 +150,7 @@ TEST(BoundedFifoTest, BlockingPushAndPopWorkWithoutContention) {
 // ---------------------------------------------------------------------------
 
 TEST(BoundedFifoTest, CapacityOneAlternatesPushPop) {
-  BoundedFifo<int, 1> fifo;
+  BoundedFifo<int, 1uz> fifo;
   for (int i = 0; i < 10; ++i) {
     ASSERT_TRUE(fifo.try_push(i));
     EXPECT_FALSE(fifo.try_push(-1));
@@ -156,21 +160,25 @@ TEST(BoundedFifoTest, CapacityOneAlternatesPushPop) {
 }
 
 TEST(BoundedFifoTest, SupportsMoveOnlyTypes) {
-  BoundedFifo<std::unique_ptr<int>, 2> fifo;
+  BoundedFifo<std::unique_ptr<int>, 2uz> fifo;
   ASSERT_TRUE(fifo.try_push(std::make_unique<int>(7)));
   ASSERT_TRUE(fifo.try_emplace(std::make_unique<int>(9)));
   auto first = fifo.try_pop();
   ASSERT_TRUE(first.has_value());
-  ASSERT_NE(*first, nullptr);
-  EXPECT_EQ(**first, 7);
+  if (first.has_value()) {
+    ASSERT_NE(*first, nullptr);
+    EXPECT_EQ(**first, 7);
+  }
   auto second = fifo.pop();
   ASSERT_TRUE(second.has_value());
-  ASSERT_NE(*second, nullptr);
-  EXPECT_EQ(**second, 9);
+  if (second.has_value()) {
+    ASSERT_NE(*second, nullptr);
+    EXPECT_EQ(**second, 9);
+  }
 }
 
 TEST(BoundedFifoTest, FailedMovePushLeavesArgumentUntouched) {
-  BoundedFifo<std::unique_ptr<int>, 1> fifo;
+  BoundedFifo<std::unique_ptr<int>, 1uz> fifo;
   ASSERT_TRUE(fifo.try_push(std::make_unique<int>(1)));
   auto rejected = std::make_unique<int>(2);
   EXPECT_FALSE(fifo.try_push(std::move(rejected)));
@@ -182,25 +190,25 @@ TEST(BoundedFifoTest, FailedMovePushLeavesArgumentUntouched) {
 }
 
 TEST(BoundedFifoTest, ConstructsElementsInPlace) {
-  BoundedFifo<std::string, 2> fifo;
-  ASSERT_TRUE(fifo.try_emplace(3U, 'x'));
+  BoundedFifo<std::string, 2uz> fifo;
+  ASSERT_TRUE(fifo.try_emplace(3uz, 'x'));
   ASSERT_TRUE(fifo.emplace("hello"));
   EXPECT_EQ(fifo.try_pop(), "xxx");
   EXPECT_EQ(fifo.try_pop(), "hello");
 }
 
 TEST(BoundedFifoTest, TimedOperationsTimeOutOnFullAndEmpty) {
-  BoundedFifo<int, 1> fifo;
+  BoundedFifo<int, 1uz> fifo;
   EXPECT_EQ(fifo.pop_for(milliseconds{10}), std::nullopt);
   ASSERT_TRUE(fifo.try_push(1));
   EXPECT_FALSE(fifo.emplace_for(milliseconds{10}, 2));
   EXPECT_EQ(fifo.pop_for(milliseconds{10}), 1);
   EXPECT_TRUE(fifo.emplace_for(milliseconds{10}, 3));
-  EXPECT_EQ(fifo.size(), 1U);
+  EXPECT_EQ(fifo.size(), 1uz);
 }
 
 TEST(BoundedFifoTest, ClosedQueueRejectsPushesButDrainsExistingElements) {
-  BoundedFifo<int, 4> fifo;
+  BoundedFifo<int, 4uz> fifo;
   ASSERT_TRUE(fifo.try_push(1));
   ASSERT_TRUE(fifo.try_push(2));
   fifo.close();
@@ -221,7 +229,7 @@ TEST(BoundedFifoTest, ClosedQueueRejectsPushesButDrainsExistingElements) {
 TEST(BoundedFifoTest, DestructorReleasesQueuedElements) {
   int live = 0;
   {
-    BoundedFifo<Tracked, 4> fifo;
+    BoundedFifo<Tracked, 4uz> fifo;
     ASSERT_TRUE(fifo.try_emplace(1, &live));
     ASSERT_TRUE(fifo.try_emplace(2, &live));
     ASSERT_TRUE(fifo.try_emplace(3, &live));
@@ -232,37 +240,41 @@ TEST(BoundedFifoTest, DestructorReleasesQueuedElements) {
 
 TEST(BoundedFifoTest, PopReleasesTheSlot) {
   int live = 0;
-  BoundedFifo<Tracked, 2> fifo;
+  BoundedFifo<Tracked, 2uz> fifo;
   ASSERT_TRUE(fifo.try_emplace(1, &live));
   ASSERT_TRUE(fifo.try_emplace(2, &live));
   EXPECT_EQ(live, 2);
   {
     const auto popped = fifo.try_pop();
     ASSERT_TRUE(popped.has_value());
-    EXPECT_EQ(popped->value(), 1);
+    if (popped.has_value()) {
+      EXPECT_EQ(popped->value(), 1);
+    }
     EXPECT_EQ(live, 2);  // One in the queue, one held by `popped`.
   }
   EXPECT_EQ(live, 1);
   ASSERT_TRUE(fifo.try_emplace(3, &live));
-  EXPECT_EQ(fifo.size(), 2U);
+  EXPECT_EQ(fifo.size(), 2uz);
 }
 
 TEST(BoundedFifoTest, ThrowingConstructorLeavesQueueUnchanged) {
-  BoundedFifo<MayThrow, 2> fifo;
+  BoundedFifo<MayThrow, 2uz> fifo;
   ASSERT_TRUE(fifo.try_emplace(false, 1));
   EXPECT_THROW(std::ignore = fifo.try_emplace(true, 2), std::runtime_error);
-  EXPECT_EQ(fifo.size(), 1U);
+  EXPECT_EQ(fifo.size(), 1uz);
   ASSERT_TRUE(fifo.try_emplace(false, 3));
   const auto first = fifo.try_pop();
   const auto second = fifo.try_pop();
   ASSERT_TRUE(first.has_value());
   ASSERT_TRUE(second.has_value());
-  EXPECT_EQ(first->value, 1);
-  EXPECT_EQ(second->value, 3);
+  if (first.has_value() && second.has_value()) {
+    EXPECT_EQ(first->value, 1);
+    EXPECT_EQ(second->value, 3);
+  }
 }
 
 TEST(BoundedFifoTest, ObjectLivesInStaticStorageWithoutHeap) {
-  static BoundedFifo<uint8_t, 8>
+  static BoundedFifo<uint8_t, 8uz>
       fifo;  // Large, trivially constructible; no allocation involved.
   ASSERT_TRUE(fifo.try_push(uint8_t{0xAB}));
   EXPECT_EQ(fifo.try_pop(), uint8_t{0xAB});
@@ -273,7 +285,7 @@ TEST(BoundedFifoTest, ObjectLivesInStaticStorageWithoutHeap) {
 // ---------------------------------------------------------------------------
 
 TEST(BoundedFifoTest, BlockedPopIsWokenByPush) {
-  BoundedFifo<int, 2> fifo;
+  BoundedFifo<int, 2uz> fifo;
   std::optional<int> received;
   std::thread consumer([&] { received = fifo.pop(); });
   std::this_thread::sleep_for(milliseconds{20});
@@ -283,7 +295,7 @@ TEST(BoundedFifoTest, BlockedPopIsWokenByPush) {
 }
 
 TEST(BoundedFifoTest, BlockedPushIsWokenByPop) {
-  BoundedFifo<int, 1> fifo;
+  BoundedFifo<int, 1uz> fifo;
   ASSERT_TRUE(fifo.try_push(1));
   std::atomic<bool> pushed{false};
   std::thread producer([&] { pushed = fifo.push(2); });
@@ -296,8 +308,8 @@ TEST(BoundedFifoTest, BlockedPushIsWokenByPop) {
 }
 
 TEST(BoundedFifoTest, CloseWakesBlockedConsumersAndProducers) {
-  BoundedFifo<int, 1> empty_fifo;
-  BoundedFifo<int, 1> full_fifo;
+  BoundedFifo<int, 1uz> empty_fifo;
+  BoundedFifo<int, 1uz> full_fifo;
   ASSERT_TRUE(full_fifo.try_push(1));
 
   std::optional<int> popped{123};
@@ -316,7 +328,7 @@ TEST(BoundedFifoTest, CloseWakesBlockedConsumersAndProducers) {
 
 TEST(BoundedFifoStressTest, SingleProducerSingleConsumerKeepsOrder) {
   constexpr int kCount = 100000;
-  BoundedFifo<int, 64> fifo;
+  BoundedFifo<int, 64uz> fifo;
   std::thread producer([&] {
     for (int i = 0; i < kCount; ++i) {
       ASSERT_TRUE(fifo.push(i));
@@ -326,6 +338,7 @@ TEST(BoundedFifoStressTest, SingleProducerSingleConsumerKeepsOrder) {
 
   int expected = 0;
   while (const auto value = fifo.pop()) {
+    ASSERT_TRUE(value.has_value());
     ASSERT_EQ(*value, expected);
     ++expected;
   }
@@ -337,7 +350,7 @@ TEST(BoundedFifoStressTest, MultiProducerMultiConsumerDeliversEverythingOnce) {
   constexpr int kProducers = 4;
   constexpr int kConsumers = 4;
   constexpr int kPerProducer = 25000;
-  BoundedFifo<uint64_t, 32> fifo;
+  BoundedFifo<uint64_t, 32uz> fifo;
 
   std::atomic<uint64_t> sum{0};
   std::atomic<uint64_t> received{0};
@@ -351,6 +364,9 @@ TEST(BoundedFifoStressTest, MultiProducerMultiConsumerDeliversEverythingOnce) {
     consumers.emplace_back([&] {
       std::vector<int64_t> last_seen(kProducers, -1);
       while (const auto value = fifo.pop()) {
+        if (!value.has_value()) {
+          break;
+        }
         const auto producer_id = static_cast<size_t>(*value >> 32U);
         const auto sequence = static_cast<int64_t>(*value & 0xFFFFFFFFU);
         if (sequence <= last_seen[producer_id]) {

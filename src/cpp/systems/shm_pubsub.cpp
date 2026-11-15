@@ -118,15 +118,15 @@ static_assert(std::is_trivially_destructible_v<ChannelHeader>);
 static_assert(std::is_trivially_destructible_v<SlotHeader>);
 static_assert(std::is_standard_layout_v<ChannelHeader>);
 static_assert(std::is_standard_layout_v<SlotHeader>);
-static_assert(sizeof(SlotHeader) == 2 * kWordBytes);
-static_assert(sizeof(ChannelHeader) % kCacheLine == 0);
+static_assert(sizeof(SlotHeader) == 2uz * kWordBytes);
+static_assert(sizeof(ChannelHeader) % kCacheLine == 0uz);
 
 constexpr size_t kHeaderBytes = sizeof(ChannelHeader);
 constexpr size_t kSlotHeaderBytes = sizeof(SlotHeader);
 
 [[nodiscard]] constexpr auto round_up(size_t value, size_t multiple) noexcept
     -> size_t {
-  return (value + multiple - 1) / multiple * multiple;
+  return (value + multiple - 1uz) / multiple * multiple;
 }
 
 /// @brief Bytes per slot: header and word-rounded payload, padded to a cache
@@ -148,8 +148,7 @@ constexpr size_t kSlotHeaderBytes = sizeof(SlotHeader);
 // Largest legal segment: 4096 slots x ~64 KiB, about 256 MiB. It fits
 // comfortably in size_t, so `region_bytes` cannot overflow.
 static_assert(region_bytes({.slot_count = kShmMaxSlotCount,
-                            .slot_size = kShmMaxSlotSize}) <
-              (size_t{1} << 30U));
+                            .slot_size = kShmMaxSlotSize}) < (1uz << 30U));
 
 // ---------------------------------------------------------------------
 // Typed access to the mapping. These two helpers are the only places
@@ -213,14 +212,14 @@ struct SlotRef {
 void store_payload(std::span<uint64_t> words,
                    std::span<const std::byte> payload) noexcept {
   const size_t full_words = payload.size() / kWordBytes;
-  for (size_t i = 0; i < full_words; ++i) {
+  for (size_t i = 0uz; i < full_words; ++i) {
     uint64_t word = 0;
     std::memcpy(&word, payload.subspan(i * kWordBytes, kWordBytes).data(),
                 kWordBytes);
     std::atomic_ref{words[i]}.store(word, std::memory_order_relaxed);
   }
   const size_t tail = payload.size() % kWordBytes;
-  if (tail != 0) {
+  if (tail != 0uz) {
     uint64_t word = 0;
     std::memcpy(&word, payload.subspan(full_words * kWordBytes).data(), tail);
     std::atomic_ref{words[full_words]}.store(word, std::memory_order_relaxed);
@@ -231,14 +230,14 @@ void store_payload(std::span<uint64_t> words,
 void load_payload(std::span<uint64_t> words,
                   std::span<std::byte> out) noexcept {
   const size_t full_words = out.size() / kWordBytes;
-  for (size_t i = 0; i < full_words; ++i) {
+  for (size_t i = 0uz; i < full_words; ++i) {
     const uint64_t word =
         std::atomic_ref{words[i]}.load(std::memory_order_relaxed);
     std::memcpy(out.subspan(i * kWordBytes, kWordBytes).data(), &word,
                 kWordBytes);
   }
   const size_t tail = out.size() % kWordBytes;
-  if (tail != 0) {
+  if (tail != 0uz) {
     const uint64_t word =
         std::atomic_ref{words[full_words]}.load(std::memory_order_relaxed);
     std::memcpy(out.subspan(full_words * kWordBytes).data(), &word, tail);
@@ -321,8 +320,8 @@ enum class ReadOutcome : uint8_t {
 /// at most `platform::kMaxShmNameLength` characters.
 [[nodiscard]] auto validate_name(std::string_view name) noexcept
     -> std::expected<void, ShmPubSubError> {
-  if (name.size() < 2 || name.front() != '/' ||
-      name.find('/', 1) != std::string_view::npos || name.contains('\0')) {
+  if (name.size() < 2uz || name.front() != '/' ||
+      name.find('/', 1uz) != std::string_view::npos || name.contains('\0')) {
     return std::unexpected(ShmPubSubError::kInvalidArgument);
   }
   if (name.size() > platform::kMaxShmNameLength) {
@@ -587,7 +586,9 @@ auto ShmPublisher::operator=(ShmPublisher&& other) noexcept -> ShmPublisher& {
   return *this;
 }
 
-ShmPublisher::~ShmPublisher() { release(); }
+ShmPublisher::~ShmPublisher() {
+  release();
+}
 
 void ShmPublisher::release() noexcept {
   if (view_.base == nullptr) {

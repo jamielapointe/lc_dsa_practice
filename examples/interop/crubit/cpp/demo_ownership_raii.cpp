@@ -1,14 +1,14 @@
 #include <cstddef>
 #include <cstdint>
-#include <iostream>
+#include <print>
 
 #include "crubit/rs_ownership_raii.h"
 #include "interop/crubit/ownership_and_raii.hpp"
 #include "support/rs_std/str_ref.h"
 
 auto main() -> int {
-  size_t peak_buffers = 0;
-  size_t bytes_appended = 0;
+  size_t peak_buffers = 0uz;
+  size_t bytes_appended = 0uz;
   uint32_t checksum = 0U;
 
   {
@@ -20,7 +20,7 @@ auto main() -> int {
     checksum = rust_packet.checksum();
     peak_buffers = rs_ownership_raii::live_packet_buffers();
     if (interop::crubit::LeaseGuard::active_lease_count() != 1 ||
-        peak_buffers != 1) {
+        peak_buffers != 1uz) {
       return 1;
     }
   }
@@ -28,13 +28,13 @@ auto main() -> int {
   const auto remaining_leases =
       interop::crubit::LeaseGuard::active_lease_count();
   const auto remaining_buffers = rs_ownership_raii::live_packet_buffers();
-  if (remaining_leases != 0 || remaining_buffers != 0) {
+  if (remaining_leases != 0 || remaining_buffers != 0uz) {
     return 1;
   }
 
-  std::cout << "[CRUBIT_CPP_DEMO] module=ownership_raii status=ok peak_buffers="
-            << peak_buffers << " bytes=" << bytes_appended
-            << " checksum=" << checksum << " leaked=" << remaining_buffers
-            << '\n';
+  std::println(
+      "[CRUBIT_CPP_DEMO] module=ownership_raii status=ok peak_buffers={} "
+      "bytes={} checksum={} leaked={}",
+      peak_buffers, bytes_appended, checksum, remaining_buffers);
   return 0;
 }

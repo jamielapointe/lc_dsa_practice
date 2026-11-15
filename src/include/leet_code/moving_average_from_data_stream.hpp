@@ -42,11 +42,11 @@ class MovingAverageImpl {
   [[nodiscard]] auto next(int val) -> double;
 
  private:
-  size_t size_{0};
+  size_t size_{0uz};
   int32_t current_sum_{0};
   std::vector<int32_t> buffer_;
-  size_t head_{0};
-  size_t count_{0};
+  size_t head_{0uz};
+  size_t count_{0uz};
   double inv_size_;
 };
 
@@ -54,7 +54,7 @@ class MovingAverageImpl {
 class MovingAverage {
  public:
   explicit MovingAverage(int size);
-  auto next(int val) -> double;
+  [[nodiscard]] auto next(int val) -> double;
 
  private:
   MovingAverageImpl impl_;

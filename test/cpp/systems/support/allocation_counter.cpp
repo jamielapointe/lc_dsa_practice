@@ -21,8 +21,8 @@
 namespace systems_test {
 namespace {
 
-std::atomic<bool> g_armed{false};      // NOLINT(*-avoid-non-const-global*)
-std::atomic<size_t> g_allocations{0};  // NOLINT(*-avoid-non-const-global*)
+std::atomic<bool> g_armed{false};        // NOLINT(*-avoid-non-const-global*)
+std::atomic<size_t> g_allocations{0uz};  // NOLINT(*-avoid-non-const-global*)
 
 #if defined(__has_feature)
 #if __has_feature(address_sanitizer) || __has_feature(thread_sanitizer)
@@ -31,7 +31,8 @@ std::atomic<size_t> g_allocations{0};  // NOLINT(*-avoid-non-const-global*)
 void count_sanitizer_malloc(const volatile void* /*ptr*/, size_t /*bytes*/) {
   detail::note_allocation();
 }
-void ignore_sanitizer_free(const volatile void* /*ptr*/) {}
+void ignore_sanitizer_free(const volatile void* /*ptr*/) {
+}
 
 void install_counting_hooks() noexcept {
   static const int kInstalled = __sanitizer_install_malloc_and_free_hooks(
@@ -39,10 +40,12 @@ void install_counting_hooks() noexcept {
   static_cast<void>(kInstalled);
 }
 #else
-void install_counting_hooks() noexcept {}
+void install_counting_hooks() noexcept {
+}
 #endif
 #else
-void install_counting_hooks() noexcept {}
+void install_counting_hooks() noexcept {
+}
 #endif
 
 }  // namespace
@@ -51,22 +54,22 @@ namespace detail {
 
 void note_allocation() noexcept {
   if (g_armed.load(std::memory_order_relaxed)) {
-    g_allocations.fetch_add(1, std::memory_order_relaxed);
+    g_allocations.fetch_add(1uz, std::memory_order_relaxed);
   }
 }
 
 auto checked_malloc(size_t bytes) noexcept -> void* {
   note_allocation();
   // NOLINTNEXTLINE(*-no-malloc,*-owning-memory): this IS the allocator.
-  return std::malloc(bytes == 0 ? 1 : bytes);
+  return std::malloc(bytes == 0uz ? 1uz : bytes);
 }
 
 auto checked_aligned(size_t bytes, std::align_val_t align) noexcept -> void* {
   note_allocation();
   const auto alignment = static_cast<size_t>(align);
-  const size_t rounded = ((bytes + alignment - 1) / alignment) * alignment;
+  const size_t rounded = ((bytes + alignment - 1uz) / alignment) * alignment;
   // NOLINTNEXTLINE(*-no-malloc,*-owning-memory): this IS the allocator.
-  return std::aligned_alloc(alignment, rounded == 0 ? alignment : rounded);
+  return std::aligned_alloc(alignment, rounded == 0uz ? alignment : rounded);
 }
 
 auto throwing(void* ptr) -> void* {
@@ -89,7 +92,7 @@ AllocationScope::AllocationScope() noexcept {
   owner_ = g_armed.compare_exchange_strong(expected, true,
                                            std::memory_order_acq_rel);
   if (owner_) {
-    g_allocations.store(0, std::memory_order_relaxed);
+    g_allocations.store(0uz, std::memory_order_relaxed);
   }
 }
 

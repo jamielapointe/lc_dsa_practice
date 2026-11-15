@@ -5,7 +5,6 @@
 #include <functional>
 #include <span>
 #include <stack>
-#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -16,17 +15,16 @@ namespace {
 
 using NodeT = std::pair<int, int>;
 struct PairHash {
-  auto operator()(const NodeT& p) const -> size_t {
-    return std::hash<int>()(p.first) ^ (std::hash<int>()(p.second) << 1U);
+  [[nodiscard]] constexpr auto operator()(const NodeT& p) const noexcept
+      -> size_t {
+    return std::hash<int>()(p.first) ^ (std::hash<int>()(p.second) << 1uz);
   }
 };
 
-using EdgeList = std::vector<NodeT>;
-using AdjacencyMap = std::unordered_map<NodeT, EdgeList, PairHash>;
 using VisitedSet = std::unordered_set<NodeT, PairHash>;
 using EdgeStack = std::stack<NodeT, std::vector<NodeT>>;
 
-constexpr std::array<std::array<int, 2>, 4> kDirections{
+constexpr std::array<std::array<int, 2uz>, 4uz> kDirections{
     {
         {{-1, 0}},
         {{1, 0}},
@@ -40,7 +38,7 @@ constexpr std::array<std::array<int, 2>, 4> kDirections{
 auto number_of_islands(std::span<std::vector<char>> grid) -> int {
   // we assume grid is mxn and non-empty.
   int num_rows = static_cast<int>(grid.size());
-  int num_cols = static_cast<int>(grid[0].size());
+  int num_cols = static_cast<int>(grid[0uz].size());
   VisitedSet visited;
   int num_islands = 0;
 
@@ -80,7 +78,7 @@ auto number_of_islands(std::span<std::vector<char>> grid) -> int {
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-int Solution::numIslands(std::vector<std::vector<char>>& grid) {
+auto Solution::numIslands(std::vector<std::vector<char>>& grid) -> int {
   return number_of_islands(grid);
 }
 

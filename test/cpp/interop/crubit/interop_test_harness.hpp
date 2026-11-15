@@ -5,7 +5,8 @@
 /// interop tests.
 
 #include <cmath>
-#include <iostream>
+#include <cstdio>
+#include <print>
 #include <source_location>
 
 namespace interop::crubit::test {
@@ -22,8 +23,8 @@ struct TestContext {
     ++checks_run;
     if (!condition) {
       ++failures;
-      std::cerr << loc.file_name() << ':' << loc.line()
-                << ": FAILED: " << expr_text << '\n';
+      std::println(stderr, "{}:{}: FAILED: {}", loc.file_name(), loc.line(),
+                   expr_text);
     }
   }
 
@@ -36,8 +37,8 @@ struct TestContext {
     ++checks_run;
     if (!(lhs == rhs)) {
       ++failures;
-      std::cerr << loc.file_name() << ':' << loc.line()
-                << ": FAILED: " << lhs_text << " == " << rhs_text << '\n';
+      std::println(stderr, "{}:{}: FAILED: {} == {}", loc.file_name(),
+                   loc.line(), lhs_text, rhs_text);
     }
   }
 
@@ -50,9 +51,9 @@ struct TestContext {
     ++checks_run;
     if (std::isnan(lhs) || std::isnan(rhs) || std::abs(lhs - rhs) > eps) {
       ++failures;
-      std::cerr << loc.file_name() << ':' << loc.line() << ": FAILED: |"
-                << lhs_text << " - " << rhs_text << "| <= " << eps << " (got "
-                << lhs << " vs " << rhs << ")\n";
+      std::println(stderr, "{}:{}: FAILED: |{} - {}| <= {} (got {} vs {})",
+                   loc.file_name(), loc.line(), lhs_text, rhs_text, eps, lhs,
+                   rhs);
     }
   }
 

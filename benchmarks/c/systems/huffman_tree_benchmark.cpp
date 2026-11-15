@@ -34,7 +34,7 @@ enum class WorkloadKind : uint8_t {
     -> std::array<struct huffman_symbol_length, HUFFMAN_MAX_SYMBOLS> {
   std::array<struct huffman_symbol_length, HUFFMAN_MAX_SYMBOLS> entries{};
 
-  for (size_t i = 0U; i < HUFFMAN_MAX_SYMBOLS; ++i) {
+  for (size_t i = 0uz; i < HUFFMAN_MAX_SYMBOLS; ++i) {
     entries[i].symbol = static_cast<uint8_t>(i);
     entries[i].length = 8U;
   }
@@ -42,43 +42,48 @@ enum class WorkloadKind : uint8_t {
   switch (kind) {
     case WorkloadKind::kUniform8BitShuffled: {
       std::mt19937_64 rng{kDeterministicBenchmarkSeed};
-      std::shuffle(entries.begin(), entries.end(), rng);
+      std::ranges::shuffle(entries, rng);
       break;
     }
     case WorkloadKind::kDeflateSkewedShuffled: {
       // Full 256-symbol canonical Huffman tree with depths 5..10:
       // 4x len 5 + 12x len 6 + 32x len 7 + 48x len 8 + 96x len 9 + 64x len 10
       // Kraft sum = (4*32 + 12*16 + 32*8 + 48*4 + 96*2 + 64*1) / 1024 = 1.0
-      size_t idx = 0U;
-      constexpr std::array<std::pair<size_t, uint8_t>, 6> kBuckets = {
-          {{4U, 5U}, {12U, 6U}, {32U, 7U}, {48U, 8U}, {96U, 9U}, {64U, 10U}}};
+      size_t idx = 0uz;
+      constexpr std::array<std::pair<size_t, uint8_t>, 6uz> kBuckets = {
+          {{4uz, 5U},
+           {12uz, 6U},
+           {32uz, 7U},
+           {48uz, 8U},
+           {96uz, 9U},
+           {64uz, 10U}}};
       for (const auto& [bucket_count, len] : kBuckets) {
-        for (size_t k = 0U; k < bucket_count; ++k) {
+        for (size_t k = 0uz; k < bucket_count; ++k) {
           entries[idx].length = len;
           ++idx;
         }
       }
       std::mt19937_64 rng{kDeterministicBenchmarkSeed ^ 0xA5A5'5A5AULL};
-      std::shuffle(entries.begin(), entries.end(), rng);
+      std::ranges::shuffle(entries, rng);
       break;
     }
     case WorkloadKind::kDeepSpine32Shuffled: {
       // 231 symbols at length 8, plus 25 symbols descending to max depth 32
-      for (size_t i = 0U; i < 231U; ++i) {
+      for (size_t i = 0uz; i < 231uz; ++i) {
         entries[i].length = 8U;
       }
-      for (size_t i = 0U; i < 23U; ++i) {
-        entries[231U + i].length = static_cast<uint8_t>(9U + i);
+      for (size_t i = 0uz; i < 23uz; ++i) {
+        entries[231uz + i].length = static_cast<uint8_t>(9U + i);
       }
-      entries[254U].length = 32U;
-      entries[255U].length = 32U;
+      entries[254uz].length = 32U;
+      entries[255uz].length = 32U;
       std::mt19937_64 rng{kDeterministicBenchmarkSeed ^ 0xDEAD'BEEFULL};
-      std::shuffle(entries.begin(), entries.end(), rng);
+      std::ranges::shuffle(entries, rng);
       break;
     }
     case WorkloadKind::kReverseSorted8Bit: {
-      for (size_t i = 0U; i < HUFFMAN_MAX_SYMBOLS; ++i) {
-        entries[i].symbol = static_cast<uint8_t>(255U - i);
+      for (size_t i = 0uz; i < HUFFMAN_MAX_SYMBOLS; ++i) {
+        entries[i].symbol = static_cast<uint8_t>(255uz - i);
         entries[i].length = 8U;
       }
       break;
@@ -152,9 +157,10 @@ REGISTER_HUFFMAN_C_BENCHMARK(256_ReverseSorted8Bit,
 
 #if defined(__APPLE__)
 auto sysctl_string(const char* name) -> std::string {
-  std::array<char, 256> buffer{};
+  std::array<char, 256uz> buffer{};
   size_t size = buffer.size();
-  if (sysctlbyname(name, buffer.data(), &size, nullptr, 0) == 0 && size > 0U) {
+  if (sysctlbyname(name, buffer.data(), &size, nullptr, 0uz) == 0 &&
+      size > 0uz) {
     return std::string{buffer.data()};
   }
   return {};
@@ -163,7 +169,7 @@ auto sysctl_string(const char* name) -> std::string {
 auto sysctl_int64(const char* name) -> int64_t {
   int64_t value = 0;
   size_t size = sizeof(value);
-  if (sysctlbyname(name, &value, &size, nullptr, 0) == 0) {
+  if (sysctlbyname(name, &value, &size, nullptr, 0uz) == 0) {
     return value;
   }
   return 0;
