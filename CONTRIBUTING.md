@@ -11,17 +11,17 @@ This guide covers the development workflow, security policies, and dependency ma
    pixi run test
    ```
 
-2. **Pre-commit verification**: hooks enforce formatting, static analysis, secret scanning, and workflow security:
+2. **Pre-commit verification**: `prek` hooks enforce formatting, static analysis, secret scanning, and workflow security:
 
    ```bash
-   pixi run pre-commit
+   pixi run pre-commit      # runs prek over the full repository
    ```
 
 3. **Targeted checks**:
 
    ```bash
    pixi run test-cpp        # GoogleTest via the dev-debug workflow preset (ASan, UBSan, clang-tidy)
-   pixi run test-python     # pytest
+   pixi run test-python     # pytest 9+ (hypothesis, pytest-randomly)
    pixi run cov-python      # Python coverage, >= 85%
    pixi run cov-cpp         # C++ coverage, >= 85%
    pixi run cpp-tsan        # ThreadSanitizer, required for anything in src/cpp/systems
@@ -34,19 +34,25 @@ This guide covers the development workflow, security policies, and dependency ma
    pixi run examples-interop    # build C++23 and Rust 2024 Crubit showcase demo executables
    pixi run clippy-interop      # run cargo clippy (-D warnings) across interop Rust crates
    pixi run check-traceability  # systems specs (docs/systems) <-> GoogleTest RecordProperty IDs
-   pixi run typecheck
+   pixi run typecheck           # basedpyright (strict) && ty check
+   pixi run audit               # deptry && pip-audit
+   pixi run notebook-check      # marimo check --strict notebooks/
+   pixi run format-toml-check   # tombi format --check
    pixi run lint
    pixi run format-check
    ```
 
-4. **Configuration is only edited in `pyproject.toml`** (Pixi, ruff, mypy, pytest, coverage, rumdl). After editing, run
-   `pixi run reorder-pyproject`; CI and pre-commit fail if the file is not sorted.
+4. **Split TOML configuration**: Pixi workspace, dependencies, and tasks live in `pixi.toml` (`requires-pixi = ">=0.84.2"`); PEP 621/735 package
+   metadata (`uv_build`) and tool config (`ruff`, `basedpyright`, `ty`, `pytest`, `deptry`, `coverage`, `rumdl`) live in `pyproject.toml`. Run
+   `pixi run format-toml` (`tombi`) after edits; CI and `prek` fail if TOML files are unformatted.
 
 ## Code conventions
 
 - C++23 and ISO C23 (`-std=c23`), Google style (`.clang-format`), strict `.clang-tidy`. Run CMake only through presets (`cmake --workflow --preset
   <name>`), never an ad hoc configure.
-- Python 3.14, single quotes, 120 columns, Google-style docstrings, fully typed (`mypy` strict).
+- Python 3.15 (`PEP 649` native annotations; `TID251` bans `from __future__ import annotations`; `PEP 810` `lazy import`, `PEP 814` `frozendict`,
+  `PEP 661`, `PEP 750`), double quotes, 88 columns, grouped imports, Google-style docstrings, 23 Ruff families (`RUF201` full rule names), and strict
+  typing via `basedpyright` + `ty`.
 - C++ LeetCode code lives in namespace `leet_code`; C++ systems code lives in namespace `systems`; ISO C23 systems code lives in `src/c/systems` with public
   headers in `src/include/systems/*.h`.
 - Crubit C++23 <-> Rust 2024 interop code lives under `src/{include,cpp,rust}/interop/crubit`, `examples/interop/crubit`, and `test/{cpp,rust}/interop/crubit`
@@ -56,7 +62,7 @@ This guide covers the development workflow, security policies, and dependency ma
   `noexcept` APIs returning `std::expected` (or `[[nodiscard]] enum <name>_error` in C23), no RTTI, OS calls isolated in an adapter, POSIX portability.
 - Benchmarks in `benchmarks/{cpp,c}/systems` are local-only and must never run in CI. Benchmark telemetry in `data/` is strictly
   gitignored and must never be committed. Performance improvements require Bayesian BEST verification ($P(\text{better}) \ge 0.95$ with ROPE)
-  with zero unit test regressions.
+  with zero unit test regressions; explore runs interactively via `pixi run marimo edit notebooks/benchmark_telemetry_explorer.py`.
 
 ## Commits and pull requests
 
@@ -72,7 +78,7 @@ This guide covers the development workflow, security policies, and dependency ma
    ```
 
 2. **Least privilege**: workflows declare the minimum `permissions:`.
-3. **Pre-commit freezing**: remote hooks in `.pre-commit-config.yaml` are pinned to commit SHAs with `# frozen: vX.Y.Z`.
+3. **Pre-commit freezing**: remote hooks in `.pre-commit-config.yaml` (run via `prek`) are pinned to commit SHAs with `# frozen: vX.Y.Z`.
 4. **Security linters**: workflows are validated by `actionlint` and `zizmor` locally and in CI.
 
 ## Automated dependency maintenance

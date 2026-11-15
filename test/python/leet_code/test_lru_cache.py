@@ -1,15 +1,17 @@
 """Tests for ``leet_code.lru_cache`` (4-tier layout mirroring the C++ test suites)."""
 
-from __future__ import annotations
-
 import random
 import time
 from collections import OrderedDict
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
-from leet_code.lru_cache import LRUCache
-from leet_code.lru_cache import LruCache
+from leet_code.lru_cache import LRUCache, LruCache
+
+
+type CacheOperation = tuple[bool, int, int]
 
 
 # ---------------------------------------------------------------------------
@@ -17,6 +19,7 @@ from leet_code.lru_cache import LruCache
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.unit
 def test_official_example() -> None:
     """Replays the LeetCode example sequence."""
     cache = LruCache(2)
@@ -31,6 +34,7 @@ def test_official_example() -> None:
     assert cache.get(4) == 4
 
 
+@pytest.mark.unit
 def test_leetcode_alias_is_same_class() -> None:
     """The LeetCode-named alias refers to the real implementation."""
     assert LRUCache is LruCache
@@ -41,6 +45,7 @@ def test_leetcode_alias_is_same_class() -> None:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.unit
 def test_capacity_one_evicts_on_every_new_key() -> None:
     """With capacity one each new key evicts the previous one."""
     cache = LruCache(1)
@@ -51,6 +56,7 @@ def test_capacity_one_evicts_on_every_new_key() -> None:
     assert len(cache) == 1
 
 
+@pytest.mark.unit
 def test_update_existing_key_does_not_evict() -> None:
     """Updating a key changes its value and refreshes recency without evicting."""
     cache = LruCache(2)
@@ -63,6 +69,7 @@ def test_update_existing_key_does_not_evict() -> None:
     assert cache.get(3) == 3
 
 
+@pytest.mark.unit
 def test_get_refreshes_recency() -> None:
     """A successful get makes the key most recently used."""
     cache = LruCache(2)
@@ -74,11 +81,13 @@ def test_get_refreshes_recency() -> None:
     assert 2 not in cache
 
 
+@pytest.mark.unit
 def test_missing_key_returns_minus_one() -> None:
     """Looking up an absent key returns the sentinel -1."""
     assert LruCache(3).get(42) == -1
 
 
+@pytest.mark.unit
 def test_zero_value_is_distinguishable_from_missing() -> None:
     """A stored value of zero is returned as zero."""
     cache = LruCache(2)
@@ -86,20 +95,22 @@ def test_zero_value_is_distinguishable_from_missing() -> None:
     assert cache.get(7) == 0
 
 
-@pytest.mark.parametrize('capacity', [0, -1])
+@pytest.mark.unit
+@pytest.mark.parametrize("capacity", [0, -1])
 def test_non_positive_capacity_is_rejected(capacity: int) -> None:
     """Capacity must be positive."""
-    with pytest.raises(ValueError, match='positive'):
+    with pytest.raises(ValueError, match="positive"):
         LruCache(capacity)
 
 
 # ---------------------------------------------------------------------------
-# Tier 3: Invariants (differential test against OrderedDict)
+# Tier 3: Invariants (differential & Hypothesis property-based tests)
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.unit
 def test_matches_reference_model_on_random_operations() -> None:
-    """Random operations agree with a trivially-correct OrderedDict model and never exceed capacity."""
+    """Random operations agree with OrderedDict and never exceed capacity."""
     rng = random.Random(2024)
     capacity = 5
     cache = LruCache(capacity)
@@ -120,6 +131,53 @@ def test_matches_reference_model_on_random_operations() -> None:
             assert cache.get(key) == expected
         assert len(cache) == len(model) <= capacity
     assert cache.capacity == capacity
+
+
+@pytest.mark.unit
+@given(
+    capacity=st.integers(min_value=1, max_value=32),
+    operations=st.lists(
+        st.tuples(
+            st.booleans(),
+            st.integers(min_value=0, max_value=40),
+            st.integers(min_value=0, max_value=1000),
+        ),
+        min_size=0,
+        max_size=100,
+    ),
+)
+def test_hypothesis_differential_model_and_contains_invariants(
+    capacity: int, operations: list[CacheOperation]
+) -> None:
+    """Verify OrderedDict equivalence, capacity bounds, and non-mutating contains."""
+    cache = LruCache(capacity)
+    model: OrderedDict[int, int] = OrderedDict()
+
+    for is_put, key, value in operations:
+        # Membership checks must never affect recency or eviction order.
+        assert (key in cache) == (key in model)
+        if is_put:
+            cache.put(key, value)
+            model[key] = value
+            model.move_to_end(key)
+            if len(model) > capacity:
+                model.popitem(last=False)
+            assert key in cache
+        else:
+            expected = model.get(key, -1)
+            if key in model:
+                model.move_to_end(key)
+            assert cache.get(key) == expected
+        assert len(cache) == len(model) <= capacity
+        assert cache.capacity == capacity
+
+
+@pytest.mark.unit
+@given(capacity=st.integers(max_value=0))
+def test_hypothesis_non_positive_capacity_raises(capacity: int) -> None:
+    """Any zero or negative capacity raises ValueError."""
+    with pytest.raises(ValueError, match="positive"):
+        LruCache(capacity)
 
 
 # ---------------------------------------------------------------------------

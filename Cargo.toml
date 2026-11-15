@@ -1,59 +1,52 @@
 [workspace]
 resolver = "3"
 members = [
-    "src/rust/leet_code",
-    "src/rust/systems",
+  "src/rust/leet_code",
+  "src/rust/systems",
 ]
 exclude = [
-    "src/rust/crash_course",
-    "src/rust/interop",
-    "examples/interop",
-    "test/rust/interop",
+  "examples/interop",
+  "src/rust/crash_course",
+  "src/rust/interop",
+  "test/rust/interop",
 ]
 
 [workspace.package]
 version = "0.1.0"
+authors = ["Jamie LaPointe <jamielapointe@google.com>"]
 edition = "2024"
 rust-version = "1.99.1"
 license = "Apache-2.0"
-authors = ["Jamie LaPointe <jamielapointe@google.com>"]
 publish = false
 
 [workspace.dependencies]
 libc = { version = "0.2", default-features = false }
 thiserror = { version = "2.0", default-features = false }
 
-[workspace.lints.rust]
-unsafe_code = "deny"
-missing_docs = "warn"
-rust_2024_compatibility = { level = "warn", priority = -1 }
-non_ascii_idents = "deny"
-unreachable_pub = "warn"
-
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }
-pedantic = { level = "warn", priority = -1 }
-nursery = { level = "warn", priority = -1 }
 cargo = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
 
-# Google Rust Styleguide: Zero Uncontrolled Panics
-unwrap_used = "deny"
 expect_used = "warn"
 panic = "deny"
 todo = "deny"
 unimplemented = "deny"
+# Google Rust Styleguide: Zero Uncontrolled Panics
+unwrap_used = "deny"
 
+clone_on_ref_ptr = "deny"
+enum_glob_use = "deny"
+needless_pass_by_value = "warn"
 # Google Rust Styleguide: Code Organization & Clean Imports
 wildcard_imports = "deny"
-enum_glob_use = "deny"
-clone_on_ref_ptr = "deny"
-needless_pass_by_value = "warn"
 
+cast_lossless = "warn"
 # Numeric Safety & Cast Hardening
 cast_possible_truncation = "warn"
 cast_possible_wrap = "warn"
 cast_sign_loss = "warn"
-cast_lossless = "warn"
 
 # Documentation Invariants
 missing_errors_doc = "warn"
@@ -61,13 +54,20 @@ missing_panics_doc = "warn"
 missing_safety_doc = "warn"
 undocumented_unsafe_blocks = "deny"
 
+borrowed_box = "warn"
+len_without_is_empty = "warn"
+new_without_default = "warn"
+ptr_arg = "warn"
 # Standard Library Trait Consistency
 should_implement_trait = "warn"
-new_without_default = "warn"
-len_without_is_empty = "warn"
-borrowed_box = "warn"
-ptr_arg = "warn"
 wrong_self_convention = "warn"
+
+[workspace.lints.rust]
+missing_docs = "warn"
+non_ascii_idents = "deny"
+rust_2024_compatibility = { level = "warn", priority = -1 }
+unreachable_pub = "warn"
+unsafe_code = "deny"
 
 [profile.dev]
 opt-level = 0
@@ -77,8 +77,8 @@ overflow-checks = true
 [profile.release]
 opt-level = 3
 debug = false
-lto = "fat"
-codegen-units = 1
-panic = "abort"
-overflow-checks = true
 strip = "symbols"
+overflow-checks = true
+lto = "fat"
+panic = "abort"
+codegen-units = 1

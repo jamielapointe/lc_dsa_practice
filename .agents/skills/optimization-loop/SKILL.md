@@ -9,7 +9,8 @@ description: Orchestrates an agentic hypothesis-driven optimization loop for C++
 
 - **cpp-pro**: Modern C++23, low-level micro-optimizations, SIMD intrinsics (NEON, AVX2/512), cache alignment, compiler optimization flags.
 - **cmake-pro**: Target-based CMake 4.4.3+, presets, Ninja build configuration, IPO/LTO.
-- **python-pro**: Python 3.14 scientific stack (NumPy, SciPy, Plotly) driving Bayesian BEST + ROPE statistical analysis and HTML reports.
+- **python-pro**: Python 3.15 scientific stack (`NumPy`, `SciPy`, `Polars`, `arviz-stats`, `Plotly`, `Marimo`, `Cyclopts`, `Structlog`) driving Bayesian BEST +
+  ROPE statistical analysis, HTML reports, and reactive notebook exploration.
 
 ---
 
@@ -298,9 +299,11 @@ Extract key posterior parameters:
 
 ### Phase 2: Post Loop Protocol
 
-1. **Present Interactive Review Link**:
+1. **Present Interactive Review Link & Marimo Explorer**:
    - Provide clickable file link for Chrome / local browser:
      `file:///Users/jamie-lapointe/development/lc_dsa_practice/data/latest/flip_bitmap_unaligned/report.html`
+   - Explore live or synthetic telemetry interactively in the reactive Marimo workbench:
+     `pixi run marimo edit notebooks/benchmark_telemetry_explorer.py` (`pixi run notebook-check` validates DAG strictness via `marimo check --strict`).
    - Present a Markdown table summarizing all attempted hypotheses, iterations, and BEST metrics.
    - Await user review or confirmation.
 2. **Baseline Status & Anomaly Warning**:

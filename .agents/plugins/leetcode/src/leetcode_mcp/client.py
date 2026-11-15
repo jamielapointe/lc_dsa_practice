@@ -6,27 +6,102 @@ import logging
 import os
 import random
 import re
-from typing import TYPE_CHECKING
-from typing import Any
-from typing import ClassVar
-from typing import Self
-from typing import cast
+import sys
+from typing import TYPE_CHECKING, Any, ClassVar, Final, Self, cast, override
 
 import httpx
 import markdownify
+import structlog
 
-from leetcode_mcp.exceptions import LeetCodeNetworkError
-from leetcode_mcp.exceptions import PremiumProblemError
-from leetcode_mcp.exceptions import ProblemNotFoundError
-from leetcode_mcp.exceptions import RateLimitError
+from leetcode_mcp.exceptions import (
+    LeetCodeNetworkError,
+    PremiumProblemError,
+    ProblemNotFoundError,
+    RateLimitError,
+)
 from leetcode_mcp.models import ProblemDetails
 
 
 if TYPE_CHECKING:
     from types import TracebackType
 
+    from structlog.typing import FilteringBoundLogger
 
-logger = logging.getLogger(__name__)
+
+class _StderrPrintLoggerFactory(structlog.PrintLoggerFactory):
+    """PrintLoggerFactory that binds loggers dynamically to active ``sys.stderr``."""
+
+    def __init__(self) -> None:
+        super().__init__(file=sys.stderr)
+
+    @override
+    def __call__(self, *args: object) -> structlog.PrintLogger:
+        """Create a ``PrintLogger`` targeting the active ``sys.stderr``.
+
+        Returns:
+            A ``structlog.PrintLogger`` bound strictly to ``sys.stderr``.
+        """
+        del args
+        return structlog.PrintLogger(file=sys.stderr)
+
+
+def configure_logging(level: int = logging.INFO) -> None:
+    """Configure structlog to emit structured JSON logs strictly to ``sys.stderr``.
+
+    MCP stdio transport reserves ``sys.stdout`` exclusively for JSON-RPC frames,
+    so every log event must route to ``sys.stderr``.
+
+    Args:
+        level: Minimum log level threshold passed to ``make_filtering_bound_logger``.
+    """
+    structlog.configure(
+        processors=[
+            structlog.contextvars.merge_contextvars,
+            structlog.processors.add_log_level,
+            structlog.processors.StackInfoRenderer(),
+            structlog.processors.format_exc_info,
+            structlog.processors.TimeStamper(fmt="iso", utc=True),
+            structlog.processors.JSONRenderer(),
+        ],
+        wrapper_class=structlog.make_filtering_bound_logger(level),
+        logger_factory=_StderrPrintLoggerFactory(),
+        cache_logger_on_first_use=False,
+    )
+
+
+if not structlog.is_configured():
+    configure_logging()
+
+logger: FilteringBoundLogger = structlog.get_logger("leetcode_mcp.client")
+
+_HTTP_TOO_MANY_REQUESTS: Final[int] = 429
+_RETRYABLE_STATUS_CODES: Final[frozenset[int]] = frozenset({
+    429,
+    499,
+    500,
+    502,
+    503,
+    504,
+})
+_URL_SLUG_RE: Final[re.Pattern[str]] = re.compile(
+    r"leetcode\.com/problems/([a-z0-9\-]+)",
+    re.IGNORECASE | re.ASCII,
+)
+_NUMERIC_QUERY_RE: Final[re.Pattern[str]] = re.compile(
+    r"^(?:leetcode\s*)?(?:problem\s*)?#?\s*([0-9]+)$",
+    re.IGNORECASE | re.ASCII,
+)
+_NON_SLUG_CHARS_RE: Final[re.Pattern[str]] = re.compile(r"[^a-z0-9_\-\s]")
+_WHITESPACE_OR_UNDERSCORE_RE: Final[re.Pattern[str]] = re.compile(r"[\s_]+")
+_CONSTRAINTS_BLOCK_RE: Final[re.Pattern[str]] = re.compile(
+    r"<strong>\s*Constraints:?\s*</strong>.*?(<ul>.*?</ul>)",
+    re.DOTALL | re.IGNORECASE,
+)
+_LIST_ITEM_RE: Final[re.Pattern[str]] = re.compile(r"<li>(.*?)</li>", re.DOTALL)
+_SUP_TAG_RE: Final[re.Pattern[str]] = re.compile(r"<sup>(.*?)</sup>", re.IGNORECASE)
+_SUB_TAG_RE: Final[re.Pattern[str]] = re.compile(r"<sub>(.*?)</sub>", re.IGNORECASE)
+_HTML_TAG_RE: Final[re.Pattern[str]] = re.compile(r"<[^>]+>")
+_EXCESS_NEWLINES_RE: Final[re.Pattern[str]] = re.compile(r"\n{3,}")
 
 
 class LeetCodeClient:
@@ -34,22 +109,22 @@ class LeetCodeClient:
 
     Attributes:
         GRAPHQL_URL: The official LeetCode GraphQL endpoint URL.
-        HEADERS: Default browser headers to pass Cloudflare bot-management checks.
+        HEADERS: Immutable browser headers (PEP 814 ``frozendict``) to pass Cloudflare checks.
         QUESTION_LIST_QUERY: GraphQL query for resolving problem IDs or keywords to title slugs.
         QUESTION_DETAIL_QUERY: GraphQL query for extracting comprehensive problem details.
     """
 
-    GRAPHQL_URL: ClassVar[str] = 'https://leetcode.com/graphql'
-    HEADERS: ClassVar[dict[str, str]] = {
-        'Content-Type': 'application/json',
-        'User-Agent': (
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
-            'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    GRAPHQL_URL: ClassVar[str] = "https://leetcode.com/graphql"
+    HEADERS: ClassVar[frozendict[str, str]] = frozendict[str, str]() | {
+        "Content-Type": "application/json",
+        "User-Agent": (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         ),
-        'Accept': '*/*',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Origin': 'https://leetcode.com',
-        'Referer': 'https://leetcode.com',
+        "Accept": "*/*",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Origin": "https://leetcode.com",
+        "Referer": "https://leetcode.com",
     }
 
     QUESTION_LIST_QUERY: ClassVar[str] = """
@@ -129,12 +204,16 @@ class LeetCodeClient:
             The shared, lazily created HTTP client.
         """
         if self._client is None or self._client.is_closed:
-            headers = dict(self.HEADERS)
-            leetcode_session = os.environ.get('LEETCODE_SESSION')
-            csrftoken = os.environ.get('csrftoken')
+            headers: frozendict[str, str] = self.HEADERS
+            leetcode_session = os.environ.get("LEETCODE_SESSION")
+            csrftoken = os.environ.get(
+                "csrftoken"  # ruff: ignore[uncapitalized-environment-variables] - LeetCode cookie env var.
+            )
             if leetcode_session and csrftoken:
-                headers['Cookie'] = f'LEETCODE_SESSION={leetcode_session}; csrftoken={csrftoken}'
-                headers['x-csrftoken'] = csrftoken
+                headers |= {
+                    "Cookie": f"LEETCODE_SESSION={leetcode_session}; csrftoken={csrftoken}",
+                    "x-csrftoken": csrftoken,
+                }
 
             self._client = httpx.AsyncClient(
                 transport=self.transport,
@@ -166,7 +245,80 @@ class LeetCodeClient:
         """Async context manager exit, ensuring connection pool closure."""
         await self.close()
 
-    async def _post_graphql(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
+    def _compute_backoff_delay(self, attempt: int) -> float:
+        """Compute exponential backoff delay with uniform jitter.
+
+        Args:
+            attempt: Zero-based retry attempt index.
+
+        Returns:
+            Delay duration in seconds.
+        """
+        jitter = random.uniform(0, 0.1 * self.base_delay)
+        return self.base_delay * (2**attempt) + jitter
+
+    def _compute_retry_delay(self, resp: httpx.Response, attempt: int) -> float:
+        """Compute retry delay honoring an integer Retry-After header when present.
+
+        Args:
+            resp: HTTP response received from the failed attempt.
+            attempt: Zero-based retry attempt index.
+
+        Returns:
+            Delay duration in seconds before the next attempt.
+        """
+        retry_after = resp.headers.get("Retry-After")
+        if retry_after and retry_after.isdigit():
+            return float(retry_after)
+        return self._compute_backoff_delay(attempt)
+
+    async def _send_graphql_attempt(
+        self,
+        client: httpx.AsyncClient,
+        query: str,
+        variables: dict[str, Any],
+    ) -> httpx.Response:
+        """Send one GraphQL POST request bounded by ``asyncio.timeout``.
+
+        Args:
+            client: Active HTTPX async client.
+            query: GraphQL query string.
+            variables: GraphQL query variables mapping.
+
+        Returns:
+            Raw HTTP response returned by LeetCode.
+        """
+        async with asyncio.timeout(self.timeout):
+            return await client.post(
+                self.GRAPHQL_URL,
+                json={"query": query, "variables": variables},
+            )
+
+    @staticmethod
+    def _parse_graphql_response(resp: httpx.Response) -> dict[str, Any]:
+        """Validate HTTP status and decode GraphQL JSON payload.
+
+        Args:
+            resp: HTTP response returned from LeetCode GraphQL.
+
+        Returns:
+            Decoded JSON dictionary.
+
+        Raises:
+            LeetCodeNetworkError: If the GraphQL payload reports top-level errors without data.
+        """
+        resp.raise_for_status()
+        data = cast("dict[str, Any]", resp.json())
+        if "errors" in data and not data.get("data"):
+            err_msg = str(data.get("errors"))
+            raise LeetCodeNetworkError(f"GraphQL returned errors: {err_msg}")
+        return data
+
+    async def _post_graphql(
+        self,
+        query: str,
+        variables: dict[str, Any],
+    ) -> dict[str, Any]:
         """Execute GraphQL POST request with exponential backoff retry logic.
 
         Args:
@@ -183,97 +335,81 @@ class LeetCodeClient:
         client = await self._get_client()
         for attempt in range(self.max_retries):
             try:
-                resp = await client.post(
-                    self.GRAPHQL_URL,
-                    json={'query': query, 'variables': variables},
-                )
-                # Handle rate limiting and transient upstream server errors
-                if resp.status_code in (429, 499, 500, 502, 503, 504):
-                    if attempt == self.max_retries - 1:
-                        if resp.status_code == 429:
-                            raise RateLimitError(
-                                f'HTTP 429 Rate Limit from LeetCode after {self.max_retries} attempts.'
-                            )
-                        raise LeetCodeNetworkError(
-                            f'HTTP {resp.status_code} from LeetCode after {self.max_retries} '
-                            f'attempts: {resp.text[:200]}'
-                        )
-                    retry_after = resp.headers.get('Retry-After')
-                    if retry_after and retry_after.isdigit():
-                        delay = float(retry_after)
-                    else:
-                        jitter = random.uniform(0, 0.1 * self.base_delay)
-                        delay = self.base_delay * (2**attempt) + jitter
-
-                    logger.warning(
-                        'LeetCode request received status %d. Retrying in %.2fs (attempt %d/%d)...',
-                        resp.status_code,
-                        delay,
-                        attempt + 1,
-                        self.max_retries,
-                    )
-                    await asyncio.sleep(delay)
-                    continue
-
-                resp.raise_for_status()
-                data = cast('dict[str, Any]', resp.json())
-                if 'errors' in data and not data.get('data'):
-                    err_msg = str(data.get('errors'))
-                    raise LeetCodeNetworkError(f'GraphQL returned errors: {err_msg}')
-                return data
-
-            except (httpx.TimeoutException, httpx.NetworkError) as err:
+                resp = await self._send_graphql_attempt(client, query, variables)
+            except (TimeoutError, httpx.TimeoutException, httpx.NetworkError) as err:
                 if attempt == self.max_retries - 1:
                     raise LeetCodeNetworkError(
-                        f'Network error communicating with LeetCode after {self.max_retries} attempts: {err}'
+                        f"Network error communicating with LeetCode after "
+                        f"{self.max_retries} attempts: {err}"
                     ) from err
-                jitter = random.uniform(0, 0.1 * self.base_delay)
-                delay = self.base_delay * (2**attempt) + jitter
+                delay = self._compute_backoff_delay(attempt)
                 logger.warning(
-                    'Network error %s. Retrying in %.2fs (attempt %d/%d)...',
-                    err,
-                    delay,
-                    attempt + 1,
-                    self.max_retries,
+                    "leetcode_network_retry",
+                    error=str(err),
+                    delay_s=round(delay, 2),
+                    attempt=attempt + 1,
+                    max_retries=self.max_retries,
                 )
                 await asyncio.sleep(delay)
+                continue
 
-        raise LeetCodeNetworkError('Exceeded maximum retry attempts against LeetCode GraphQL.')
+            if resp.status_code in _RETRYABLE_STATUS_CODES:
+                if attempt == self.max_retries - 1:
+                    if resp.status_code == _HTTP_TOO_MANY_REQUESTS:
+                        raise RateLimitError(
+                            f"HTTP 429 Rate Limit from LeetCode after "
+                            f"{self.max_retries} attempts."
+                        )
+                    raise LeetCodeNetworkError(
+                        f"HTTP {resp.status_code} from LeetCode after "
+                        f"{self.max_retries} attempts: {resp.text[:200]}"
+                    )
+                delay = self._compute_retry_delay(resp, attempt)
+                logger.warning(
+                    "leetcode_request_retry",
+                    status_code=resp.status_code,
+                    delay_s=round(delay, 2),
+                    attempt=attempt + 1,
+                    max_retries=self.max_retries,
+                )
+                await asyncio.sleep(delay)
+                continue
 
-    def normalize_input(self, query: str | int) -> tuple[str | None, str | None]:
+            return self._parse_graphql_response(resp)
+
+        raise LeetCodeNetworkError(
+            "Exceeded maximum retry attempts against LeetCode GraphQL."
+        )
+
+    @staticmethod
+    def normalize_input(query: str | int) -> tuple[str | None, str | None]:
         """Extract problem slug or numeric ID from raw query string or integer.
 
         Args:
             query: Raw user input such as 2, '2', '#2', 'LeetCode #2', full URL, or title.
 
         Returns:
-            A tuple `(slug, num_id)` where exactly one is non-None.
-            - `(slug, None)` if a slug, title, or URL was identified.
-            - `(None, num_id)` if a numeric problem ID was identified.
-            - `(None, None)` if the query was empty.
+            A tuple ``(slug, num_id)`` where at most one element is non-None:
+            - ``(slug, None)`` if a slug, title, or URL was identified.
+            - ``(None, num_id)`` if a numeric problem ID was identified.
+            - ``(None, None)`` if the query was empty or contained no slug tokens.
         """
         raw = str(query).strip()
         if not raw:
             return None, None
 
-        # 1. URL pattern: matches leetcode.com/problems/<slug>
-        url_match = re.search(r'leetcode\.com/problems/([a-z0-9\-]+)', raw, re.IGNORECASE)
+        url_match = _URL_SLUG_RE.search(raw)
         if url_match:
-            return url_match.group(1).lower(), None
+            slug = url_match.group(1).lower().strip("-")
+            return (slug, None) if slug else (None, None)
 
-        # 2. Numeric pattern: optional prefix (e.g. leetcode, problem, #), then integer digits
-        num_match = re.match(
-            r'^(?:(?:leetcode\s*(?:problem)?\s*#?)|#|problem\s*#?|\s*)*(\d+)$',
-            raw,
-            re.IGNORECASE,
-        )
+        num_match = _NUMERIC_QUERY_RE.match(raw)
         if num_match:
             return None, num_match.group(1)
 
-        # 3. Slug or Title: convert spaces to hyphens, strip non-alphanumeric/hyphen
         cleaned = raw.lower()
-        cleaned = re.sub(r'[^a-z0-9\-\s]', '', cleaned)
-        cleaned = re.sub(r'[\s_]+', '-', cleaned).strip('-')
+        cleaned = _NON_SLUG_CHARS_RE.sub("", cleaned)
+        cleaned = _WHITESPACE_OR_UNDERSCORE_RE.sub("-", cleaned).strip("-")
         return (cleaned, None) if cleaned else (None, None)
 
     async def resolve_slug(self, query: str | int) -> str:
@@ -290,28 +426,39 @@ class LeetCodeClient:
         """
         slug, num_id = self.normalize_input(query)
         if not slug and not num_id:
-            raise ProblemNotFoundError(f'Invalid problem query: {query!r}')
+            raise ProblemNotFoundError(f"Invalid problem query: {query!r}")
 
         if slug and not num_id:
             return slug
 
-        if num_id is None:  # pragma: no cover - normalize_input guarantees a slug or an id
-            raise ProblemNotFoundError(f'Invalid problem query: {query!r}')
+        if (
+            num_id is None
+        ):  # pragma: no cover - normalize_input guarantees slug or num_id
+            raise ProblemNotFoundError(f"Invalid problem query: {query!r}")
+
         data = await self._post_graphql(
             self.QUESTION_LIST_QUERY,
-            {'categorySlug': '', 'skip': 0, 'limit': 100, 'filters': {'searchKeywords': num_id}},
+            {
+                "categorySlug": "",
+                "skip": 0,
+                "limit": 100,
+                "filters": {"searchKeywords": num_id},
+            },
         )
-        questions = data.get('data', {}).get('problemsetQuestionList', {}).get('questions', [])
+        questions: list[dict[str, Any]] = (
+            data.get("data", {}).get("problemsetQuestionList", {}).get("questions", [])
+        )
         for q in questions:
-            if str(q.get('frontendQuestionId')) == str(num_id):
-                return str(q['titleSlug'])
+            if str(q.get("frontendQuestionId")) == str(num_id):
+                return str(q["titleSlug"])
 
-        raise ProblemNotFoundError(f'LeetCode problem #{num_id} could not be found.')
+        raise ProblemNotFoundError(f"LeetCode problem #{num_id} could not be found.")
 
-    def _extract_constraints(self, html_content: str) -> list[str]:
+    @staticmethod
+    def _extract_constraints(html_content: str) -> list[str]:
         """Parse constraints from problem HTML description.
 
-        Preserves mathematical exponents (<sup>4</sup> -> ^4) and subscripts,
+        Preserves mathematical exponents (``<sup>4</sup>`` -> ``^4``) and subscripts,
         decodes HTML entities, and strips formatting tags.
 
         Args:
@@ -321,25 +468,21 @@ class LeetCodeClient:
             List of clean constraint strings.
         """
         constraints: list[str] = []
-        m = re.search(
-            r'<strong>\s*Constraints:?\s*</strong>.*?(<ul>.*?</ul>)',
-            html_content,
-            re.DOTALL | re.IGNORECASE,
-        )
-        if not m:
+        match = _CONSTRAINTS_BLOCK_RE.search(html_content)
+        if not match:
             return constraints
 
-        for li in re.findall(r'<li>(.*?)</li>', m.group(1), re.DOTALL):
-            s = re.sub(r'<sup>(.*?)</sup>', r'^\1', li, flags=re.IGNORECASE)
-            s = re.sub(r'<sub>(.*?)</sub>', r'_\1', s, flags=re.IGNORECASE)
-            s = re.sub(r'<[^>]+>', '', s)
-            s = html.unescape(s)
-            s = s.replace('\xa0', ' ').strip()
+        for li in _LIST_ITEM_RE.findall(match.group(1)):
+            s = _SUP_TAG_RE.sub(r"^\1", li)
+            s = _SUB_TAG_RE.sub(r"_\1", s)
+            s = _HTML_TAG_RE.sub("", s)
+            s = html.unescape(s).replace("\xa0", " ").strip()
             if s:
                 constraints.append(s)
         return constraints
 
-    def _clean_markdown(self, html_content: str) -> str:
+    @staticmethod
+    def _clean_markdown(html_content: str) -> str:
         """Convert HTML problem description to clean Markdown.
 
         Args:
@@ -348,13 +491,101 @@ class LeetCodeClient:
         Returns:
             Formatted Markdown text with standardized spacing.
         """
-        md = markdownify.markdownify(html_content, heading_style='ATX')
-        md = md.replace('\xa0', ' ')
-        md = re.sub(r'\n{3,}', '\n\n', md)
+        md = markdownify.markdownify(html_content, heading_style="ATX")
+        md = md.replace("\xa0", " ")
+        md = _EXCESS_NEWLINES_RE.sub("\n\n", md)
         return md.strip()
+
+    async def _fallback_search_question(
+        self, query: str | int
+    ) -> dict[str, Any] | None:
+        """Search question list by exact title when direct slug lookup returns empty.
+
+        Args:
+            query: Original user problem query string or integer.
+
+        Returns:
+            Raw GraphQL question dictionary if an exact title match is found, else ``None``.
+        """
+        _, num_id = self.normalize_input(query)
+        if num_id:
+            return None
+
+        raw_kw = str(query).strip()
+        search_data = await self._post_graphql(
+            self.QUESTION_LIST_QUERY,
+            {
+                "categorySlug": "",
+                "skip": 0,
+                "limit": 50,
+                "filters": {"searchKeywords": raw_kw},
+            },
+        )
+        candidates: list[dict[str, Any]] = (
+            search_data
+            .get("data", {})
+            .get("problemsetQuestionList", {})
+            .get("questions", [])
+        )
+        for candidate in candidates:
+            if str(candidate.get("title", "")).lower() == raw_kw.lower():
+                resolved_slug = str(candidate["titleSlug"])
+                retry_data = await self._post_graphql(
+                    self.QUESTION_DETAIL_QUERY,
+                    {"titleSlug": resolved_slug},
+                )
+                return cast(
+                    "dict[str, Any] | None",
+                    retry_data.get("data", {}).get("question"),
+                )
+        return None
+
+    def _build_problem_details(self, question: dict[str, Any]) -> ProblemDetails:
+        """Build a validated ProblemDetails instance from raw GraphQL question data.
+
+        Args:
+            question: Raw GraphQL ``question`` dictionary from LeetCode.
+
+        Returns:
+            Populated and validated ``ProblemDetails`` model.
+        """
+        html_content = str(question.get("content") or "")
+        snippets_by_lang = {
+            str(snippet.get("langSlug")): str(snippet.get("code", ""))
+            for snippet in question.get("codeSnippets") or []
+        }
+        cpp_code = snippets_by_lang.get("cpp", "")
+        python_code = snippets_by_lang.get("python3", "")
+        rust_code = snippets_by_lang.get("rust", "")
+        topic_tags = [
+            str(tag["name"])
+            for tag in (question.get("topicTags") or [])
+            if "name" in tag
+        ]
+        return ProblemDetails(
+            frontend_id=int(question["questionFrontendId"]),
+            question_id=int(question["questionId"]),
+            title=str(question["title"]),
+            slug=str(question["titleSlug"]),
+            difficulty=str(question["difficulty"]),
+            is_paid_only=bool(question["isPaidOnly"]),
+            description_markdown=self._clean_markdown(html_content),
+            cpp_snippet=cpp_code,
+            python_snippet=python_code,
+            rust_snippet=rust_code,
+            sample_test_case=str(question.get("sampleTestCase") or ""),
+            example_test_cases=[
+                str(tc) for tc in (question.get("exampleTestcaseList") or [])
+            ],
+            constraints=self._extract_constraints(html_content),
+            topic_tags=topic_tags,
+            hints=[str(hint) for hint in (question.get("hints") or [])],
+        )
 
     async def fetch_problem(self, query: str | int) -> ProblemDetails:
         """Fetch complete problem details and starter assets for a given query.
+
+        Propagates network/rate-limit errors raised during GraphQL requests.
 
         Args:
             query: Problem identifier (number, slug, URL, or title).
@@ -365,71 +596,24 @@ class LeetCodeClient:
         Raises:
             ProblemNotFoundError: If the problem does not exist on LeetCode.
             PremiumProblemError: If the problem requires a LeetCode Premium subscription.
-            LeetCodeNetworkError: If network connectivity or rate limit retries fail.
         """
         slug = await self.resolve_slug(query)
-        data = await self._post_graphql(self.QUESTION_DETAIL_QUERY, {'titleSlug': slug})
-        q = data.get('data', {}).get('question')
+        data = await self._post_graphql(self.QUESTION_DETAIL_QUERY, {"titleSlug": slug})
+        question = cast("dict[str, Any] | None", data.get("data", {}).get("question"))
 
-        if not q:
-            # Fallback search if query was a title with slight naming variations
-            _, num_id = self.normalize_input(query)
-            if not num_id:
-                raw_kw = str(query).strip()
-                search_data = await self._post_graphql(
-                    self.QUESTION_LIST_QUERY,
-                    {
-                        'categorySlug': '',
-                        'skip': 0,
-                        'limit': 50,
-                        'filters': {'searchKeywords': raw_kw},
-                    },
-                )
-                candidates = search_data.get('data', {}).get('problemsetQuestionList', {}).get('questions', [])
-                for candidate in candidates:
-                    if candidate.get('title', '').lower() == raw_kw.lower():
-                        slug = str(candidate['titleSlug'])
-                        retry_data = await self._post_graphql(self.QUESTION_DETAIL_QUERY, {'titleSlug': slug})
-                        q = retry_data.get('data', {}).get('question')
-                        break
+        if not question:
+            question = await self._fallback_search_question(query)
 
-            if not q:
-                raise ProblemNotFoundError(f'Problem {query!r} (slug: {slug!r}) not found on LeetCode.')
-
-        if q.get('isPaidOnly') and not q.get('content'):
-            raise PremiumProblemError(
-                f"Problem '{q.get('title')}' (#{q.get('questionFrontendId')}) is a LeetCode "
-                'Premium problem. Unauthenticated requests cannot retrieve its description '
-                'or starter code.'
+        if not question:
+            raise ProblemNotFoundError(
+                f"Problem {query!r} (slug: {slug!r}) not found on LeetCode."
             )
 
-        html_content = str(q.get('content') or '')
-        markdown_desc = self._clean_markdown(html_content)
+        if question.get("isPaidOnly") and not question.get("content"):
+            raise PremiumProblemError(
+                f"Problem '{question.get('title')}' (#{question.get('questionFrontendId')}) "
+                "is a LeetCode Premium problem. Unauthenticated requests cannot "
+                "retrieve its description or starter code."
+            )
 
-        snippets_by_lang = {
-            str(snippet.get('langSlug')): str(snippet.get('code', '')) for snippet in q.get('codeSnippets') or []
-        }
-        cpp_code = snippets_by_lang.get('cpp', '')
-        python_code = snippets_by_lang.get('python3', '')
-        rust_code = snippets_by_lang.get('rust', '')
-
-        constraints = self._extract_constraints(html_content)
-        topic_tags = [str(t['name']) for t in (q.get('topicTags') or []) if 'name' in t]
-
-        return ProblemDetails(
-            frontend_id=int(q['questionFrontendId']),
-            question_id=int(q['questionId']),
-            title=str(q['title']),
-            slug=str(q['titleSlug']),
-            difficulty=str(q['difficulty']),
-            is_paid_only=bool(q['isPaidOnly']),
-            description_markdown=markdown_desc,
-            cpp_snippet=cpp_code,
-            python_snippet=python_code,
-            rust_snippet=rust_code,
-            sample_test_case=str(q.get('sampleTestCase') or ''),
-            example_test_cases=[str(tc) for tc in (q.get('exampleTestcaseList') or [])],
-            constraints=constraints,
-            topic_tags=topic_tags,
-            hints=[str(h) for h in (q.get('hints') or [])],
-        )
+        return self._build_problem_details(question)

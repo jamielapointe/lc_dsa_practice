@@ -3,18 +3,19 @@
 [![CI][ci-badge]][ci]
 [![OpenSSF Scorecard][scorecard-badge]][scorecard]
 [![C++23][cpp-badge]][cpp]
-[![Python 3.14][python-badge]][python]
+[![Python 3.15][python-badge]][python]
 [![Pixi][pixi-badge]][pixi]
 [![Ruff][ruff-badge]][ruff]
-[![mypy: strict][mypy-badge]][mypy]
+[![basedpyright: strict][basedpyright-badge]][basedpyright]
+[![ty][ty-badge]][ty]
 [![Code style: clang-format (Google)][clang-format-badge]][clang-format]
 [![Coverage gate: 85%][coverage-badge]][ci]
 [![Platforms][platform-badge]][ci]
-[![pre-commit][pre-commit-badge]][pre-commit]
+[![prek][prek-badge]][prek]
 
-LeetCode data-structure and algorithm practice in **C++23**, **ISO C23**, and **Python 3.14**, plus a **systems / embedded-style
-C++23 and ISO C23** tree for low-level components. Everything (toolchain, dependencies, tasks, CI) is managed with
-[Pixi](https://pixi.sh) and conda-forge.
+LeetCode data-structure and algorithm practice in **C++23**, **ISO C23**, **Python 3.15**, and **Rust 1.99.1+**, plus a **systems / embedded-style
+C++23, ISO C23, and Rust** tree for low-level components and **Crubit interop**. Everything (toolchain, dependencies, tasks, CI) is managed with
+[Pixi](https://pixi.sh) (`>= 0.84.2`) and conda-forge.
 
 ## Tracks
 
@@ -35,7 +36,7 @@ multi-thread, multi-process, and fault-injection tests.
 
 ## Quickstart
 
-Prerequisites: Linux (x86-64 or aarch64) or macOS (Apple Silicon) and [Pixi](https://pixi.sh) `>= 0.81`.
+Prerequisites: Linux (x86-64 or aarch64) or macOS (Apple Silicon) and [Pixi](https://pixi.sh) `>= 0.84.2`.
 
 ```bash
 git clone git@github.com:jamielapointe/lc_dsa_practice.git
@@ -53,7 +54,7 @@ All operations go through `pixi run <task>`; nothing needs a global install.
 # Tests
 pixi run test                 # C++ and Python suites
 pixi run test-cpp             # cmake --workflow --preset dev-debug (ASan + UBSan + clang-tidy)
-pixi run test-python          # pytest (live-network tests are deselected)
+pixi run test-python          # pytest 9+ with hypothesis and pytest-randomly (live-network tests deselected)
 
 # C++ presets
 pixi run cpp-debug            # configure, build, test (dev-debug)
@@ -75,15 +76,19 @@ pixi run examples-interop     # build C++23 and Rust 2024 interop showcase demos
 pixi run clippy-interop       # cargo clippy (-D warnings) across interop Rust crates
 
 # Quality
-pixi run lint                 # ruff check
+pixi run lint                 # ruff check (23 rule families, preview rules)
 pixi run lint-fix             # ruff check --fix
 pixi run format               # ruff format
 pixi run format-check         # ruff format --check
+pixi run format-toml          # tombi format (pixi.toml, pyproject.toml)
+pixi run format-toml-check    # tombi format --check
 pixi run format-cmake         # gersemi -i
 pixi run format-cpp           # clang-format via the CMake `format` target
-pixi run typecheck            # mypy (strict)
+pixi run typecheck            # basedpyright (strict) && ty check
+pixi run audit                # deptry && pip-audit
+pixi run notebook-check       # marimo check --strict on notebooks/
 pixi run lint-md              # rumdl
-pixi run pre-commit           # all hooks over the whole tree
+pixi run pre-commit           # prek over the whole tree
 ```
 
 ## Project layout
@@ -92,7 +97,9 @@ pixi run pre-commit           # all hooks over the whole tree
 .
 ├── AGENTS.md                      # Agent guide (read this first when automating)
 ├── CMakeLists.txt, CMakePresets.json, cmake/
-├── pyproject.toml, pixi.lock      # Pixi workspace + ruff/mypy/pytest/coverage/rumdl config
+├── pixi.toml, pyproject.toml, pixi.lock # Standalone Pixi workspace + PEP 621/735 pyproject + single lockfile
+├── notebooks/
+│   └── benchmark_telemetry_explorer.py # Reactive Marimo (0.25.2+) Bayesian BEST telemetry explorer
 ├── src/
 │   ├── include/{leet_code,systems,interop/crubit}/ # public C (.h) and C++ (.hpp) headers
 │   ├── cpp/{leet_code,systems,interop/crubit}/     # C++23 sources and per-track CMakeLists.txt
@@ -115,8 +122,8 @@ pixi run pre-commit           # all hooks over the whole tree
 │   ├── interop/crubit.md                           # Google Crubit architecture, type matrix, and showcase guide
 │   └── systems/                                    # requirements specs for systems problems
 ├── scripts/
-│   ├── benchmarks/                                 # runner and Bayesian BEST + ROPE analysis scripts
-│   ├── ci/                                         # coverage gate, pyproject sorter, systems traceability check
+│   ├── benchmarks/                                 # cyclopts + structlog + polars + arviz-stats Bayesian BEST scripts
+│   ├── ci/                                         # coverage gate and systems traceability check
 │   ├── crubit/                                     # hermetic Crubit bootstrapper and rs_bindings_from_cc wrapper
 │   └── examples/                                   # multi-process and Crubit example runners and log verifiers
 ├── .agents/
@@ -153,8 +160,9 @@ in Google Antigravity 2.24.0:
    t-test (BEST) with a Region of Practical Equivalence (ROPE = 2%).
 3. **Verification & Promotion**: Promotes candidate to baseline only when $P(\text{better}) \ge 0.95$, unit tests pass 100%,
    and all pre-commit hooks pass cleanly.
-4. **Academic Reporting**: Generates interactive Plotly HTML reports (`report.html`) and publication-grade empirical analysis
-   via the Academic Scribe Agent.
+4. **Academic & Reactive Reporting**: Generates interactive Plotly HTML reports (`report.html`), publication-grade empirical analysis
+   via the Academic Scribe Agent, and reactive telemetry exploration via `pixi run marimo edit notebooks/benchmark_telemetry_explorer.py`
+   (`/marimo-pro`, `/marimo-pair`).
 
 ## Practicing Rust systems engineering
 
@@ -173,8 +181,10 @@ Rust crash course and senior interview preparation workflow tailored for veteran
 ## Quality gates
 
 - **C++**: clang-format (Google), clang-tidy (`WarningsAsErrors: "*"`), ASan, UBSan, TSan, 85% line coverage.
-- **Python**: ruff, mypy strict, pytest with an 85% coverage gate on `src/python/leet_code`.
-- **Repo**: gersemi, rumdl, gitleaks, actionlint, zizmor, Renovate config validation.
+- **Python**: Python 3.15 (`PEP 649` native annotations, `TID251` bans `from __future__ import annotations`), ruff (23 families, 88 cols, double quotes,
+  `RUF201` full rule names), `basedpyright` strict + `ty`, pytest 9+ (`hypothesis`, `pytest-randomly`) with 85% coverage on `src/python/leet_code`,
+  `deptry` + `pip-audit` (`audit`), and reactive Marimo (`notebook-check`).
+- **Repo**: gersemi, tombi (`format-toml-check`), prek, rumdl, gitleaks, actionlint, zizmor, Renovate config validation.
 
 Contributor workflow and supply-chain rules are in [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
@@ -184,17 +194,19 @@ Contributor workflow and supply-chain rules are in [`CONTRIBUTING.md`](CONTRIBUT
 [scorecard-badge]: https://api.securityscorecards.dev/projects/github.com/jamielapointe/lc_dsa_practice/badge
 [cpp]: https://en.cppreference.com/w/cpp/23
 [cpp-badge]: https://img.shields.io/badge/C%2B%2B-23-00599C?logo=c%2B%2B&logoColor=white
-[python]: https://docs.python.org/3.14/
-[python-badge]: https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white
+[python]: https://docs.python.org/3.15/
+[python-badge]: https://img.shields.io/badge/Python-3.15-3776AB?logo=python&logoColor=white
 [pixi]: https://pixi.sh
 [pixi-badge]: https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/prefix-dev/pixi/main/assets/badge/v0.json
 [ruff]: https://github.com/astral-sh/ruff
 [ruff-badge]: https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json
-[mypy]: https://mypy-lang.org
-[mypy-badge]: https://img.shields.io/badge/mypy-strict-2A6DB2?logo=python&logoColor=white
+[basedpyright]: https://docs.basedpyright.com/
+[basedpyright-badge]: https://img.shields.io/badge/basedpyright-strict-2A6DB2?logo=python&logoColor=white
+[ty]: https://github.com/astral-sh/ty
+[ty-badge]: https://img.shields.io/badge/ty-checked-4B8BBE?logo=python&logoColor=white
 [clang-format]: https://clang.llvm.org/docs/ClangFormat.html
 [clang-format-badge]: https://img.shields.io/badge/clang--format-Google-262D3A?logo=llvm&logoColor=white
 [coverage-badge]: https://img.shields.io/badge/coverage%20gate-%E2%89%A585%25-brightgreen
 [platform-badge]: https://img.shields.io/badge/platforms-linux--64%20%7C%20linux--aarch64%20%7C%20osx--arm64-lightgrey
-[pre-commit]: https://github.com/pre-commit/pre-commit
-[pre-commit-badge]: https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit
+[prek]: https://github.com/j178/prek
+[prek-badge]: https://img.shields.io/badge/prek-enabled-brightgreen

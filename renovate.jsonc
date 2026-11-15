@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "Renovate configuration for lc_dsa_practice (Pixi toolchain)",
+  "description": "Renovate configuration for lc_dsa_practice (Pixi + PEP 621/735 toolchain)",
 
   // ===========================================================================
   // Org-wide policies
