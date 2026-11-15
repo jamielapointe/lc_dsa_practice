@@ -1,7 +1,7 @@
 [workspace]
 name = "lc-dsa-practice"
 version = "0.1.0"
-description = "Multi-language LeetCode / DSA & systems engineering practice (C++23, C23, Python 3.15, Rust 1.99.1+, Crubit)"
+description = "Multi-language LeetCode / DSA & systems engineering practice (C++23, C23, Python 3.15, Rust 1.100+, Crubit)"
 authors = ["Jamie LaPointe <jamielapointe@google.com>"]
 channels = ["conda-forge"]
 platforms = ["linux-64", "linux-aarch64", "osx-arm64"]
@@ -41,8 +41,8 @@ plotly = ">=7.1.0"
 polars = ">=2.1.0"
 pydantic = ">=2.14.3"
 pyyaml = ">=6.0.3"
-rust = ">=1.100.0"
-rust-src = ">=1.100.0"
+rust = ">=1.100.0,<1.101.0"
+rust-src = ">=1.100.0,<1.101.0"
 scipy = ">=1.18.1"
 structlog = ">=26.1.0"
 tombi = ">=1.11.2"

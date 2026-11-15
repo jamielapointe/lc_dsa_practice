@@ -1,6 +1,6 @@
 ---
 name: leetcode-setup
-description: Sets up LeetCode DSA practice problems in modern C++23 (CMake + Google Test), Python 3.15 (pytest 9+), or Rust 1.99.1+ (cargo test) in this repository. The user MUST specify the language (cpp, python, or rust); ask if it is missing. Fetches problem data via the leetcode MCP server (tool get_problem), then generates documented headers/modules, stub implementations that build cleanly, and comprehensive 4-tier test suites that start in the TDD red state.
+description: Sets up LeetCode DSA practice problems in modern C++23 (CMake + Google Test), Python 3.15 (pytest 9+), or Rust 1.100+ (cargo test) in this repository. The user MUST specify the language (cpp, python, or rust); ask if it is missing. Fetches problem data via the leetcode MCP server (tool get_problem), then generates documented headers/modules, stub implementations that build cleanly, and comprehensive 4-tier test suites that start in the TDD red state.
 ---
 
 # LeetCode Setup Skill (C++23, Python, and Rust)
@@ -11,7 +11,7 @@ description: Sets up LeetCode DSA practice problems in modern C++23 (CMake + Goo
 - **cmake-pro**: Target-based CMake 4.5+, Presets v13, `FILE_SET` (`HEADERS`/`SOURCES`), `leet_code_add_library`, CPS `PACKAGE_INFO`, SPDX 3.0.1 `SBOM`, CTest
   (C++ path).
 - **python-pro**: Python 3.15, Pixi (`>= 0.84.2`), ruff, basedpyright, ty, pytest 9+, hypothesis (Python path and MCP server).
-- **rust-pro**: Modern Rust 1.99.1+ MSRV (Pixi 1.100+), zero-allocation, Google Rust Styleguide, strict clippy, cargo (Rust path).
+- **rust-pro**: Modern Rust 1.100+ (Edition 2024), zero-allocation, Google Rust Styleguide, strict clippy, cargo (Rust path).
 
 ---
 

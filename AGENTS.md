@@ -11,7 +11,7 @@ A personal practice repository with independent tracks that share one Pixi works
 | C++ LeetCode | Data-structure and algorithm problems in modern C++23 | `src/cpp/leet_code/`, `src/include/leet_code/` | `test/cpp/leet_code/` | `leet_code` |
 | C LeetCode | Data-structure and algorithm problems in strict ISO C23 | `src/c/leet_code/`, `src/include/leet_code/` | `test/c/leet_code/` | `leet_code_c` |
 | Python LeetCode | The same problems in typed Python 3.15 | `src/python/leet_code/` | `test/python/leet_code/` | package `leet_code` |
-| Rust LeetCode | The same problems in idiomatic Rust 1.99.1+ | `src/rust/leet_code/` | `test/rust/leet_code/` | crate `leet_code` |
+| Rust LeetCode | The same problems in idiomatic Rust 1.100+ | `src/rust/leet_code/` | `test/rust/leet_code/` | crate `leet_code` |
 | Systems C++, C23 & Rust | Reusable low-level, system-level, and embedded-style components (fixed capacity, no heap, explicit concurrency) | `src/{cpp,c,rust}/systems/`, `src/include/systems/` | `test/{cpp,c,rust}/systems/` | `systems` / `systems_c` / `systems` |
 | Crubit Interop | Bidirectional C++23 <-> Rust 2024 FFI bindings via Google Crubit | `src/{include,cpp,rust}/interop/crubit/`, `examples/interop/crubit/` | `test/{cpp,rust}/interop/crubit/` | `interop::crubit` / `rs_*` / `cc_*` |
 
@@ -61,7 +61,7 @@ Do not recreate the old top-level `include/`, `src/*.cpp`, or `tests/` paths, an
 ## Toolchain rules (Pixi only)
 
 - Run every tool via `pixi run` (standalone `pixi.toml`, `requires-pixi = ">=0.84.2"`). Never `pip install`, `uv`, global `cmake`, `cargo`, or system
-  compilers. Clang 23.1.5+, CMake 4.5+, Ninja, GoogleTest, Rust 1.100+ (MSRV 1.99.1), Python 3.15, ruff, basedpyright, ty, pytest 9+, marimo, tombi, deptry,
+  compilers. Clang 23.1.5+, CMake 4.5+, Ninja, GoogleTest, Rust 1.100+ (Edition 2024), Python 3.15, ruff, basedpyright, ty, pytest 9+, marimo, tombi, deptry,
   pip-audit, prek, gersemi, and rumdl pin in `pixi.lock`.
 - Drive CMake only via presets: `pixi run cmake --workflow --preset <name>` (`ALLOW_NON_PIXI_TOOLCHAIN` overrides; avoid). Cargo build artifacts
   isolate to `build/cargo/` via `.cargo/config.toml` and `CARGO_TARGET_DIR`.
@@ -82,7 +82,7 @@ pixi run cov-rust        # cargo-llvm-cov, gate >= 85%
 pixi run cpp-ci-debug | cpp-release | cpp-asan | cpp-ubsan | cpp-tsan
 pixi run cpp-benchmark | cpp-benchmark-build # local Google Benchmark suite
 pixi run cov-cpp | cov-python # llvm-cov / pytest-cov, gate >= 85%
-pixi run crubit-bootstrap # clone pinned Crubit, verify Rust 1.99.1 sysroot, build generators
+pixi run crubit-bootstrap # clone pinned Crubit, verify Rust 1.100.0 sysroot, build generators
 pixi run test-interop | interop-release | examples-interop | clippy-interop
 pixi run typecheck       # basedpyright (strict) && ty check
 pixi run audit           # deptry && pip-audit
@@ -170,7 +170,7 @@ Intent: portable building blocks that could move to a small target without redes
 
 ## Track 5: Systems Rust
 
-Intent: portable, safe, and deterministic low-level building blocks implemented in idiomatic Rust (edition 2024, rust-version 1.99.1).
+Intent: portable, safe, and deterministic low-level building blocks implemented in idiomatic Rust (edition 2024, rust-version 1.100).
 
 - Crates live in `src/rust/systems/` with `Cargo.toml`, `src/lib.rs`, and components in `src/<name>.rs`.
 - Integration tests live in `test/rust/systems/<name>_test.rs`.
@@ -187,7 +187,7 @@ Intent: portable, safe, and deterministic low-level building blocks implemented 
 
 - Architecture, type-mapping matrix, and showcase details live in [`docs/interop/crubit.md`](docs/interop/crubit.md) and
   [`cmake/CrubitInterop.cmake`](cmake/CrubitInterop.cmake).
-- Hermetic toolchain: `scripts/crubit/bootstrap_crubit.py` pins Crubit `b7805b5d09574033ec3144d59715a539a4f652b0` and Rust `1.99.1` + `rustc-dev` under
+- Hermetic toolchain: `scripts/crubit/bootstrap_crubit.py` pins Crubit `b7805b5d09574033ec3144d59715a539a4f652b0` and Rust `1.100.0` + `rustc-dev` under
   `build/crubit/`. `RUSTC_BOOTSTRAP=1` is scoped strictly to Crubit generators and interop Cargo invocations.
 - Isolation rules: interop targets build with `BUILD_INTEROP=ON` (`interop-debug`/`interop-release`) and `-stdlib=libc++`; public headers parsed by
   `rs_bindings_from_cc` avoid STL headers (`<string>`, `<vector>`, `<memory>`, `<optional>`, `<expected>`); C++ tests use
@@ -217,7 +217,7 @@ Intent: intensive, TDD-driven Rust crash course and senior interview preparation
 - Exercises live in `src/rust/crash_course/<exercise_slug>/` as isolated sub-workspaces.
 - **Root workspace exclusion**: `src/rust/crash_course` is excluded from root `Cargo.toml` so active red-phase `todo!()`
   stubs and failing tests do not break root CI gates (`clippy`, `test-rust`, `cov-rust`).
-- Enforces Rust 1.99.1+ MSRV (Pixi 1.100+) and Edition 2024 (`edition = "2024"`, `resolver = "3"` in `Cargo.toml`),
+- Enforces Rust 1.100+ and Edition 2024 (`edition = "2024"`, `resolver = "3"`, `rust-version = "1.100"` in `Cargo.toml`),
   `#![deny(unsafe_op_in_unsafe_fn)]`, and bidirectional C++/Rust interop (`cxx`, raw C ABI, `Pin<&mut T>`).
 - Strict red-green-refactor TDD protocol: target methods stubbed solely with `todo!()` (anti-solution leakage); automated
   red-phase verification (`cargo test --no-run` -> `cargo clippy --no-deps` -> `cargo test` confirming failure strictly on

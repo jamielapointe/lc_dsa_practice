@@ -31,7 +31,7 @@ pixi run cargo test --manifest-path src/rust/crash_course/<exercise>/Cargo.toml 
   - Validates code against the **Stacked Borrows** and **Tree Borrows** aliasing models, detecting provenance violations, unaligned memory accesses, and data
     races in concurrent execution.
 - **Handling Conda-Forge / Host Toolchain Without Miri**:
-  - In environments where `cargo-miri` is not bundled (e.g. conda-forge `rustc 1.99.1`), the coach notes the toolchain limitation and substitutes static
+  - In environments where `cargo-miri` is not bundled (e.g. conda-forge `rustc 1.100.0`), the coach notes the toolchain limitation and substitutes static
     auditing of `// SAFETY:` comments alongside AddressSanitizer (ASan) recommendations.
 - **FFI Limitation**:
   - Miri interprets Rust MIR and cannot execute compiled C/C++ machine code.

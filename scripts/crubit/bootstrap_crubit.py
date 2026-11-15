@@ -6,9 +6,9 @@
 #     "structlog>=26.1.0",
 # ]
 # ///
-"""Idempotent bootstrapper for Google Crubit and its pinned Rust 1.99.1 sysroot.
+"""Idempotent bootstrapper for Google Crubit and its pinned Rust 1.100.0 sysroot.
 
-Downloads and SHA-256-verifies the official Rust ``1.99.1`` (``2026-10-15``)
+Downloads and SHA-256-verifies the official Rust ``1.100.0`` (``2026-11-12``)
 toolchain and ``rustc-dev`` tarballs, clones Google Crubit at a pinned commit,
 builds ``cargo-cpp_api_from_rust``, ``cc_bindings_from_rs``, and
 ``rs_bindings_from_cc``, and emits ``crubit_paths.cmake`` and
@@ -72,8 +72,8 @@ DEFAULT_CRUBIT_DIR: Final[Path] = Path("build/crubit")
 
 CRUBIT_COMMIT = "b7805b5d09574033ec3144d59715a539a4f652b0"
 CRUBIT_REPO_URL = "https://github.com/google/crubit.git"
-RUST_VERSION = "1.99.1"
-RUST_DIST_DATE = "2026-10-15"
+RUST_VERSION = "1.100.0"
+RUST_DIST_DATE = "2026-11-12"
 RUST_DIST_BASE_URL = f"https://static.rust-lang.org/dist/{RUST_DIST_DATE}"
 TOOL_SCHEMA_VERSION = 1
 
@@ -116,18 +116,18 @@ class ToolchainTarballSpec:
 TOOLCHAIN_SPECS: dict[str, ToolchainTarballSpec] = {
     "x86_64-unknown-linux-gnu": ToolchainTarballSpec(
         triple="x86_64-unknown-linux-gnu",
-        rust_sha256="231fcae47ee950621374725b5fc3b5441d2fbda2955ac45dd7dc816d8876cfe7",
-        rustc_dev_sha256="e2b1c9ffe50910d5274339b52774eec05433682835219566449cd09c67c1d1d2",
+        rust_sha256="98ee6bec240e1cfe944f17e7092412dc5ef6e008484bb668c6936d35a7d15acd",
+        rustc_dev_sha256="d392d050c615f9aa85b46e6267c1d2a72ca41d8b2216a13895c872a2ee18cac6",
     ),
     "aarch64-unknown-linux-gnu": ToolchainTarballSpec(
         triple="aarch64-unknown-linux-gnu",
-        rust_sha256="a48fb1e853be56ce9b8e2751f5464dbd5e16440cd81e237920f3a5e7e806333e",
-        rustc_dev_sha256="eb786738654b9f640816aec1e9bf8fed5fc5dd0137ca1a6cec494965ec08a758",
+        rust_sha256="a21f6a21818df07c1e2e7addb570af5444b3fa9dd61e3a207f4fb1c5a5e665c9",
+        rustc_dev_sha256="43e8dac7efe0c7063323510ab902fd5df8bcefe8198d2b7971d6ded58c4e26f3",
     ),
     "aarch64-apple-darwin": ToolchainTarballSpec(
         triple="aarch64-apple-darwin",
-        rust_sha256="30976378b6aaefd1861ba475905c6ba22a44c981418ce52285006af26337f98c",
-        rustc_dev_sha256="c89ef69fb6e7c4527bf585de2976940093323761493c1b7e08152b5a15f0c127",
+        rust_sha256="68ba729fe20df0f74309ef55ffbe518fc982177f327651b06112ef11e8e1de0d",
+        rustc_dev_sha256="a53dde67b486c9f33b5e6412a361c86223cdc2a4536572caba0148463840a254",
     ),
 }
 
@@ -159,7 +159,7 @@ class CrubitLayout:
 
     @property
     def sysroot_dir(self) -> Path:
-        """Installed Rust ``1.99.1`` sysroot prefix."""
+        """Installed Rust ``1.100.0`` sysroot prefix."""
         return self.toolchain_dir / "sysroot"
 
     @property
@@ -505,7 +505,7 @@ def _has_rustc_dev(sysroot_dir: Path, triple: str) -> bool:
 
 
 def ensure_rust_sysroot(layout: CrubitLayout, spec: ToolchainTarballSpec) -> None:
-    """Downloads, verifies, and installs Rust 1.99.1 + rustc-dev into ``sysroot_dir``.
+    """Downloads, verifies, and installs Rust 1.100.0 + rustc-dev into ``sysroot_dir``.
 
     Args:
         layout: Crubit directory layout.
@@ -1072,7 +1072,7 @@ def check_bootstrap(layout: CrubitLayout, triple: str) -> bool:
 
 
 def bootstrap(crubit_dir: Path, *, jobs: int | None = None) -> dict[str, str]:
-    """Bootstraps the pinned Crubit source, Rust 1.99.1 sysroot, and tools idempotently.
+    """Bootstraps the pinned Crubit source, Rust 1.100.0 sysroot, and tools idempotently.
 
     Args:
         crubit_dir: Target root directory (typically ``build/crubit``).

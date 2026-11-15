@@ -8,7 +8,7 @@ and hardware execution models.
 
 ## 1. High-Level Systems Comparison Matrix
 
-| Mechanic | Rust 1.99.1 & Edition 2024 | C++20/23 Mental Model | Python 3.14 Mental Model | Low-Level Systems & Hardware Reality |
+| Mechanic | Rust 1.100+ & Edition 2024 | C++20/23 Mental Model | Python 3.14 Mental Model | Low-Level Systems & Hardware Reality |
 | :--- | :--- | :--- | :--- | :--- |
 | **Move Semantics** | Bitwise `memcpy` destructive move. Source statically dead in compiler CFG. | Non-destructive `std::move`. Source left in valid-but-unspecified state; destructor `~T()` still runs. | Name rebinding (`y = x`). Increments `ob_refcnt`. No byte moving. | Register copy or stack `memcpy(sizeof(T))`. Caller skips destructor invocation for source binding. |
 | **Aliasing & Borrows** | Compile-time aliasing XOR mutability: `(&mut T)` XOR `(&T, &T, ...)`. | Unrestricted pointer aliasing. Requires manual `__restrict__` qualifiers. | Pervasive reference aliasing. All mutable bindings alias identical heap `PyObject`. | `&T` emits LLVM `readonly`. `&mut T` emits LLVM `noalias`, allowing CPU register caching across calls. |
@@ -43,7 +43,7 @@ Rust Destructive Move (Bitwise memcpy):
       +--> Only Dest Binding runs Drop at scope exit.
 ```
 
-In Rust 1.99.1, moves are **destructive by default**:
+In Rust 1.100+, moves are **destructive by default**:
 
 1. **Bitwise Bit Copy**: The compiler emits a bitwise copy (`memcpy` of `size_of::<T>()` bytes) from the source memory slot to the destination memory slot.
 2. **Static Invalidation**: The borrow checker statically marks the source identifier as uninitialized/dead in the control-flow graph (CFG). Any subsequent
@@ -307,9 +307,9 @@ This mirrors C++23 `std::expected<T, E>`, but provides seamless type conversion 
 
 ---
 
-## 7. Rust 1.99.1 & Edition 2024 Compiler Invariants
+## 7. Rust 1.100+ & Edition 2024 Compiler Invariants
 
-To maintain strict alignment with this repository's toolchain (`rustc 1.99.1`, `edition = "2024"`, `resolver = "3"`), all code must adhere to the following
+To maintain strict alignment with this repository's toolchain (`rustc 1.100+`, `edition = "2024"`, `resolver = "3"`), all code must adhere to the following
 syntactic and semantic invariants:
 
 ### 7.1 `unsafe extern "C"` Blocks

@@ -31,7 +31,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 AGENTS_MD_MAX_BYTES = 24576
 
 # Expected Rust configuration constants
-EXPECTED_RUST_VERSION = "1.99.1"
+EXPECTED_RUST_VERSION = "1.100"
 EXPECTED_RUST_EDITION = "2024"
 EXPECTED_CARGO_TARGET_DIR = "build/cargo"
 EXPECTED_RUSTFMT_MAX_WIDTH = 120

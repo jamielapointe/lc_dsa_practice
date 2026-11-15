@@ -49,7 +49,7 @@ src/rust/crash_course/
 
 ## Workflow & Execution Commands
 
-Always run tools through the repository's `pixi run` environment so that pinned Clang 23, CMake 4.4, Ninja, and Rust 1.99.1 toolchains are active:
+Always run tools through the repository's `pixi run` environment so that pinned Clang 23, CMake 4.5, Ninja, and Rust 1.100+ toolchains are active:
 
 ### 1. Navigating to an Exercise
 

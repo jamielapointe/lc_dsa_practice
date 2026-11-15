@@ -1,6 +1,6 @@
 ---
 name: systems-setup
-description: Scaffolds a low-level / embedded-style C++23 or Rust 1.99.1+ practice component in the systems track from a free-form problem statement (no website lookup). Produces an ASPICE-style requirements spec with traceable IDs, a documented header or module and stub implementation that outline the work (no solution), CMake/Cargo registration, and a comprehensive test suite (functional, boundary, resource, multi-thread, multi-process, fault-injection tiers) that starts in the TDD red state. Applies automotive / robotics constraints (ISO 26262 mindset, MISRA C++:2023 and AUTOSAR C++14 guidance, zero steady-state heap, no panics/exceptions or RTTI) targeting POSIX (Linux, embedded Linux, QNX).
+description: Scaffolds a low-level / embedded-style C++23 or Rust 1.100+ practice component in the systems track from a free-form problem statement (no website lookup). Produces an ASPICE-style requirements spec with traceable IDs, a documented header or module and stub implementation that outline the work (no solution), CMake/Cargo registration, and a comprehensive test suite (functional, boundary, resource, multi-thread, multi-process, fault-injection tiers) that starts in the TDD red state. Applies automotive / robotics constraints (ISO 26262 mindset, MISRA C++:2023 and AUTOSAR C++14 guidance, zero steady-state heap, no panics/exceptions or RTTI) targeting POSIX (Linux, embedded Linux, QNX).
 ---
 
 # Systems Setup Skill (safety-oriented C++23 & Rust)
@@ -10,7 +10,7 @@ description: Scaffolds a low-level / embedded-style C++23 or Rust 1.99.1+ practi
 - **cpp-pro**: Modern C++23 (LLVM/Clang 23.1.5+), RAII, concurrency, sanitizer-clean code (C++ path).
 - **cmake-pro**: Target-based CMake 4.5+, Presets v13, `FILE_SET` (`HEADERS`/`SOURCES`), `systems_add_library`, CPS `PACKAGE_INFO`, SPDX 3.0.1 `SBOM`, CTest
   labels, gersemi (C++ path).
-- **rust-pro**: Modern Rust 1.99.1+ MSRV (Pixi 1.100+) safety-critical systems software, zero-allocation real-time paths, lock-free concurrency, Google Rust
+- **rust-pro**: Modern Rust 1.100+ (Edition 2024) safety-critical systems software, zero-allocation real-time paths, lock-free concurrency, Google Rust
   Styleguide (Rust path).
 - **python-pro**: Only for the traceability checker (`scripts/ci/check_systems_traceability.py`).
 
@@ -33,7 +33,7 @@ description: Scaffolds a low-level / embedded-style C++23 or Rust 1.99.1+ practi
 
 ## Inputs
 
-There is no lookup service: **the user's prompt is the problem statement.** Supported languages: C++23 (default) and Rust 1.99.1+. Extract:
+There is no lookup service: **the user's prompt is the problem statement.** Supported languages: C++23 (default) and Rust 1.100+. Extract:
 
 | Item | Example (shared-memory pub/sub) |
 | --- | --- |

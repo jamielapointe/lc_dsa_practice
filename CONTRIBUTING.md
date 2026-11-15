@@ -29,7 +29,7 @@ This guide covers the development workflow, security policies, and dependency ma
    pixi run cpp-benchmark   # Google Benchmark suite workflow (local only, never on CI)
    pixi run cpp-benchmark-build # build benchmark executable
    pixi run shm-pubsub-example  # run multi-process SPMC shared-memory camera example + verifier
-   pixi run crubit-bootstrap    # clone pinned Crubit, verify Rust 1.99.1 sysroot, build generators
+   pixi run crubit-bootstrap    # clone pinned Crubit, verify Rust 1.100.0 sysroot, build generators
    pixi run test-interop        # build and test Crubit C++23 <-> Rust 2024 interop suite (Debug)
    pixi run interop-release     # build and test Crubit C++23 <-> Rust 2024 interop suite (Release/LTO)
    pixi run examples-interop    # build C++23 and Rust 2024 Crubit showcase demo executables
@@ -53,7 +53,7 @@ This guide covers the development workflow, security policies, and dependency ma
   CPS `PACKAGE_INFO`, SPDX 3.0.1 `SBOM`), LLVM/Clang 23.1.5+, Google style (`.clang-format`), and strict `.clang-tidy`. Drive CMake only via
   `CMakePresets.json` Schema v13 (`pixi run cmake --workflow --preset <name>` for `dev-debug`, `ci-debug`, `dev-release`, `asan`, `ubsan`, `tsan`,
   `coverage`, `benchmark`, `interop-*`; plus `sysroot-release`, `cross-aarch64`, and `cross-riscv64` configure/build presets), never an ad hoc configure.
-- Rust crates target MSRV `1.99.1+` (Edition 2024; Pixi ships `1.100+`, while Crubit's hermetic sysroot pins `1.99.1`).
+- Rust crates target `1.100+` (`edition = "2024"`, `resolver = "3"`, `rust-version = "1.100"`; Crubit's hermetic sysroot pins `1.100.0`).
 - Python 3.15 (`PEP 649` native annotations; `TID251` bans `from __future__ import annotations`; `PEP 810` `lazy import`, `PEP 814` `frozendict`,
   `PEP 661`, `PEP 750`), double quotes, 88 columns, grouped imports, Google-style docstrings, 23 Ruff families (`RUF201` full rule names), and strict
   typing via `basedpyright` + `ty`.

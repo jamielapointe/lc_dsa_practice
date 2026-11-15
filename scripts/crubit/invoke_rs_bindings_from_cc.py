@@ -318,7 +318,7 @@ def _render_cargo_toml(
         f"name = {json.dumps(crate_name)}",
         'version = "0.1.0"',
         'edition = "2024"',
-        'rust-version = "1.99.1"',
+        'rust-version = "1.100"',
         "publish = false",
         "",
         "[workspace]",

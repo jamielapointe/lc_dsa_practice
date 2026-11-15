@@ -4,7 +4,7 @@
 | --- | --- |
 | Component | `systems::BoundedFifo` (`src/include/systems/bounded_fifo.hpp`, `src/rust/systems/src/bounded_fifo.rs`) |
 | Requirement prefix | `FIFO` |
-| Status | Implemented (C++23 & Rust 1.99.1+) |
+| Status | Implemented (C++23 & Rust 1.100+) |
 | Integrity context | Practice component written with ISO 26262 / MISRA C++:2023 / safety-critical systems rigor; not a certified work product |
 | Target platforms | Linux, embedded Linux, QNX, bare-metal / RTOS; macOS (development host) |
 

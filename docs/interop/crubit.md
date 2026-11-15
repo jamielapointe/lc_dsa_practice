@@ -6,7 +6,7 @@ suite in `lc_dsa_practice`.
 ## Architecture Overview
 
 The interop track provides **bidirectional** bindings between modern C++23 (`-std=c++23`, `-stdlib=libc++`, LLVM/Clang `23.1.5+`, CMake `4.5+`) and idiomatic
-Rust 2024 (`edition = "2024"`, `rust-version = "1.99.1"`; Pixi provides `1.100+`, while Crubit pins `1.99.1` in its hermetic sysroot) using Google Crubit:
+Rust 2024 (`edition = "2024"`, `rust-version = "1.100"`; Pixi provides `1.100+`, and Crubit pins `1.100.0` in its hermetic sysroot) using Google Crubit:
 
 - **C++23 -> Rust 2024 (`rs_bindings_from_cc`)**: Generates Rust FFI bindings (`src/lib.rs`), C++ thunk implementations (`*_rust_api_impl.cc`), and a standalone
   generated `Cargo.toml` so Rust crates call C++23 APIs safely.
@@ -21,7 +21,7 @@ All Crubit sources, Rust compiler internals, and code-generation binaries are bo
 | Artifact | Pin / Location | Notes |
 | :--- | :--- | :--- |
 | Google Crubit source | `b7805b5d09574033ec3144d59715a539a4f652b0` | Cloned into `build/crubit/src` with local LLVM 23.1.3 compatibility patches |
-| Hermetic Rust sysroot | `1.99.1` (`2026-10-15`) | Official `rust` + `rustc-dev` tarballs SHA-256 verified into `build/crubit/toolchain/sysroot` |
+| Hermetic Rust sysroot | `1.100.0` (`2026-11-12`) | Official `rust` + `rustc-dev` tarballs SHA-256 verified into `build/crubit/toolchain/sysroot` |
 | Supported host triples | `x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`, `aarch64-apple-darwin` | Auto-detected via host OS/architecture |
 | Generator binaries | `build/crubit/install/bin/` | `cargo-cpp_api_from_rust`, `cc_bindings_from_rs`, and `rs_bindings_from_cc` |
 | Generated build metadata | `build/crubit/crubit_paths.cmake`, `build/crubit/crubit_env.json` | Consumed by CMake and `pixi run clippy-interop` |
@@ -127,7 +127,7 @@ The suite spans five complementary modules under `src/{include,cpp,rust}/interop
 All commands run inside the managed Pixi environment:
 
 ```bash
-# 1. Bootstrap pinned Crubit source, Rust 1.99.1 + rustc-dev sysroot, and generators
+# 1. Bootstrap pinned Crubit source, Rust 1.100.0 + rustc-dev sysroot, and generators
 pixi run crubit-bootstrap
 
 # 2. Configure, build, and run all bidirectional C++23 <-> Rust 2024 interop tests (Debug)

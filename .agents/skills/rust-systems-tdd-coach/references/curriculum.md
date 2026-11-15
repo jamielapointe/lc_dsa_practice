@@ -22,7 +22,7 @@ anchors.
                                                                      [10: C++/Rust Interop Bridge]
 ```
 
-| Mod | Directory & Slug | Core Systems Challenge | Primary Rust 1.99.1 & 2024 Focus |
+| Mod | Directory & Slug | Core Systems Challenge | Primary Rust 1.100+ & 2024 Focus |
 | :-- | :--- | :--- | :--- |
 | **01** | `01_shm_packet_transfer` | Zero-allocation shared memory packet handoff | Bitwise `memcpy` moves, static binding invalidation, drop flags |
 | **02** | `02_zero_copy_frame_slicer` | Multiplexed telemetry frame sub-slicing | Covariance of `&'a T`, invariance of `&'a mut T`, `use<..>` |
