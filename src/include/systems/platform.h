@@ -21,7 +21,7 @@ extern "C" {
 
 /// @brief Host operating-system family enumeration with fixed uint8_t
 /// underlying type.
-// NOLINTNEXTLINE(cppcoreguidelines-use-enum-class)
+// NOLINTNEXTLINE(cppcoreguidelines-use-enum-class): C23 public ABI enum.
 typedef enum systems_os_family : uint8_t {
   SYSTEMS_OS_LINUX = 0,
   SYSTEMS_OS_QNX = 1,
@@ -31,7 +31,7 @@ typedef enum systems_os_family : uint8_t {
 
 /// @brief Host CPU architecture family enumeration with fixed uint8_t
 /// underlying type.
-// NOLINTNEXTLINE(cppcoreguidelines-use-enum-class)
+// NOLINTNEXTLINE(cppcoreguidelines-use-enum-class): C23 public ABI enum.
 typedef enum systems_arch_family : uint8_t {
   SYSTEMS_ARCH_X86_64 = 0,
   SYSTEMS_ARCH_AARCH64 = 1,
@@ -43,6 +43,7 @@ static_assert(sizeof(enum systems_os_family) == 1U,
 static_assert(sizeof(enum systems_arch_family) == 1U,
               "ABI requires 8-bit systems_arch_family");
 
+// Host OS/arch detection requires object-like preprocessor macros.
 // NOLINTBEGIN(cppcoreguidelines-macro-usage,modernize-macro-to-enum)
 #if defined(__QNX__) || defined(__QNXNTO__)
 #define SYSTEMS_OS_CURRENT SYSTEMS_OS_QNX
@@ -73,6 +74,7 @@ static_assert(sizeof(enum systems_arch_family) == 1U,
   return SYSTEMS_ARCH_CURRENT;
 }
 
+// Platform capability flags require #if/#ifdef conditional checks.
 // NOLINTBEGIN(cppcoreguidelines-macro-usage,modernize-macro-to-enum)
 #if defined(__linux__)
 #define SYSTEMS_IS_LINUX 1
@@ -166,6 +168,7 @@ static constexpr bool systems_has_physical_shm_ctl =
 #if __has_include(<stdbit.h>) && !defined(__cplusplus)
 #include <stdbit.h>  // IWYU pragma: export
 #else
+// C23 <stdbit.h> fallback API explicitly specifies unsigned int/long types.
 // NOLINTBEGIN(google-runtime-int,cppcoreguidelines-macro-usage)
 #ifdef __cplusplus
 #define SYSTEMS_CAST_UINT(expr) static_cast<unsigned int>(expr)

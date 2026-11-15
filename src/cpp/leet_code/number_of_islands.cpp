@@ -77,7 +77,7 @@ auto number_of_islands(std::span<std::vector<char>> grid) -> int {
   return num_islands;
 }
 
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static): LeetCode API.
 auto Solution::numIslands(std::vector<std::vector<char>>& grid) -> int {
   return number_of_islands(grid);
 }

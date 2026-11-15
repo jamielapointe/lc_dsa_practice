@@ -10,7 +10,6 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
-#include <time.h>
 
 #include "process_rendezvous_posix.h"
 #include "systems/platform.h"
@@ -57,12 +56,6 @@
   return PROCESS_RENDEZVOUS_OK;
 }
 
-[[nodiscard]] static int64_t monotonic_now_ns() {
-  struct timespec ts = {};
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  return ((int64_t)ts.tv_sec * 1'000'000'000LL) + (int64_t)ts.tv_nsec;
-}
-
 [[nodiscard]] static enum process_rendezvous_error try_wait_flag(
     const struct process_rendezvous* rdv, const _Atomic(uint32_t)* flag) {
   if (rdv == nullptr || rdv->shared == nullptr) {
@@ -83,7 +76,7 @@
   if (rdv == nullptr || rdv->shared == nullptr) {
     return PROCESS_RENDEZVOUS_ERR_INVALID_ARGUMENT;
   }
-  const int64_t start_ns = monotonic_now_ns();
+  const int64_t start_ns = process_rendezvous_posix_monotonic_now_ns();
   int64_t deadline_ns = 0;
   if (ckd_add(&deadline_ns, start_ns, timeout_ns)) {
     deadline_ns = INT64_MAX;
@@ -96,7 +89,7 @@
     if (status != PROCESS_RENDEZVOUS_ERR_WOULD_BLOCK) {
       return status;
     }
-    const int64_t now_ns = monotonic_now_ns();
+    const int64_t now_ns = process_rendezvous_posix_monotonic_now_ns();
     if (now_ns >= deadline_ns) {
       return PROCESS_RENDEZVOUS_ERR_TIMED_OUT;
     }
@@ -175,7 +168,7 @@
     return err;
   }
 
-  const int64_t start_ns = monotonic_now_ns();
+  const int64_t start_ns = process_rendezvous_posix_monotonic_now_ns();
   int64_t deadline_ns = 0;
   if (ckd_add(&deadline_ns, start_ns, timeout_ns)) {
     deadline_ns = INT64_MAX;
@@ -200,7 +193,7 @@
       return open_err;
     }
 
-    if (monotonic_now_ns() >= deadline_ns) {
+    if (process_rendezvous_posix_monotonic_now_ns() >= deadline_ns) {
       return PROCESS_RENDEZVOUS_ERR_TIMED_OUT;
     }
     process_rendezvous_posix_sleep_us(100U);

@@ -29,10 +29,10 @@ embedded-style C++23, ISO C23, and Rust** tree for low-level components and **Cr
 | Rust Systems Crash Course | `src/rust/crash_course` (isolated sub-workspaces) | per-exercise test suites | standalone crates |
 | Crubit C++23 <-> Rust 2024 Interop | `src/{include,cpp,rust}/interop/crubit`, `examples/interop/crubit`, `docs/interop/crubit.md`, `scripts/crubit/` | `test/{cpp,rust}/interop/crubit` | `interop::crubit` / `rs_*` / `cc_*` |
 
-The systems track holds low-level building blocks written in an embedded-friendly style in both modern C++23 and strict ISO C23 (fixed capacity, no heap, no STL
-containers, explicit concurrency). It includes `BoundedFifo` / `bounded_fifo`, `ShmChannel` / `shm_channel` (wait-free SPMC shared-memory pub/sub),
-`ProcessRendezvous` / `process_rendezvous`, and `bitmap_flip`, plus `systems/platform.{hpp,h}` (OS capability flags) and a GoogleTest support library for
-multi-thread, multi-process, and fault-injection tests.
+The systems track holds low-level building blocks written in an embedded-friendly style across modern C++23, strict ISO C23, and idiomatic Rust 1.100+ (fixed
+capacity, no steady-state heap, no STL containers, explicit concurrency). It includes `BoundedFifo` / `bounded_fifo`, `ShmPubSub` (`ShmChannel` / `shm_channel`,
+wait-free SPMS shared-memory pub/sub), `ProcessRendezvous` / `process_rendezvous`, `bitmap_flip`, `bit_pattern`, `huffman_tree`, and `priority_scheduler`, plus
+`systems/platform.{hpp,h}` (OS capability flags) and a GoogleTest support library for multi-thread, multi-process, and fault-injection tests.
 
 ## Quickstart
 
@@ -42,7 +42,7 @@ Prerequisites: Linux (x86-64 or aarch64) or macOS (Apple Silicon) and [Pixi](htt
 git clone git@github.com:jamielapointe/lc_dsa_practice.git
 cd lc_dsa_practice
 pixi install
-pixi run test          # C++ (dev-debug preset) + Python tests
+pixi run test          # C++ (dev-debug preset) + Python + Rust tests
 pixi run pre-commit    # every formatter, linter, and security hook
 ```
 
@@ -52,9 +52,12 @@ All operations go through `pixi run <task>`; nothing needs a global install.
 
 ```bash
 # Tests
-pixi run test                 # C++ and Python suites
+pixi run test                 # C++, Python, and Rust suites
 pixi run test-cpp             # cmake --workflow --preset dev-debug (ASan + UBSan + clang-tidy)
 pixi run test-python          # pytest 9+ with hypothesis and pytest-randomly (live-network tests deselected)
+pixi run test-rust            # cargo test --workspace --all-targets
+pixi run clippy               # cargo clippy --all-targets -- -D warnings
+pixi run cov-rust             # cargo-llvm-cov line coverage, gate >= 85%
 
 # C++ presets (CMake 4.5+, Schema v13)
 pixi run cpp-debug            # configure, build, test (dev-debug: ASan + UBSan + clang-tidy)

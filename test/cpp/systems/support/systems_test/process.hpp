@@ -36,7 +36,6 @@
 #include <csignal>
 #include <cstdint>
 #include <cstdio>
-#include <exception>
 #include <functional>
 #include <ostream>
 #include <thread>

@@ -105,9 +105,21 @@ mod tests {
         assert_eq!(expected.to_string(), "42:3");
 
         assert_eq!(parse_schedule_id(""), Err(ParseScheduleError::EmptyInput));
-        assert_eq!(parse_schedule_id("42"), Err(ParseScheduleError::MalformedSeparator));
-        assert_eq!(parse_schedule_id("42:1:2"), Err(ParseScheduleError::MalformedSeparator));
-        assert_eq!(parse_schedule_id("abc:1"), Err(ParseScheduleError::MalformedSeparator));
-        assert_eq!(parse_schedule_id("42:70000"), Err(ParseScheduleError::OutOfBounds));
+        assert_eq!(
+            parse_schedule_id("42"),
+            Err(ParseScheduleError::MalformedSeparator)
+        );
+        assert_eq!(
+            parse_schedule_id("42:1:2"),
+            Err(ParseScheduleError::MalformedSeparator)
+        );
+        assert_eq!(
+            parse_schedule_id("abc:1"),
+            Err(ParseScheduleError::MalformedSeparator)
+        );
+        assert_eq!(
+            parse_schedule_id("42:70000"),
+            Err(ParseScheduleError::OutOfBounds)
+        );
     }
 }

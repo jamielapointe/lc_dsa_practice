@@ -1,4 +1,9 @@
-#![allow(clippy::disallowed_methods, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![allow(
+    clippy::disallowed_methods,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic
+)]
 
 //! 4-Tier integration test suite for LeetCode #1: Two Sum.
 
@@ -99,7 +104,11 @@ fn test_indices_ordering_and_sum_invariant() {
         panic!("expected valid solution");
     };
     assert!(i < j, "Index i ({i}) must be strictly less than j ({j})");
-    assert_eq!(nums[i] + nums[j], target, "Sum of elements must match target");
+    assert_eq!(
+        nums[i] + nums[j],
+        target,
+        "Sum of elements must match target"
+    );
 }
 
 #[test]
@@ -202,7 +211,10 @@ fn test_adversarial_two_sum_arithmetic_extremes() {
 
     // Target i32::MIN with value 1
     let nums_target_min_val_1 = [1, 2, 3, 4];
-    assert_eq!(two_sum(&nums_target_min_val_1, i32::MIN), Err(TwoSumError::NoSolution));
+    assert_eq!(
+        two_sum(&nums_target_min_val_1, i32::MIN),
+        Err(TwoSumError::NoSolution)
+    );
 
     // Target i32::MAX with value -1
     let nums_target_max_val_neg1 = [-1, 2, 3, 4];

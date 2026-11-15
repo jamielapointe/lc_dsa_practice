@@ -26,9 +26,9 @@
 #endif
 
 #if !defined(SYSTEMS_TEST_SANITIZER_ALLOCATOR)
-// NOLINTBEGIN(misc-new-delete-overloads,cert-dcl54-cpp,*-owning-memory)
-// Replacement global allocation functions ([new.delete]); all forward to
-// malloc/free so ASan still tracks every block.
+// NOLINTBEGIN(misc-new-delete-overloads,cert-dcl54-cpp,*-owning-memory):
+// Replacement global [new.delete] hooks; all forward to malloc/free so
+// ASan still tracks every block.
 auto operator new(size_t bytes) -> void* {
   return systems_test::detail::throwing(
       systems_test::detail::checked_malloc(bytes));

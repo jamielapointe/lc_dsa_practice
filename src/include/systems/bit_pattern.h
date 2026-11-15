@@ -114,7 +114,7 @@ static constexpr size_t BIT_PATTERN_MAX_PATTERN_BITS = 1024U;
 /// @brief Result and error codes for bit-stream pattern search operations.
 /// @details `FOUND_PATTERN = 0` and `PATTERN_NOT_FOUND = 1` match the issue
 /// specification; values `> 1` report precondition or capability errors.
-// NOLINTNEXTLINE(cppcoreguidelines-use-enum-class)
+// NOLINTNEXTLINE(cppcoreguidelines-use-enum-class): C23 public ABI enum.
 typedef enum FoundError : int32_t {
   FOUND_PATTERN = 0,
   PATTERN_NOT_FOUND = 1,

@@ -179,7 +179,9 @@ Intent: portable, safe, and deterministic low-level building blocks implemented 
   - Zero heap allocation in steady-state operations; no dynamic collections (`Vec`, `VecDeque`) after initialization.
   - Public operations are safe, deterministic, and report errors via `Result<T, <Name>Error>`.
   - Provide try, timed (`push_timeout`, `pop_timeout`), and blocking variants, with a `close()` path that unblocks all waiters.
-  - Concurrency uses standard synchronization (`std::sync::{Mutex, Condvar}`) without `unsafe` blocks.
+  - Safe concurrency primitives (e.g., `BoundedFifo`) use `std::sync::{Mutex, Condvar}` with zero `unsafe` (`unsafe_code = "deny"`).
+  - OS/FFI shared-memory modules (e.g., `shm_pubsub`, `platform`) isolate item-scoped `#[allow(unsafe_code)]` with multi-point `// SAFETY:` proofs
+    (never crate-wide `#![allow(unsafe_code)]`).
 - Tests cover 4 tiers (canonical FIFO, boundary/timeouts/drainage, RAII/drop invariants, multi-threaded MPMC stress).
 - Requirements traceability: tests declare traceability tags (`// requirements: <PREFIX>-REQ-NNN`), verified by `pixi run check-traceability`.
 

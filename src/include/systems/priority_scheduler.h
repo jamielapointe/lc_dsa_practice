@@ -115,7 +115,7 @@ static constexpr uint8_t PRIORITY_HIGHEST = 0U;
 static constexpr uint8_t PRIORITY_LOWEST = 255U;
 
 /// @brief Status and error codes returned by priority queue and scheduler APIs.
-// NOLINTNEXTLINE(cppcoreguidelines-use-enum-class)
+// NOLINTNEXTLINE(cppcoreguidelines-use-enum-class): C23 public ABI enum.
 typedef enum priority_scheduler_error : int32_t {
   PRIORITY_SCHEDULER_OK = 0,
   PRIORITY_SCHEDULER_ERR_NOT_IMPLEMENTED = 1,

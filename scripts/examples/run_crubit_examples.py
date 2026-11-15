@@ -20,12 +20,15 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Annotated, Final, cast
-lazy from collections.abc import Sequence
+from typing import TYPE_CHECKING, Annotated, Final, cast
 
 import cyclopts
 import structlog
 from cyclopts import Parameter, validators
+
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
 
 
 def _get_stderr_logger() -> structlog.BoundLogger:
@@ -68,7 +71,7 @@ CPP_DEMO_BINARIES: tuple[tuple[str, str], ...] = (
 
 RUST_DEMO_BINARY = "crubit_showcase_rust_demo"
 
-_MODULE_ALIASES: dict[str, str] = {
+_MODULE_ALIASES: Final[frozendict[str, str]] = frozendict[str, str]() | {
     "primitives_enums": "primitives_enums",
     "primitives_and_enums": "primitives_enums",
     "references_views": "references_views",
@@ -178,7 +181,7 @@ def parse_demo_log(log_text: str) -> list[DemoRecord]:
 
 
 def _collect_cpp_records(
-    cpp_logs: dict[str, str],
+    cpp_logs: Mapping[str, str],
 ) -> tuple[dict[str, DemoRecord], list[str]]:
     """Parses C++23 demo stdout logs into records and errors.
 
@@ -265,7 +268,7 @@ def _validate_required_module(
             errors.append(msg)
 
 
-def verify_demo_logs(cpp_logs: dict[str, str], rust_log: str) -> VerificationResult:
+def verify_demo_logs(cpp_logs: Mapping[str, str], rust_log: str) -> VerificationResult:
     """Verifies that all 5 showcase modules report ``status=ok`` in C++23 and Rust 2024.
 
     Args:

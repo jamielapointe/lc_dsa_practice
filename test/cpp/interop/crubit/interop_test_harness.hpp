@@ -66,12 +66,12 @@ struct TestContext {
 }  // namespace interop::crubit::test
 
 // Function-like macros capture caller expression text and std::source_location
-// cleanly. NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+// cleanly.
+// NOLINTBEGIN(cppcoreguidelines-macro-usage): captures expression text.
 #define INTEROP_EXPECT_TRUE(ctx, expr) \
   (ctx).expect_true(static_cast<bool>(expr), #expr)
-// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define INTEROP_EXPECT_EQ(ctx, lhs, rhs) \
   (ctx).expect_eq((lhs), (rhs), #lhs, #rhs)
-// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define INTEROP_EXPECT_NEAR(ctx, lhs, rhs, eps) \
   (ctx).expect_near((lhs), (rhs), (eps), #lhs, #rhs)
+// NOLINTEND(cppcoreguidelines-macro-usage)

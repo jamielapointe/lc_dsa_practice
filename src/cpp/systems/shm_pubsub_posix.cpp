@@ -70,9 +70,7 @@
 ///     `sysctl({CTL_KERN, KERN_PROC, KERN_PROC_PID, pid})` and checks
 ///     `kp_proc.p_stat == SZOMB`.
 
-#if defined(SYSTEMS_POSIX_SUPPORTED) &&                                       \
-    ((defined(__linux__) && (defined(__x86_64__) || defined(__aarch64__))) || \
-     (defined(__APPLE__) && defined(__aarch64__)))
+#if defined(SYSTEMS_POSIX_SUPPORTED)
 
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -447,5 +445,5 @@ auto SharedMemoryRegion::current_process_id() noexcept -> int64_t {
 
 #else
 #error \
-    "shm_pubsub_posix.cpp requires a supported POSIX target (Linux x86_64/aarch64 or macOS arm64) and SYSTEMS_POSIX_SUPPORTED."
+    "shm_pubsub_posix.cpp requires a supported POSIX target (Linux x86_64/aarch64/riscv64 or macOS arm64) and SYSTEMS_POSIX_SUPPORTED."
 #endif

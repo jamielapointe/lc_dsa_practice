@@ -1,10 +1,9 @@
 /**
  * @file add_two_numbers.cpp
- * @brief Barebones stub implementation of Add Two Numbers algorithm.
+ * @brief Iterative implementation of Add Two Numbers algorithm.
  *
- * Designed to compile cleanly under strict compiler flags (-Wall, -Wextra,
- * -Wpedantic, -Wconversion, -Werror) while returning a dummy value (nullptr) to
- * establish the initial Test-Driven Development (TDD) Red state.
+ * Sums corresponding reverse-order digits from both linked lists with carry
+ * propagation to construct the resulting sum linked list.
  */
 
 #include "leet_code/add_two_numbers.hpp"
@@ -30,7 +29,6 @@ namespace leet_code {
       list2 = list2->next;
     }
     carry = sum / 10;
-    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory)
     tail->next = new ListNode(sum % 10);
     tail = tail->next;
   }
@@ -39,7 +37,7 @@ namespace leet_code {
 }
 
 [[nodiscard]] auto Solution::addTwoNumbers(ListNode* list1, ListNode* list2)
-    -> ListNode* {  // NOLINT
+    -> ListNode* {
   return add_two_numbers(list1, list2);
 }
 

@@ -13,7 +13,6 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
-#include <time.h>
 
 #include "shm_pubsub_posix.h"
 #include "systems/platform.h"
@@ -342,12 +341,6 @@ static void cpu_relax() {
 #endif
 }
 
-[[nodiscard]] static int64_t monotonic_now_ns() {
-  struct timespec ts = {};
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  return ((int64_t)ts.tv_sec * 1'000'000'000LL) + (int64_t)ts.tv_nsec;
-}
-
 struct shm_backoff {
   int spins;
   bool yielded;
@@ -368,7 +361,7 @@ static void backoff_wait(struct shm_backoff* backoff, int64_t deadline_ns) {
     shm_pubsub_posix_yield();
     return;
   }
-  const int64_t now_ns = monotonic_now_ns();
+  const int64_t now_ns = shm_pubsub_posix_monotonic_now_ns();
   if (now_ns >= deadline_ns) {
     return;
   }
@@ -632,7 +625,7 @@ void shm_publisher_destroy(struct shm_publisher* publisher) {
     if (err != SHM_PUBSUB_ERR_WOULD_BLOCK) {
       return err;
     }
-    if (monotonic_now_ns() >= deadline_ns) {
+    if (shm_pubsub_posix_monotonic_now_ns() >= deadline_ns) {
       return SHM_PUBSUB_ERR_TIMED_OUT;
     }
     backoff_wait(&backoff, deadline_ns);
@@ -642,7 +635,7 @@ void shm_publisher_destroy(struct shm_publisher* publisher) {
 [[nodiscard]] enum shm_pubsub_error shm_subscriber_receive_for(
     struct shm_subscriber* subscriber, void* buffer, size_t buffer_size,
     int64_t timeout_ns, struct shm_sample* out_sample) {
-  const int64_t now_ns = monotonic_now_ns();
+  const int64_t now_ns = shm_pubsub_posix_monotonic_now_ns();
   int64_t deadline_ns = now_ns;
   if (timeout_ns > 0) {
     if (ckd_add(&deadline_ns, now_ns, timeout_ns)) {

@@ -6,15 +6,20 @@ on:
     - cron: '0 4 * * 1'
   workflow_dispatch:
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   update-dependencies:
     name: Update Pixi Lockfile
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: write # Push updated lockfile branch for PR creation
+      pull-requests: write # Create and update dependency update PRs
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

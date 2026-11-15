@@ -56,10 +56,11 @@
       "groupSlug": "pre-commit-hooks"
     },
     {
-      "description": "Group Pixi conda and PyPI minor and patch dependency updates into a single weekly pull request",
+      "description": "Group Pixi conda, PyPI, and PEP 723 minor and patch dependency updates into a single weekly pull request",
       "matchManagers": [
         "pixi",
-        "pep621"
+        "pep621",
+        "pep723"
       ],
       "matchUpdateTypes": [
         "minor",
@@ -67,6 +68,18 @@
       ],
       "groupName": "pixi and pypi dependencies",
       "groupSlug": "pixi-dependencies"
+    },
+    {
+      "description": "Group Cargo minor and patch dependency updates into a single weekly pull request",
+      "matchManagers": [
+        "cargo"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "cargo dependencies",
+      "groupSlug": "cargo-dependencies"
     }
   ]
 }

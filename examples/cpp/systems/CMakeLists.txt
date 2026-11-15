@@ -27,7 +27,11 @@ function(systems_add_example target_name)
     )
 
     if(CMAKE_CXX_CLANG_TIDY)
-        set_target_properties(${target_name} PROPERTIES CXX_CLANG_TIDY "${CMAKE_CXX_CLANG_TIDY}")
+        set_target_properties(
+            ${target_name}
+            PROPERTIES
+                CXX_CLANG_TIDY "${CMAKE_CXX_CLANG_TIDY};--header-filter=.*/examples/cpp/systems/.*"
+        )
     endif()
 endfunction()
 

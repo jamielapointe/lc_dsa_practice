@@ -59,7 +59,10 @@ would immediately break repository-wide pre-commit hooks and remote CI.
        "src/rust/systems",
    ]
    exclude = [
+       "examples/interop",
        "src/rust/crash_course",
+       "src/rust/interop",
+       "test/rust/interop",
    ]
    ```
 
@@ -71,11 +74,11 @@ would immediately break repository-wide pre-commit hooks and remote CI.
    name = "<exercise_slug>"
    version = "0.1.0"
    edition = "2024"
-   resolver = "3"
    rust-version = "1.100"
    publish = false
 
    [workspace]
+   resolver = "3"
 
    [dependencies]
    thiserror = { version = "2.0", default-features = false }

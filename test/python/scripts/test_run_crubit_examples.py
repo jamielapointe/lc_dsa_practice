@@ -1,9 +1,9 @@
 """Offline unit tests for scripts/examples/run_crubit_examples.py."""
 
 import shutil
-import subprocess  # ruff: ignore[suspicious-subprocess-import]
+import subprocess
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 import pytest
 
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-SAMPLE_CPP_LOGS: dict[str, str] = {
+SAMPLE_CPP_LOGS: Final[frozendict[str, str]] = frozendict[str, str]() | {
     "primitives_enums": "[CRUBIT_CPP_DEMO] module=primitives_enums status=ok pos=15.0 vel=12.0\n",
     "references_views": "[CRUBIT_CPP_DEMO] module=references_views status=ok rms=3.5 tag=42\n",
     "ownership_raii": "[CRUBIT_CPP_DEMO] module=ownership_raii status=ok live_after_drop=0\n",

@@ -28,13 +28,16 @@ import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Annotated, Final, cast
-lazy from collections.abc import Sequence
+from typing import TYPE_CHECKING, Annotated, Final, cast
 
 import cyclopts
-import httpx
 import structlog
 from cyclopts import Parameter, validators
+lazy import httpx
+
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 def _build_logger() -> structlog.stdlib.BoundLogger:
@@ -113,7 +116,9 @@ class ToolchainTarballSpec:
         return f"{RUST_DIST_BASE_URL}/{self.rustc_dev_filename}"
 
 
-TOOLCHAIN_SPECS: dict[str, ToolchainTarballSpec] = {
+TOOLCHAIN_SPECS: Final[frozendict[str, ToolchainTarballSpec]] = frozendict[
+    str, ToolchainTarballSpec
+]() | {
     "x86_64-unknown-linux-gnu": ToolchainTarballSpec(
         triple="x86_64-unknown-linux-gnu",
         rust_sha256="98ee6bec240e1cfe944f17e7092412dc5ef6e008484bb668c6936d35a7d15acd",

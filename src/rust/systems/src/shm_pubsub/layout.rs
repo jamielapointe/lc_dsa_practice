@@ -15,8 +15,6 @@
 //!   Padding up to slot_stride (cache-line multiple)
 //! ```
 
-#![allow(unsafe_code)]
-
 use crate::platform::CACHE_LINE_SIZE;
 use crate::shm_pubsub::config::ShmPubSubConfig;
 use core::sync::atomic::{AtomicI64, AtomicU32, AtomicU64, Ordering};
@@ -45,7 +43,10 @@ pub const fn round_up(value: usize, multiple: usize) -> usize {
 /// Computes the stride in bytes from one slot to the next, padded to `CACHE_LINE_SIZE`.
 #[must_use]
 pub const fn slot_stride_for(slot_size: usize) -> usize {
-    round_up(SLOT_HEADER_BYTES + round_up(slot_size, WORD_BYTES), CACHE_LINE_SIZE)
+    round_up(
+        SLOT_HEADER_BYTES + round_up(slot_size, WORD_BYTES),
+        CACHE_LINE_SIZE,
+    )
 }
 
 /// Computes the total shared-memory segment size in bytes for a given configuration.
@@ -140,18 +141,20 @@ pub struct ChannelView {
 //    POSIX `MAP_SHARED` mapping that remains mapped for the lifetime of the owning handle.
 // 2. All mutable fields in the mapped region are accessed exclusively through atomic operations
 //    (`AtomicU64`, `AtomicU32`, `AtomicI64`) and the lock-free seqlock protocol.
+#[allow(unsafe_code)]
 unsafe impl Send for ChannelView {}
 
 // SAFETY:
 // 1. Concurrent access across threads via `&ChannelView` reads only immutable geometry fields or
 //    performs synchronization via atomic loads/stores on `ChannelHeader` and `SlotHeader`.
 // 2. No unsynchronized interior mutation occurs through `self.base`.
+#[allow(unsafe_code)]
 unsafe impl Sync for ChannelView {}
 
 impl ChannelView {
     /// Returns a reference to the `ChannelHeader` at offset 0.
     #[must_use]
-    #[allow(clippy::cast_ptr_alignment)]
+    #[allow(unsafe_code, clippy::cast_ptr_alignment)]
     pub fn header(&self) -> &ChannelHeader {
         // SAFETY:
         // 1. `self.base` is a non-null, page-aligned (`>= CACHE_LINE_SIZE`) pointer to a valid
@@ -163,7 +166,11 @@ impl ChannelView {
 
     /// Computes the slot reference for a given sample sequence number (`sequence >= 1`).
     #[must_use]
-    #[allow(clippy::cast_ptr_alignment, clippy::cast_possible_truncation)]
+    #[allow(
+        unsafe_code,
+        clippy::cast_ptr_alignment,
+        clippy::cast_possible_truncation
+    )]
     pub fn slot_for(&self, sequence: u64) -> SlotRef<'_> {
         let index = ((sequence.wrapping_sub(1)) as usize) & self.slot_mask;
         let slot_offset = HEADER_BYTES + (index * self.slot_stride);
@@ -232,14 +239,22 @@ pub fn recover_next_sequence(view: &ChannelView) -> u64 {
     let mut newest = view.header().published.load(Ordering::Acquire);
     let slot_count = view.slot_mask + 1;
     for sequence in 1..=slot_count {
-        let lock = view.slot_for(sequence as u64).header.seq.load(Ordering::Acquire);
+        let lock = view
+            .slot_for(sequence as u64)
+            .header
+            .seq
+            .load(Ordering::Acquire);
         newest = newest.max(lock / 2);
     }
     newest + 1
 }
 
 /// Initializes a newly created, zeroed shared-memory mapping with headers and slot geometry.
-#[allow(clippy::cast_ptr_alignment, clippy::cast_possible_truncation)]
+#[allow(
+    unsafe_code,
+    clippy::cast_ptr_alignment,
+    clippy::cast_possible_truncation
+)]
 pub fn initialize_layout(base: *mut u8, config: &ShmPubSubConfig) {
     let slot_stride = slot_stride_for(config.slot_size);
     let header_ptr = base.cast::<ChannelHeader>();
@@ -275,7 +290,10 @@ pub fn initialize_layout(base: *mut u8, config: &ShmPubSubConfig) {
     }
 
     // Release store magic last so concurrent `open()` sees fully initialized fields.
-    // SAFETY: `header_ptr` points to the valid `ChannelHeader` at offset 0 of `base`.
+    // SAFETY:
+    // 1. `header_ptr` points to the initialized `ChannelHeader` at offset 0 of `base`.
+    // 2. `magic` is an `AtomicU64`, so storing `MAGIC` with `Ordering::Release` does not
+    //    introduce data races against concurrent `open()` readers loading `magic` with `Acquire`.
     unsafe {
         (*header_ptr).magic.store(MAGIC, Ordering::Release);
     }
@@ -283,7 +301,7 @@ pub fn initialize_layout(base: *mut u8, config: &ShmPubSubConfig) {
 
 /// Checks if an existing mapped region conforms to a valid `ShmChannel` layout (SHMPS-REQ-005).
 #[must_use]
-#[allow(clippy::cast_ptr_alignment)]
+#[allow(unsafe_code, clippy::cast_ptr_alignment)]
 pub fn layout_is_valid(base: *mut u8, size: usize) -> bool {
     if base.is_null() || size < HEADER_BYTES {
         return false;

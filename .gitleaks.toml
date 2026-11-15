@@ -6,5 +6,5 @@ useDefault = true
 [allowlist]
 description = "Allow lock files; there are no secret-bearing fixtures in this repository"
 paths = [
-    '''pixi\.lock''',
+  '''pixi\.lock''',
 ]

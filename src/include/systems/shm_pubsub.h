@@ -18,7 +18,7 @@ extern "C" {
 #endif
 
 /// @brief Error codes reported by the shared-memory pub/sub channel.
-// NOLINTNEXTLINE(cppcoreguidelines-use-enum-class)
+// NOLINTNEXTLINE(cppcoreguidelines-use-enum-class): C23 public ABI enum.
 typedef enum shm_pubsub_error : int32_t {
   SHM_PUBSUB_OK = 0,
   SHM_PUBSUB_ERR_NOT_IMPLEMENTED = 1,
@@ -65,7 +65,7 @@ struct shm_sample {
 };
 
 /// @brief How a subscriber treats unread samples (SHMPS-REQ-027).
-// NOLINTNEXTLINE(cppcoreguidelines-use-enum-class)
+// NOLINTNEXTLINE(cppcoreguidelines-use-enum-class): C23 public ABI enum.
 typedef enum shm_read_mode : uint8_t {
   SHM_READ_MODE_IN_ORDER = 0U,
   SHM_READ_MODE_LATEST = 1U,

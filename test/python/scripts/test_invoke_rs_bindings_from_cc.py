@@ -2,15 +2,19 @@
 
 import json
 import os
-import subprocess  # ruff: ignore[suspicious-subprocess-import]
+import subprocess
 import time
 import tomllib
 from types import SimpleNamespace
-lazy from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from scripts.crubit import invoke_rs_bindings_from_cc as invoker
+
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 # ---------------------------------------------------------------------------

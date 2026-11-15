@@ -5,9 +5,7 @@
 
 #include "systems/platform.h"
 
-#if defined(SYSTEMS_POSIX_SUPPORTED) &&                                       \
-    ((defined(__linux__) && (defined(__x86_64__) || defined(__aarch64__))) || \
-     (defined(__APPLE__) && (defined(__aarch64__) || defined(__arm64__))))
+#if defined(SYSTEMS_POSIX_SUPPORTED) && SYSTEMS_IS_SUPPORTED_TARGET
 
 #include <errno.h>      // IWYU pragma: keep
 #include <fcntl.h>      // IWYU pragma: keep
@@ -247,10 +245,12 @@ void process_rendezvous_posix_wait_slice(const struct process_rendezvous* rdv,
     return;
   }
 
-#if defined(HAVE_POSIX_SEM_TIMEDWAIT)
+#if SYSTEMS_HAS_POSIX_SEM_TIMEDWAIT
   const int64_t cap_slice = slice_ns > 50'000'000LL ? 50'000'000LL : slice_ns;
   struct timespec now = {};
-  clock_gettime(CLOCK_REALTIME, &now);
+  if (clock_gettime(CLOCK_REALTIME, &now) != 0) {
+    return;
+  }
   struct timespec deadline = {};
   const uint64_t total_nsec = (uint64_t)now.tv_nsec + (uint64_t)cap_slice;
   deadline.tv_sec = now.tv_sec + (time_t)(total_nsec / 1'000'000'000ULL);
@@ -266,7 +266,7 @@ void process_rendezvous_posix_wait_slice(const struct process_rendezvous* rdv,
 
   const int64_t poll_step_ns = slice_ns > 200'000LL ? 200'000LL : slice_ns;
   struct timespec req = {.tv_sec = 0, .tv_nsec = (long)poll_step_ns};
-  nanosleep(&req, nullptr);
+  (void)nanosleep(&req, nullptr);
 #endif
 }
 
@@ -276,7 +276,15 @@ void process_rendezvous_posix_sleep_us(uint32_t us) {
       .tv_sec = (time_t)(total_ns / 1'000'000'000ULL),
       .tv_nsec = (long)(total_ns % 1'000'000'000ULL),
   };
-  nanosleep(&req, nullptr);
+  (void)nanosleep(&req, nullptr);
+}
+
+[[nodiscard]] int64_t process_rendezvous_posix_monotonic_now_ns() {
+  struct timespec ts = {};
+  if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+    return 0;
+  }
+  return ((int64_t)ts.tv_sec * 1'000'000'000LL) + (int64_t)ts.tv_nsec;
 }
 
 #else

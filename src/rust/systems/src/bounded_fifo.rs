@@ -108,7 +108,10 @@ impl<T, const CAPACITY: usize> BoundedFifo<T, CAPACITY> {
     #[must_use]
     pub const fn new() -> Self {
         const {
-            assert!(CAPACITY > 0, "BoundedFifo capacity must be strictly positive");
+            assert!(
+                CAPACITY > 0,
+                "BoundedFifo capacity must be strictly positive"
+            );
         }
 
         Self {
@@ -132,6 +135,7 @@ impl<T, const CAPACITY: usize> BoundedFifo<T, CAPACITY> {
     /// Returns the current number of queued elements (snapshot).
     #[must_use]
     pub fn len(&self) -> usize {
+        // Fail closed (0 visible items) if a prior waiter panicked while holding the lock.
         self.state.lock().map_or(0, |state| state.count)
     }
 
@@ -150,6 +154,7 @@ impl<T, const CAPACITY: usize> BoundedFifo<T, CAPACITY> {
     /// Returns `true` once [`BoundedFifo::close`] has been called (snapshot).
     #[must_use]
     pub fn is_closed(&self) -> bool {
+        // Fail closed if the internal mutex was poisoned.
         self.state.lock().map_or(true, |state| state.closed)
     }
 
@@ -158,9 +163,11 @@ impl<T, const CAPACITY: usize> BoundedFifo<T, CAPACITY> {
     /// Consumers may continue draining any remaining elements until empty.
     pub fn close(&self) {
         {
-            if let Ok(mut state) = self.state.lock() {
-                state.closed = true;
-            }
+            let mut state = self
+                .state
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            state.closed = true;
         }
         self.not_empty.notify_all();
         self.not_full.notify_all();
@@ -189,7 +196,7 @@ impl<T, const CAPACITY: usize> BoundedFifo<T, CAPACITY> {
         let tail = (state.head + state.count) % CAPACITY;
         state.slots[tail] = Some(item);
         state.count += 1;
-        drop(state);
+        core::mem::drop(state);
 
         self.not_empty.notify_one();
         Ok(())
@@ -220,7 +227,7 @@ impl<T, const CAPACITY: usize> BoundedFifo<T, CAPACITY> {
         let tail = (state.head + state.count) % CAPACITY;
         state.slots[tail] = Some(item);
         state.count += 1;
-        drop(state);
+        core::mem::drop(state);
 
         self.not_empty.notify_one();
         Ok(())
@@ -259,7 +266,7 @@ impl<T, const CAPACITY: usize> BoundedFifo<T, CAPACITY> {
         let tail = (state.head + state.count) % CAPACITY;
         state.slots[tail] = Some(item);
         state.count += 1;
-        drop(state);
+        core::mem::drop(state);
 
         self.not_empty.notify_one();
         Ok(())
@@ -281,7 +288,7 @@ impl<T, const CAPACITY: usize> BoundedFifo<T, CAPACITY> {
             let item = state.slots[head].take();
             state.head = (head + 1) % CAPACITY;
             state.count -= 1;
-            drop(state);
+            core::mem::drop(state);
 
             self.not_full.notify_one();
             item.ok_or(PopError::Empty)
@@ -314,7 +321,7 @@ impl<T, const CAPACITY: usize> BoundedFifo<T, CAPACITY> {
             let item = state.slots[head].take();
             state.head = (head + 1) % CAPACITY;
             state.count -= 1;
-            drop(state);
+            core::mem::drop(state);
 
             self.not_full.notify_one();
             item.ok_or(PopError::Closed)
@@ -354,7 +361,7 @@ impl<T, const CAPACITY: usize> BoundedFifo<T, CAPACITY> {
             let item = state.slots[head].take();
             state.head = (head + 1) % CAPACITY;
             state.count -= 1;
-            drop(state);
+            core::mem::drop(state);
 
             self.not_full.notify_one();
             item.ok_or(PopTimeoutError::Closed)

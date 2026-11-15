@@ -21,7 +21,7 @@ logger: FilteringBoundLogger = structlog.get_logger("leetcode_mcp.server")
 
 server = MCPServer(
     name="leetcode",
-    version="0.1.0",
+    version="0.3.0",
     description=(
         "MCP server providing LeetCode problem details, C++, Python 3, and Rust "
         "starter templates, and test cases."

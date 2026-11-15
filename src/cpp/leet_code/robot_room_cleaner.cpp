@@ -148,7 +148,7 @@ auto robot_room_cleaner(Robot& robot) -> void {
   }
 }
 
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static): LeetCode API.
 void Solution::cleanRoom(Robot& robot) {
   robot_room_cleaner(robot);
 }

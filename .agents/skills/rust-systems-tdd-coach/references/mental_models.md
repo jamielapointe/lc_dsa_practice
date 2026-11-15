@@ -1,14 +1,14 @@
 # Mental Models & Rust Edition 2024 Systems Delta Guide
 
 An architectural guide for senior systems architects, kernel engineers, and C/C++ veterans transitioning to modern Rust. This document bypasses introductory
-programming concepts and maps Rust's memory management, type system, and concurrency primitives directly to C++20/23, ISO C23, Python 3.14 internals, LLVM IR,
+programming concepts and maps Rust's memory management, type system, and concurrency primitives directly to C++20/23, ISO C23, Python 3.15 internals, LLVM IR,
 and hardware execution models.
 
 ---
 
 ## 1. High-Level Systems Comparison Matrix
 
-| Mechanic | Rust 1.100+ & Edition 2024 | C++20/23 Mental Model | Python 3.14 Mental Model | Low-Level Systems & Hardware Reality |
+| Mechanic | Rust 1.100+ & Edition 2024 | C++20/23 Mental Model | Python 3.15 Mental Model | Low-Level Systems & Hardware Reality |
 | :--- | :--- | :--- | :--- | :--- |
 | **Move Semantics** | Bitwise `memcpy` destructive move. Source statically dead in compiler CFG. | Non-destructive `std::move`. Source left in valid-but-unspecified state; destructor `~T()` still runs. | Name rebinding (`y = x`). Increments `ob_refcnt`. No byte moving. | Register copy or stack `memcpy(sizeof(T))`. Caller skips destructor invocation for source binding. |
 | **Aliasing & Borrows** | Compile-time aliasing XOR mutability: `(&mut T)` XOR `(&T, &T, ...)`. | Unrestricted pointer aliasing. Requires manual `__restrict__` qualifiers. | Pervasive reference aliasing. All mutable bindings alias identical heap `PyObject`. | `&T` emits LLVM `readonly`. `&mut T` emits LLVM `noalias`, allowing CPU register caching across calls. |
@@ -491,9 +491,9 @@ Standard synchronous functions and closures returning futures (`Fn(Args) -> impl
 
 #### Architectural Comparison: Systems Mental Models
 
-| Dimension | Rust Edition 2024 (`async \|\|`) | C++20 Coroutine Lambda | Python 3.14 Async Callable |
+| Dimension | Rust Edition 2024 (`async \|\|`) | C++20 Coroutine Lambda | Python 3.15 Async Callable |
 | :--- | :--- | :--- | :--- |
 | **Syntax** | `async \|arg: &T\| { ... }` | `[capture](const T& arg) -> Task<R> { ... }` | `async def handler(arg): ...` (no `async lambda`) |
 | **Argument Lifetime Across Await** | **Statically Verified**: Borrow checker guarantees `arg` outlives the future's completion before caller drops it. | **Unchecked Dangling Hazard**: If lambda takes `const T&`, reference dangles if caller awaits after temporary is destroyed. | **Garbage Collected**: `PyObject*` refcount incremented; no dangling pointer hazard, but GC overhead. |
 | **State Machine Allocation** | **Zero-Heap**: Unboxed, stack-allocated state machine of compile-time known `sizeof` (zero allocation). | **Heap Allocated**: Coroutine frame allocated via `operator new` unless elided by HALO/ELID compiler optimizations. | **Heap Allocated**: Every coroutine is a heap-allocated `PyGenObject` on the Python heap. |
-| **Thread-Safety Proof** | Enforced at compile time via `Send` / `Sync` bounds on the closure and its returned future. | Developer-audited; data races and use-after-free across resumption points trigger undefined behavior. | GIL-dependent (free-threaded Python 3.14t requires explicit locks for shared mutable state). |
+| **Thread-Safety Proof** | Enforced at compile time via `Send` / `Sync` bounds on the closure and its returned future. | Developer-audited; data races and use-after-free across resumption points trigger undefined behavior. | GIL-dependent (free-threaded Python 3.15t requires explicit locks for shared mutable state). |

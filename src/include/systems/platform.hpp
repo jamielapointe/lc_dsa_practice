@@ -23,7 +23,9 @@
 
 #include <cstddef>
 #include <cstdint>
+#if !defined(__aarch64__) && !defined(__arm64__) && !defined(_M_ARM64)
 #include <new>
+#endif
 
 namespace systems::platform {
 
@@ -49,6 +51,7 @@ inline constexpr OsFamily kOsFamily = OsFamily::kOther;
 enum class ArchFamily : uint8_t {
   kX86_64,   ///< 64-bit x86 (x86-64 / AMD64).
   kAarch64,  ///< 64-bit ARM (AArch64 / arm64, including Apple Silicon).
+  kRiscv64,  ///< 64-bit RISC-V (RV64).
   kOther,    ///< Any other architecture.
 };
 
@@ -56,6 +59,8 @@ enum class ArchFamily : uint8_t {
 inline constexpr ArchFamily kArchFamily = ArchFamily::kX86_64;
 #elif defined(__aarch64__) || defined(__arm64__) || defined(_M_ARM64)
 inline constexpr ArchFamily kArchFamily = ArchFamily::kAarch64;
+#elif defined(__riscv) && (__riscv_xlen == 64)
+inline constexpr ArchFamily kArchFamily = ArchFamily::kRiscv64;
 #else
 inline constexpr ArchFamily kArchFamily = ArchFamily::kOther;
 #endif
@@ -73,11 +78,14 @@ inline constexpr bool kIsProductionTarget = kIsLinux || kIsQnx;
 inline constexpr bool kIsX86_64 = kArchFamily == ArchFamily::kX86_64;
 /// @brief True on 64-bit ARM (aarch64 / arm64).
 inline constexpr bool kIsAarch64 = kArchFamily == ArchFamily::kAarch64;
+/// @brief True on 64-bit RISC-V (riscv64).
+inline constexpr bool kIsRiscv64 = kArchFamily == ArchFamily::kRiscv64;
 
 /// @brief True on a supported host OS and architecture combination:
-/// Linux (x86_64 or aarch64) or macOS on Apple Silicon (arm64).
+/// Linux (x86_64, aarch64, or riscv64) or macOS on Apple Silicon (arm64).
 inline constexpr bool kIsSupportedTarget =
-    (kIsLinux && (kIsX86_64 || kIsAarch64)) || (kIsMacos && kIsAarch64);
+    (kIsLinux && (kIsX86_64 || kIsAarch64 || kIsRiscv64)) ||
+    (kIsMacos && kIsAarch64);
 
 /// @brief `shm_open` / `shm_unlink` / `mmap(MAP_SHARED)` are available.
 inline constexpr bool kHasPosixSharedMemory = kIsLinux || kIsQnx || kIsMacos;
@@ -120,7 +128,7 @@ inline constexpr size_t kMaxShmNameLength = 30uz;
 /// @brief Cache-line size used to separate data written by different cores or
 /// processes (false-sharing avoidance) in shared layouts. Apple Silicon uses a
 /// 128-byte coherence granule (`hw.cachelinesize`).
-#if defined(__APPLE__) && defined(__aarch64__)
+#if defined(__aarch64__) || defined(__arm64__) || defined(_M_ARM64)
 inline constexpr size_t kCacheLineSize = 128uz;
 #elif defined(__cpp_lib_hardware_interference_size)
 inline constexpr size_t kCacheLineSize =

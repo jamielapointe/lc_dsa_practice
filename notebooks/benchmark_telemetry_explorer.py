@@ -8,6 +8,7 @@
 #     "arviz-base>=1.3.1",
 #     "arviz-stats>=1.3.3",
 #     "plotly>=7.1.0",
+#     "pydantic>=2.14.3",
 #     "pytest>=9.2.0",
 # ]
 # ///
@@ -23,9 +24,11 @@ app = marimo.App(width="medium", app_title="Benchmark Telemetry Explorer")
 with app.setup:
     import json
     import math
+    import sys
     import tempfile
     from pathlib import Path
-    from typing import TYPE_CHECKING, cast
+    from typing import Literal, cast
+    lazy from collections.abc import Mapping
 
     import arviz_base as azb
     import marimo as mo
@@ -33,12 +36,183 @@ with app.setup:
     import plotly.graph_objects as go  # pyright: ignore[reportMissingTypeStubs]
     import polars as pl
     from arviz_stats.base.array import array_stats
+    from pydantic import BaseModel, ConfigDict, Field
     from scipy import stats
+    lazy from numpy.typing import NDArray
 
-    if TYPE_CHECKING:
-        from numpy.typing import NDArray
 
-    type FloatArray = NDArray[np.float64]
+@app.class_definition
+class ExplorerParams(BaseModel):
+    """Validated configuration parameters for interactive and script modes."""
+
+    model_config = ConfigDict(frozen=True)
+
+    data_root: Path = Path("data")
+    experiment: str = "flip_bitmap_unaligned"
+    geometry: str = "1366x768"
+    rope_fraction: float = Field(default=0.02, ge=0.0, le=1.0)
+    n_reps: int = Field(default=30, ge=2, le=500)
+    theme: Literal["auto", "plotly_dark", "plotly_white"] = "auto"
+
+
+@app.function
+def format_cli_help() -> str:
+    """Returns CLI usage instructions for headless script execution.
+
+    Returns:
+        Formatted multi-line help text documenting supported flags.
+    """
+    return (
+        "Usage: pixi run python notebooks/benchmark_telemetry_explorer.py -- [OPTIONS]\n"
+        "\n"
+        "Options:\n"
+        "  --data-root PATH       Telemetry root directory (default: data)\n"
+        "  --experiment NAME      Experiment directory (default: flip_bitmap_unaligned)\n"
+        "  --geometry GEOM        Active geometry label (default: 1366x768)\n"
+        "  --rope FLOAT           ROPE half-width fraction in [0.0, 1.0] (default: 0.02)\n"
+        "  --n-reps INT           Repetition cap in [2, 500] (default: 30)\n"
+        "  --theme NAME           auto | plotly_dark | plotly_white (default: auto)\n"
+    )
+
+
+@app.function
+def parse_cli_explorer_params(raw_args: Mapping[str, object]) -> ExplorerParams:
+    """Parses Marimo CLI arguments into a validated ``ExplorerParams`` instance.
+
+    Filters out empty ``""`` separator keys emitted when callers pass ``--`` and
+    ignores unrelated host/runner flags (such as ``pytest`` arguments during tests).
+
+    Args:
+        raw_args: Mapping produced by ``mo.cli_args()`` or test inputs.
+
+    Returns:
+        Validated ``ExplorerParams`` model instance.
+    """
+    payload: dict[str, object] = {}
+    for alias_group, field_name in (
+        (("data-root", "data_root"), "data_root"),
+        (("experiment",), "experiment"),
+        (("geometry",), "geometry"),
+        (("rope", "rope-fraction", "rope_fraction"), "rope_fraction"),
+        (("n-reps", "n_reps"), "n_reps"),
+        (("theme",), "theme"),
+    ):
+        for alias in alias_group:
+            if alias not in raw_args:
+                continue
+            raw_value = raw_args[alias]
+            if isinstance(raw_value, list):
+                typed_list = cast("list[object]", raw_value)
+                if not typed_list:
+                    continue
+                scalar = typed_list[-1]
+            else:
+                scalar = raw_value
+            if scalar is not None and not (isinstance(scalar, str) and not scalar):
+                payload[field_name] = scalar
+                break
+    return ExplorerParams.model_validate(payload)
+
+
+@app.function
+def discover_available_experiments(
+    data_root: Path,
+    preferred: str = "flip_bitmap_unaligned",
+) -> list[str]:
+    """Discovers experiment directories under ``<data_root>/{latest,baseline}``.
+
+    Args:
+        data_root: Root directory containing ``baseline/`` and ``latest/``.
+        preferred: Default or CLI-specified experiment guaranteed to appear.
+
+    Returns:
+        Sorted list of unique experiment names, including ``preferred``.
+    """
+    discovered: set[str] = {preferred}
+    for sub_name in ("latest", "baseline"):
+        sub_dir = data_root / sub_name
+        if not sub_dir.is_dir():
+            continue
+        for child in sub_dir.iterdir():
+            if child.is_dir() and (
+                (child / "telemetry.json").is_file()
+                or (child / "benchmark_raw.json").is_file()
+            ):
+                discovered.add(child.name)
+    return sorted(discovered)
+
+
+@app.function
+def discover_available_geometries(telemetry_df: pl.DataFrame) -> list[str]:
+    """Returns unique benchmark geometries ordered deterministically.
+
+    Orders ``<width>x<height>`` geometries numerically by area and width when
+    possible, placing non-grid labels afterward in lexicographic order.
+
+    Args:
+        telemetry_df: Telemetry DataFrame containing a ``geometry`` column.
+
+    Returns:
+        Ordered list of unique non-empty geometry strings.
+    """
+    if telemetry_df.is_empty():
+        return []
+    raw_geometries = [
+        str(val) for val in telemetry_df["geometry"].unique().to_list() if str(val)
+    ]
+
+    def _sort_key(label: str) -> tuple[int, int, int, str]:
+        parts = label.split("x")
+        if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+            width = int(parts[0])
+            height = int(parts[1])
+            return (0, width * height, width, label)
+        return (1, 0, 0, label)
+
+    return sorted(set(raw_geometries), key=_sort_key)
+
+
+@app.function
+def select_active_geometry(available_geometries: list[str], requested: str) -> str:
+    """Selects ``requested`` geometry if present, else canonical or first available.
+
+    Args:
+        available_geometries: Ordered list of geometries present in loaded telemetry.
+        requested: Preferred or CLI-specified geometry label.
+
+    Returns:
+        Geometry label guaranteed to belong to ``available_geometries``.
+
+    Raises:
+        ValueError: If ``available_geometries`` is empty.
+    """
+    if not available_geometries:
+        msg = "Cannot select geometry from an empty telemetry set"
+        raise ValueError(msg)
+    if requested in available_geometries:
+        return requested
+    if "1366x768" in available_geometries:
+        return "1366x768"
+    return available_geometries[0]
+
+
+@app.function
+def resolve_plotly_template(
+    theme_choice: str,
+    app_theme: str | None = None,
+) -> str:
+    """Resolves the explicit Plotly layout template from switch and Marimo theme.
+
+    Args:
+        theme_choice: Switch value (``"auto"``, ``"plotly_dark"``, ``"plotly_white"``).
+        app_theme: Active Marimo runtime theme from ``mo.app_meta().theme``.
+
+    Returns:
+        Explicit Plotly template string (``"plotly_dark"`` or ``"plotly_white"``).
+    """
+    if theme_choice in {"plotly_dark", "plotly_white"}:
+        return theme_choice
+    return "plotly_dark" if app_theme == "dark" else "plotly_white"
 
 
 @app.function
@@ -279,13 +453,49 @@ def load_experiment_telemetry(
 
 
 @app.function
+def slice_telemetry_by_geometry_and_reps(
+    raw_df: pl.DataFrame,
+    raw_source: str,
+    geometry: str,
+    n_reps: int,
+) -> tuple[pl.DataFrame, pl.DataFrame, str, str]:
+    """Applies repetition depth cap and filters telemetry to a single active geometry.
+
+    Args:
+        raw_df: Full telemetry DataFrame returned by ``load_experiment_telemetry``.
+        raw_source: Source label returned by ``load_experiment_telemetry``.
+        geometry: Requested geometry label.
+        n_reps: Maximum repetition index (or sample count when synthetic).
+
+    Returns:
+        Tuple of ``(full_df, selected_geometry_df, active_geometry, source_label)``.
+    """
+    if raw_source.startswith("synthetic"):
+        telemetry_df = generate_synthetic_telemetry(seed=42, n_reps=n_reps)
+        telemetry_source = f"synthetic (seed=42, n_reps={n_reps})"
+    else:
+        telemetry_df = raw_df.filter(pl.col("repetition") <= n_reps)
+        telemetry_source = raw_source
+
+    available = discover_available_geometries(telemetry_df)
+    if not available:
+        return telemetry_df, telemetry_df, geometry, telemetry_source
+    active_geometry = select_active_geometry(available, geometry)
+    selected_df = telemetry_df.filter(pl.col("geometry") == active_geometry)
+    return telemetry_df, selected_df, active_geometry, telemetry_source
+
+
+@app.function
 def load_filtered_telemetry(
     data_root: Path,
     experiment: str,
     geometry: str,
     n_reps: int,
 ) -> tuple[pl.DataFrame, pl.DataFrame, str]:
-    """Loads telemetry, caps repetition depth, and filters to the active geometry.
+    """Loads telemetry, caps repetition depth, and filters to one valid geometry.
+
+    When the requested ``geometry`` is absent from the dataset, selects canonical
+    ``"1366x768"`` or the first discovered geometry rather than mixing geometries.
 
     Args:
         data_root: Root directory containing ``baseline/`` and ``latest/``.
@@ -297,21 +507,16 @@ def load_filtered_telemetry(
         Tuple of ``(full_df, selected_geometry_df, source_label)``.
     """
     raw_df, raw_source = load_experiment_telemetry(data_root, experiment)
-    if raw_source.startswith("synthetic"):
-        telemetry_df = generate_synthetic_telemetry(seed=42, n_reps=n_reps)
-        telemetry_source = f"synthetic (seed=42, n_reps={n_reps})"
-    else:
-        telemetry_df = raw_df.filter(pl.col("repetition") <= n_reps)
-        telemetry_source = raw_source
-
-    selected_df = telemetry_df.filter(pl.col("geometry") == geometry)
-    if selected_df.is_empty():
-        selected_df = telemetry_df
+    telemetry_df, selected_df, _, telemetry_source = (
+        slice_telemetry_by_geometry_and_reps(raw_df, raw_source, geometry, n_reps)
+    )
     return telemetry_df, selected_df, telemetry_source
 
 
 @app.function
-def extract_variant_latencies(telemetry_df: pl.DataFrame, variant: str) -> FloatArray:
+def extract_variant_latencies(
+    telemetry_df: pl.DataFrame, variant: str
+) -> NDArray[np.float64]:
     """Extracts 1D float64 latency samples for a given variant from a DataFrame.
 
     Args:
@@ -326,7 +531,7 @@ def extract_variant_latencies(telemetry_df: pl.DataFrame, variant: str) -> Float
 
 
 @app.function
-def fit_student_t(samples: FloatArray) -> tuple[float, float, float]:
+def fit_student_t(samples: NDArray[np.float64]) -> tuple[float, float, float]:
     """Fits Student-t ``(df, loc, scale)`` via MAD-standardized MLE with fallback.
 
     Args:
@@ -357,9 +562,9 @@ def fit_student_t(samples: FloatArray) -> tuple[float, float, float]:
 
 @app.function
 def sample_best_posterior_deltas(
-    baseline_ns: FloatArray,
-    candidate_ns: FloatArray,
-) -> tuple[FloatArray, FloatArray, dict[str, float]]:
+    baseline_ns: NDArray[np.float64],
+    candidate_ns: NDArray[np.float64],
+) -> tuple[NDArray[np.float64], NDArray[np.float64], dict[str, float]]:
     """Draws multi-chain Student-t posterior samples for baseline vs. candidate deltas.
 
     Args:
@@ -422,9 +627,9 @@ def sample_best_posterior_deltas(
 
 @app.function
 def compute_arviz_diagnostics(
-    pct_draws: FloatArray,
-    ns_draws: FloatArray,
-    rel_draws: FloatArray,
+    pct_draws: NDArray[np.float64],
+    ns_draws: NDArray[np.float64],
+    rel_draws: NDArray[np.float64],
 ) -> tuple[float, float, float, float, float, float]:
     """Evaluates ArviZ array HDI bounds, R-hat, and ESS on multi-chain posterior draws.
 
@@ -456,33 +661,31 @@ def compute_arviz_diagnostics(
 
 
 @app.function
-def compute_best_posterior_summary(
-    baseline_ns: FloatArray,
-    candidate_ns: FloatArray,
+def summarize_best_posterior_draws(
+    delta_rel: NDArray[np.float64],
+    delta_ns: NDArray[np.float64],
+    params: dict[str, float],
     rope_fraction: float = 0.02,
 ) -> dict[str, float]:
-    """Computes Bayesian BEST + ROPE posterior probabilities and ``arviz_stats`` HDIs.
+    """Summarizes pre-sampled posterior delta chains via ArviZ HDI, R-hat, and ROPE.
 
     Args:
-        baseline_ns: Baseline latency array in nanoseconds.
-        candidate_ns: Candidate latency array in nanoseconds.
+        delta_rel: Relative delta draws with shape ``(chains, draws)``.
+        delta_ns: Nanosecond delta draws with shape ``(chains, draws)``.
+        params: Location/effect summary dictionary from
+            ``sample_best_posterior_deltas``.
         rope_fraction: Half-width of the Region of Practical Equivalence (>= 0.0).
 
     Returns:
-        Dictionary of posterior summary metrics including ``p_better``, ``p_same``,
-        ``p_worse``, ``hdi_low_pct``, ``hdi_high_pct``, ``hdi_low_ns``, ``hdi_high_ns``,
-        ``relative_diff_pct``, ``speedup_pct``, ``effect_size``, ``rhat``, and ``ess``.
+        Dictionary of posterior summary metrics.
 
     Raises:
-        ValueError: If ``rope_fraction < 0.0`` or sample arrays fail validation.
+        ValueError: If ``rope_fraction < 0.0``.
     """
     if rope_fraction < 0.0:
         msg = f"rope_fraction must be non-negative (got {rope_fraction})"
         raise ValueError(msg)
 
-    delta_rel, delta_ns, params = sample_best_posterior_deltas(
-        baseline_ns, candidate_ns
-    )
     delta_pct = delta_rel * 100.0
 
     # Organize multi-chain draws in an ArviZ DataTree and evaluate array diagnostics.
@@ -553,6 +756,42 @@ def compute_best_posterior_summary(
 
 
 @app.function
+def compute_best_posterior_summary(
+    baseline_ns: NDArray[np.float64],
+    candidate_ns: NDArray[np.float64],
+    rope_fraction: float = 0.02,
+) -> dict[str, float]:
+    """Computes Bayesian BEST + ROPE posterior probabilities and ``arviz_stats`` HDIs.
+
+    Args:
+        baseline_ns: Baseline latency array in nanoseconds.
+        candidate_ns: Candidate latency array in nanoseconds.
+        rope_fraction: Half-width of the Region of Practical Equivalence (>= 0.0).
+
+    Returns:
+        Dictionary of posterior summary metrics including ``p_better``, ``p_same``,
+        ``p_worse``, ``hdi_low_pct``, ``hdi_high_pct``, ``hdi_low_ns``, ``hdi_high_ns``,
+        ``relative_diff_pct``, ``speedup_pct``, ``effect_size``, ``rhat``, and ``ess``.
+
+    Raises:
+        ValueError: If ``rope_fraction < 0.0`` or sample arrays fail validation.
+    """
+    if rope_fraction < 0.0:
+        msg = f"rope_fraction must be non-negative (got {rope_fraction})"
+        raise ValueError(msg)
+
+    delta_rel, delta_ns, params = sample_best_posterior_deltas(
+        baseline_ns, candidate_ns
+    )
+    return summarize_best_posterior_draws(
+        delta_rel,
+        delta_ns,
+        params,
+        rope_fraction=rope_fraction,
+    )
+
+
+@app.function
 def build_kpi_row(posterior_summary: dict[str, float]) -> mo.Html:
     """Builds the horizontal row of ``mo.stat`` KPI cards for the posterior summary.
 
@@ -610,7 +849,7 @@ def build_kpi_row(posterior_summary: dict[str, float]) -> mo.Html:
 
 @app.function
 def build_posterior_figure(
-    posterior_deltas_pct: FloatArray,
+    posterior_deltas_pct: NDArray[np.float64],
     posterior_summary: dict[str, float],
     geometry: str,
     template: str,
@@ -676,8 +915,8 @@ def build_posterior_figure(
 
 @app.function
 def build_distribution_figure(
-    baseline_ns: FloatArray,
-    candidate_ns: FloatArray,
+    baseline_ns: NDArray[np.float64],
+    candidate_ns: NDArray[np.float64],
     geometry: str,
     template: str,
 ) -> go.Figure:
@@ -785,102 +1024,275 @@ def verify_telemetry_invariants() -> None:
     wide_rope = compute_best_posterior_summary(base, cand, rope_fraction=0.50)
     assert wide_rope["p_same"] >= summary["p_same"]  # ruff: ignore[assert]
 
+    parsed = parse_cli_explorer_params({
+        "": "",
+        "geometry": "64x64",
+        "rope": "0.03",
+        "n-reps": "15",
+        "theme": "plotly_white",
+    })
+    assert parsed.geometry == "64x64"  # ruff: ignore[assert]
+    assert math.isclose(parsed.rope_fraction, 0.03)  # ruff: ignore[assert]
+    assert parsed.n_reps == 15  # ruff: ignore[assert]
+    assert parsed.theme == "plotly_white"  # ruff: ignore[assert]
+
+    geometries = discover_available_geometries(df_a)
+    assert geometries == ["64x64", "1366x768", "4096x2160"]  # ruff: ignore[assert]
+    assert select_active_geometry(geometries, "missing") == "1366x768"  # ruff: ignore[assert]
+    assert resolve_plotly_template("auto", "dark") == "plotly_dark"  # ruff: ignore[assert]
+    assert resolve_plotly_template("auto", "light") == "plotly_white"  # ruff: ignore[assert]
+    assert resolve_plotly_template("plotly_dark", "light") == "plotly_dark"  # ruff: ignore[assert]
+
 
 @app.cell
 def render_header() -> None:
     """Renders the notebook title and Bayesian BEST + ROPE overview."""
-    mo.output.replace(
-        mo.md(
-            """
-            # Benchmark Telemetry Explorer (Bayesian BEST + ROPE)
+    mo.md(
+        """
+        # Benchmark Telemetry Explorer (Bayesian BEST + ROPE)
 
-            Reactive analysis of C++23 `systems::bitmap_flip` microbenchmarks comparing
-            **baseline** vs. **candidate** repetition latencies with Kruschke's Student-$t$
-            BEST model, Region of Practical Equivalence (ROPE), and `arviz_stats` 95% HDI
-            diagnostics.
-            """
-        )
+        Reactive analysis of C++23 `systems::bitmap_flip` microbenchmarks comparing
+        **baseline** vs. **candidate** repetition latencies with Kruschke's Student-$t$
+        BEST model, Region of Practical Equivalence (ROPE), and `arviz_stats` 95% HDI
+        diagnostics.
+        """
     )
 
 
 @app.cell
-def create_controls() -> tuple[
-    mo.ui.dropdown,
-    mo.ui.slider,
-    mo.ui.slider,
-    mo.ui.radio,
-]:
-    """Creates reactive controls for geometry, ROPE threshold, repetitions, and theme.
+def resolve_cli_and_source() -> tuple[ExplorerParams, mo.ui.dropdown, bool]:
+    """Resolves script/CLI configuration and builds the experiment selector.
 
     Returns:
-        Tuple of ``(geometry_dropdown, rope_slider, sample_slider, theme_switch)``.
+        Tuple of ``(cli_params, experiment_dropdown, is_script_mode)``.
     """
-    geometry_dropdown = mo.ui.dropdown(
-        options=["64x64", "1366x768", "4096x2160"],
-        value="1366x768",
+    is_script_mode = mo.app_meta().mode == "script"
+    _empty_cli: dict[str, object] = {}
+    _raw_cli = (
+        cast("Mapping[str, object]", mo.cli_args()) if is_script_mode else _empty_cli
+    )
+    if is_script_mode and ("help" in _raw_cli or "h" in _raw_cli):
+        _help_text = format_cli_help()
+        sys.stdout.write(f"{_help_text}\n")
+        mo.stop(True, mo.md(f"```text\n{_help_text}```"))
+
+    cli_params = parse_cli_explorer_params(_raw_cli)
+    _experiments = discover_available_experiments(
+        cli_params.data_root,
+        preferred=cli_params.experiment,
+    )
+    experiment_dropdown = mo.ui.dropdown(
+        options=_experiments,
+        value=cli_params.experiment,
+        label="Benchmark Experiment",
+    )
+    mo.hstack([experiment_dropdown], justify="start")
+    return cli_params, experiment_dropdown, is_script_mode
+
+
+@app.cell
+def load_source_telemetry(
+    cli_params: ExplorerParams,
+    experiment_dropdown: mo.ui.dropdown,
+    is_script_mode: bool,
+) -> tuple[str, list[str], str, pl.DataFrame, str]:
+    """Loads source telemetry once for the active experiment and discovers geometries.
+
+    Args:
+        cli_params: Parsed script/CLI defaults and overrides.
+        experiment_dropdown: Experiment selector widget.
+        is_script_mode: Whether executing headless via ``app.run()``.
+
+    Returns:
+        Tuple of ``(active_experiment, available_geometries, default_geometry,
+        raw_telemetry_df, raw_telemetry_source)``.
+    """
+    active_experiment = (
+        cli_params.experiment if is_script_mode else str(experiment_dropdown.value)
+    )
+    raw_telemetry_df, raw_telemetry_source = load_experiment_telemetry(
+        cli_params.data_root, active_experiment
+    )
+    available_geometries = discover_available_geometries(raw_telemetry_df)
+    default_geometry = select_active_geometry(available_geometries, cli_params.geometry)
+    mo.callout(
+        mo.md(
+            f"**Experiment:** `{active_experiment}` | "
+            f"**Source:** `{raw_telemetry_source}` | "
+            f"**Geometries:** `{', '.join(available_geometries)}`"
+        ),
+        kind="info",
+    )
+    return (
+        active_experiment,
+        available_geometries,
+        default_geometry,
+        raw_telemetry_df,
+        raw_telemetry_source,
+    )
+
+
+@app.cell
+def create_controls(
+    available_geometries: list[str],
+    cli_params: ExplorerParams,
+    default_geometry: str,
+) -> tuple[mo.ui.form[dict[str, object], dict[str, object]], mo.ui.radio]:
+    """Creates batched form controls and a separate reactive theme switcher.
+
+    Args:
+        available_geometries: Dynamically discovered geometries from loaded telemetry.
+        cli_params: Parsed defaults/overrides for initial widget values.
+        default_geometry: Canonical or requested default geometry present in options.
+
+    Returns:
+        Tuple of ``(param_form, theme_switch)``.
+    """
+    _geometry_control = mo.ui.dropdown(
+        options=available_geometries,
+        value=default_geometry,
         label="Bitmap Geometry",
     )
-    rope_slider = mo.ui.slider(
+    _rope_control = mo.ui.slider(
         start=0.005,
         stop=0.10,
         step=0.005,
-        value=0.02,
+        value=min(max(cli_params.rope_fraction, 0.005), 0.10),
         label="ROPE Half-Width (fraction)",
     )
-    sample_slider = mo.ui.slider(
+    _sample_control = mo.ui.slider(
         start=10,
         stop=100,
         step=5,
-        value=30,
+        value=min(max(cli_params.n_reps, 10), 100),
         label="Sample Repetitions (N)",
     )
+    param_form: mo.ui.form[dict[str, object], dict[str, object]] = (
+        mo
+        .md(
+            """
+            ### Analysis Parameters
+
+            {geometry} {rope_fraction} {n_reps}
+            """
+        )
+        .batch(
+            geometry=_geometry_control,
+            rope_fraction=_rope_control,
+            n_reps=_sample_control,
+        )
+        .form(
+            submit_button_label="Apply Parameters",
+            clear_on_submit=False,
+        )
+    )
     theme_switch = mo.ui.radio(
-        options=["plotly_dark", "plotly_white"],
-        value="plotly_dark",
+        options=["auto", "plotly_dark", "plotly_white"],
+        value=cli_params.theme,
         inline=True,
         label="Plotly Theme",
     )
-    mo.output.replace(
-        mo.hstack(
-            [geometry_dropdown, rope_slider, sample_slider, theme_switch],
-            justify="start",
-            gap=2,
-            wrap=True,
-        )
-    )
-    return geometry_dropdown, rope_slider, sample_slider, theme_switch
+    mo.vstack([param_form, theme_switch], gap=1)
+    return param_form, theme_switch
 
 
 @app.cell
-def load_and_analyze_telemetry(
-    geometry_dropdown: mo.ui.dropdown,
-    rope_slider: mo.ui.slider,
-    sample_slider: mo.ui.slider,
+def resolve_analysis_params(
+    available_geometries: list[str],
+    cli_params: ExplorerParams,
+    is_script_mode: bool,
+    param_form: mo.ui.form[dict[str, object], dict[str, object]],
+) -> tuple[str, int, float]:
+    """Resolves active analysis parameters from CLI flags or batched form submission.
+
+    Args:
+        available_geometries: Dynamically discovered geometry options.
+        cli_params: Validated script/CLI parameter model.
+        is_script_mode: Whether running in headless script mode.
+        param_form: Batched parameter form widget.
+
+    Returns:
+        Tuple of ``(active_geometry, active_n_reps, active_rope)``.
+
+    Raises:
+        ValueError: If interactive form submission unexpectedly remains ``None``.
+    """
+    if is_script_mode:
+        active_geometry = select_active_geometry(
+            available_geometries, cli_params.geometry
+        )
+        active_rope = cli_params.rope_fraction
+        active_n_reps = cli_params.n_reps
+        _mode_label = "script/cli"
+    else:
+        _submitted = param_form.value
+        mo.stop(
+            _submitted is None,
+            mo.callout(
+                "Configure geometry, ROPE, and repetitions above and click "
+                "**Apply Parameters** to compute Bayesian BEST diagnostics.",
+                kind="info",
+            ),
+        )
+        if _submitted is None:
+            msg = "Form parameters were not submitted"
+            raise ValueError(msg)
+        active_geometry = select_active_geometry(
+            available_geometries, str(_submitted["geometry"])
+        )
+        active_rope = float(cast("float | int | str", _submitted["rope_fraction"]))
+        active_n_reps = int(cast("int | float | str", _submitted["n_reps"]))
+        _mode_label = "interactive-form"
+
+    mo.callout(
+        mo.md(
+            f"**Mode:** `{_mode_label}` | "
+            f"**Geometry:** `{active_geometry}` | "
+            f"**ROPE:** `±{active_rope * 100.0:.2f}%` | "
+            f"**Repetition Cap:** `{active_n_reps}`"
+        ),
+        kind="neutral",
+    )
+    return active_geometry, active_n_reps, active_rope
+
+
+@app.cell
+def run_best_analysis(
+    active_geometry: str,
+    active_n_reps: int,
+    active_rope: float,
+    raw_telemetry_df: pl.DataFrame,
+    raw_telemetry_source: str,
 ) -> tuple[
-    FloatArray,
-    FloatArray,
-    FloatArray,
+    NDArray[np.float64],
+    NDArray[np.float64],
+    NDArray[np.float64],
     dict[str, float],
     pl.DataFrame,
     pl.DataFrame,
     str,
 ]:
-    """Loads telemetry, slices by controls, and computes Bayesian BEST posterior metrics.
+    """Slices telemetry and runs single-pass Bayesian BEST posterior diagnostics.
 
     Args:
-        geometry_dropdown: Selected bitmap geometry widget.
-        rope_slider: Selected ROPE fraction widget.
-        sample_slider: Selected repetition count widget.
+        active_geometry: Selected benchmark geometry label.
+        active_n_reps: Repetition depth cap.
+        active_rope: ROPE half-width fraction.
+        raw_telemetry_df: Loaded source telemetry DataFrame.
+        raw_telemetry_source: Label describing loaded telemetry source.
 
     Returns:
-        Tuple containing baseline array, candidate array, posterior percentage deltas,
-        summary dictionary, filtered DataFrame, full DataFrame, and source label.
+        Tuple containing baseline latencies, candidate latencies, posterior
+        percentage draws, summary metrics, filtered DataFrame, full DataFrame,
+        and source label.
     """
-    telemetry_df, selected_df, telemetry_source = load_filtered_telemetry(
-        Path("data"),
-        "flip_bitmap_unaligned",
-        str(geometry_dropdown.value),
-        int(sample_slider.value),
+    telemetry_df, selected_df, _resolved_geo, telemetry_source = (
+        slice_telemetry_by_geometry_and_reps(
+            raw_telemetry_df,
+            raw_telemetry_source,
+            active_geometry,
+            active_n_reps,
+        )
     )
     baseline_ns = extract_variant_latencies(selected_df, "baseline")
     candidate_ns = extract_variant_latencies(selected_df, "candidate")
@@ -888,29 +1300,30 @@ def load_and_analyze_telemetry(
     mo.stop(
         len(baseline_ns) < 2 or len(candidate_ns) < 2,
         mo.callout(
-            f"Need >= 2 baseline and candidate samples for {geometry_dropdown.value}.",
+            f"Need >= 2 baseline and candidate samples for {_resolved_geo}.",
             kind="warn",
         ),
     )
 
-    posterior_summary = compute_best_posterior_summary(
-        baseline_ns,
-        candidate_ns,
-        rope_fraction=float(rope_slider.value),
+    _delta_rel, _delta_ns, _params = sample_best_posterior_deltas(
+        baseline_ns, candidate_ns
     )
-    delta_rel, _, _ = sample_best_posterior_deltas(baseline_ns, candidate_ns)
-    posterior_deltas_pct = (delta_rel * 100.0).ravel()
+    posterior_summary = summarize_best_posterior_draws(
+        _delta_rel,
+        _delta_ns,
+        _params,
+        rope_fraction=active_rope,
+    )
+    posterior_deltas_pct = (_delta_rel * 100.0).ravel()
 
-    mo.output.replace(
-        mo.callout(
-            mo.md(
-                f"**Data Source:** `{telemetry_source}` | "
-                f"**Geometry:** `{geometry_dropdown.value}` | "
-                f"**Baseline N:** `{len(baseline_ns)}` | "
-                f"**Candidate N:** `{len(candidate_ns)}`"
-            ),
-            kind="info",
-        )
+    mo.callout(
+        mo.md(
+            f"**Data Source:** `{telemetry_source}` | "
+            f"**Geometry:** `{_resolved_geo}` | "
+            f"**Baseline N:** `{len(baseline_ns)}` | "
+            f"**Candidate N:** `{len(candidate_ns)}`"
+        ),
+        kind="info",
     )
     return (
         baseline_ns,
@@ -928,49 +1341,75 @@ def render_kpi_cards(posterior_summary: dict[str, float]) -> None:
     """Displays KPI summary cards for latency, speedup, ROPE decision, and HDI.
 
     Args:
-        posterior_summary: Dictionary returned by ``compute_best_posterior_summary``.
+        posterior_summary: Dictionary returned by ``summarize_best_posterior_draws``.
     """
-    mo.output.replace(build_kpi_row(posterior_summary))
+    build_kpi_row(posterior_summary)
 
 
 @app.cell
-def render_charts(
-    geometry_dropdown: mo.ui.dropdown,
-    posterior_deltas_pct: FloatArray,
+def render_posterior_chart(
+    active_geometry: str,
+    posterior_deltas_pct: NDArray[np.float64],
     posterior_summary: dict[str, float],
-    selected_df: pl.DataFrame,
     theme_switch: mo.ui.radio,
-) -> tuple[mo.ui.plotly, mo.ui.plotly]:
-    """Builds interactive Plotly posterior ROPE and empirical distribution charts.
+) -> tuple[mo.ui.plotly, str]:
+    """Builds the interactive Plotly posterior ROPE and HDI histogram chart.
 
     Args:
-        geometry_dropdown: Selected bitmap geometry widget.
+        active_geometry: Selected bitmap geometry label.
         posterior_deltas_pct: 1D posterior draws of relative latency change (%).
         posterior_summary: Computed BEST posterior summary dictionary.
-        selected_df: Telemetry slice for the active geometry.
-        theme_switch: Explicit Plotly template widget (``plotly_dark`` / ``plotly_white``).
+        theme_switch: Plotly theme selector (``auto`` / ``plotly_dark`` /
+            ``plotly_white``).
 
     Returns:
-        Tuple of ``(posterior_chart, distribution_chart)``.
+        Tuple of ``(posterior_chart, resolved_template)``.
     """
+    resolved_template = resolve_plotly_template(
+        str(theme_switch.value), mo.app_meta().theme
+    )
     posterior_chart = mo.ui.plotly(
         build_posterior_figure(
             posterior_deltas_pct,
             posterior_summary,
-            str(geometry_dropdown.value),
-            str(theme_switch.value),
+            active_geometry,
+            resolved_template,
         )
     )
+    mo.vstack([posterior_chart])
+    return posterior_chart, resolved_template
+
+
+@app.cell
+def render_distribution_chart(
+    active_geometry: str,
+    baseline_ns: NDArray[np.float64],
+    candidate_ns: NDArray[np.float64],
+    theme_switch: mo.ui.radio,
+) -> tuple[mo.ui.plotly]:
+    """Builds the interactive Plotly baseline vs. candidate latency boxplot.
+
+    Args:
+        active_geometry: Selected bitmap geometry label.
+        baseline_ns: Exported baseline latency array in nanoseconds.
+        candidate_ns: Exported candidate latency array in nanoseconds.
+        theme_switch: Plotly theme selector (``auto`` / ``plotly_dark`` /
+            ``plotly_white``).
+
+    Returns:
+        Single-element tuple containing ``(distribution_chart,)``.
+    """
+    _template = resolve_plotly_template(str(theme_switch.value), mo.app_meta().theme)
     distribution_chart = mo.ui.plotly(
         build_distribution_figure(
-            extract_variant_latencies(selected_df, "baseline"),
-            extract_variant_latencies(selected_df, "candidate"),
-            str(geometry_dropdown.value),
-            str(theme_switch.value),
+            baseline_ns,
+            candidate_ns,
+            active_geometry,
+            _template,
         )
     )
-    mo.output.replace(mo.vstack([posterior_chart, distribution_chart], gap=1.5))
-    return distribution_chart, posterior_chart
+    mo.vstack([distribution_chart])
+    return (distribution_chart,)
 
 
 @app.cell
@@ -991,7 +1430,7 @@ def render_telemetry_table(telemetry_df: pl.DataFrame) -> tuple[mo.ui.table]:
         show_column_summaries=True,
         show_download=True,
     )
-    mo.output.replace(telemetry_table)
+    mo.vstack([telemetry_table])
     return (telemetry_table,)
 
 

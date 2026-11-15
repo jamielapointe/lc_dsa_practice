@@ -80,7 +80,7 @@ static constexpr uint64_t HUFFMAN_MAX_TREE_CAPACITY =
     1ULL << HUFFMAN_MAX_CODE_LENGTH;
 
 /// @brief Status and error codes returned by Huffman tree operations.
-// NOLINTNEXTLINE(cppcoreguidelines-use-enum-class)
+// NOLINTNEXTLINE(cppcoreguidelines-use-enum-class): C23 public ABI enum.
 typedef enum huffman_error : int32_t {
   HUFFMAN_OK = 0,
   HUFFMAN_ERR_NOT_IMPLEMENTED = 1,

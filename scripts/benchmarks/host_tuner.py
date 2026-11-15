@@ -1,4 +1,4 @@
-#!/usr/bin/env -S uv run --script
+#!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.15"
 # dependencies = [
@@ -28,7 +28,7 @@ from cyclopts import App, Parameter
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping, Sequence
+    from collections.abc import Sequence
 
 
 _PMGR_ENTRY_BYTES: Final[int] = 8
@@ -36,19 +36,6 @@ _PMGR_HZ_THRESHOLD: Final[int] = 100_000_000
 _NORMAL_THERMAL_LIMIT: Final[int] = 100
 _BYTES_PER_KIB: Final[int] = 1024
 _LINUX_ISOLATED_CPUS_PATH: Final[Path] = Path("/sys/devices/system/cpu/isolated")
-
-
-def _freeze_mapping[K, V](mapping: Mapping[K, V]) -> frozendict[K, V]:
-    """Construct an immutable PEP 814 ``frozendict`` from a mapping.
-
-    Args:
-        mapping: Source key-value pairs to freeze.
-
-    Returns:
-        Immutable ``frozendict`` copy preserving insertion order.
-    """
-    factory = cast("Callable[[Mapping[K, V]], frozendict[K, V]]", frozendict)
-    return factory(mapping)
 
 
 def _get_logger(name: str = __name__) -> structlog.stdlib.BoundLogger:
@@ -72,22 +59,24 @@ def _get_logger(name: str = __name__) -> structlog.stdlib.BoundLogger:
     return cast("structlog.stdlib.BoundLogger", logger)
 
 
-_DARWIN_PMGR_KEYS: Final[frozendict[str, str]] = _freeze_mapping({
+_DARWIN_PMGR_KEYS: Final[frozendict[str, str]] = frozendict[str, str]() | {
     "pcore_max_mhz": "voltage-states5-sram",
     "ecore_max_mhz": "voltage-states1-sram",
-})
+}
 
-_DARWIN_CACHE_SYSCTL_KEYS: Final[frozendict[str, str]] = _freeze_mapping({
+_DARWIN_CACHE_SYSCTL_KEYS: Final[frozendict[str, str]] = frozendict[str, str]() | {
     "pcore_l1d_kib": "hw.perflevel0.l1dcachesize",
     "pcore_l1i_kib": "hw.perflevel0.l1icachesize",
     "pcore_l2_kib": "hw.perflevel0.l2cachesize",
-})
+}
 
-_DEFAULT_THERMAL_STATUS: Final[frozendict[str, int | bool]] = _freeze_mapping({
+_DEFAULT_THERMAL_STATUS: Final[frozendict[str, int | bool]] = frozendict[
+    str, int | bool
+]() | {
     "throttled": False,
     "speed_limit": _NORMAL_THERMAL_LIMIT,
     "scheduler_limit": _NORMAL_THERMAL_LIMIT,
-})
+}
 
 
 def _parse_pmgr_max_mhz(prop_name: str, ioreg_output: str) -> float | None:
@@ -542,10 +531,15 @@ class NullHostTuner(HostTuner):
         """No-op restore."""
 
 
-_PLATFORM_TUNERS: Final[frozendict[str, type[HostTuner]]] = _freeze_mapping({
-    "Darwin": DarwinHostTuner,
-    "Linux": LinuxHostTuner,
-})
+_PLATFORM_TUNERS: Final[frozendict[str, type[HostTuner]]] = frozendict[
+    str, type[HostTuner]
+]() | cast(
+    "dict[str, type[HostTuner]]",
+    {
+        "Darwin": DarwinHostTuner,
+        "Linux": LinuxHostTuner,
+    },
+)
 
 
 def get_host_tuner() -> HostTuner:

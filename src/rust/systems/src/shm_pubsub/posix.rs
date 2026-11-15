@@ -3,8 +3,6 @@
 //! Enforces SHMPS-REQ-021: All OS calls (`shm_open`, `ftruncate`, `mmap`,
 //! `munmap`, `mlock`, `shm_unlink`, `getpgid`, `proc_pidinfo`) are strictly isolated to this module.
 
-#![allow(unsafe_code)]
-
 use crate::platform;
 use crate::platform::MAX_SHM_NAME_LENGTH;
 use crate::shm_pubsub::error::ShmPubSubError;
@@ -51,6 +49,7 @@ fn retry_eintr<F: FnMut() -> libc::c_int>(mut f: F) -> libc::c_int {
 struct FdGuard(libc::c_int);
 
 impl Drop for FdGuard {
+    #[allow(unsafe_code)]
     fn drop(&mut self) {
         if self.0 >= 0 {
             // SAFETY:
@@ -64,6 +63,7 @@ impl Drop for FdGuard {
 }
 
 /// Pre-faults newly allocated physical pages by writing dummy zero bytes (SHMPS-REQ-023).
+#[allow(unsafe_code)]
 fn prefault_by_writing(base: *mut u8, bytes: usize) {
     let step = platform::page_size();
     let mut offset = 0;
@@ -80,6 +80,7 @@ fn prefault_by_writing(base: *mut u8, bytes: usize) {
 }
 
 /// Pre-faults an existing mapping into this process's page table by reading (SHMPS-REQ-023).
+#[allow(unsafe_code)]
 fn prefault_by_reading(base: *mut u8, bytes: usize) {
     let step = platform::page_size();
     let mut offset = 0;
@@ -100,6 +101,7 @@ fn prefault_by_reading(base: *mut u8, bytes: usize) {
 }
 
 /// Locks pages into physical RAM via `mlock` with exponential retry on `EAGAIN` (SHMPS-REQ-024).
+#[allow(unsafe_code)]
 fn lock_pages(base: *mut u8, bytes: usize) -> bool {
     let mut delay = Duration::from_millis(1);
     for attempt in 0..=3 {
@@ -131,11 +133,13 @@ pub struct SharedMemoryRegion {
 // SAFETY:
 // 1. `SharedMemoryRegion` owns a process-wide `MAP_SHARED` virtual memory mapping created by `mmap`.
 // 2. POSIX `mmap` regions are valid across all threads within the process and can be unmapped from any thread.
+#[allow(unsafe_code)]
 unsafe impl Send for SharedMemoryRegion {}
 
 // SAFETY:
 // 1. `SharedMemoryRegion` exposes only its immutable `base` address and `size`.
 // 2. All reads and writes to the underlying memory occur via atomics and seqlocks in `layout`.
+#[allow(unsafe_code)]
 unsafe impl Sync for SharedMemoryRegion {}
 
 impl SharedMemoryRegion {
@@ -145,7 +149,7 @@ impl SharedMemoryRegion {
     /// # Errors
     /// Returns `ShmPubSubError::InvalidArgument`, `ShmPubSubError::AlreadyExists`,
     /// `ShmPubSubError::MemoryLockFailed`, or `ShmPubSubError::OsError`.
-    #[allow(clippy::cast_possible_wrap)]
+    #[allow(unsafe_code, clippy::cast_possible_wrap)]
     pub fn create(name: &str, bytes: usize, memory_lock: bool) -> Result<Self, ShmPubSubError> {
         validate_name(name)?;
         if bytes == 0 {
@@ -154,9 +158,15 @@ impl SharedMemoryRegion {
 
         let c_name = CString::new(name).map_err(|_| ShmPubSubError::InvalidArgument)?;
 
-        // SAFETY: shm_open called with valid C string, standard POSIX flags and permissions.
+        // SAFETY:
+        // 1. `c_name` is a valid, NUL-terminated `CString` constructed from a validated SHM name.
+        // 2. Standard POSIX `shm_open` flags and mode `0o600` satisfy the variadic `mode_t` argument.
         let fd = retry_eintr(|| unsafe {
-            libc::shm_open(c_name.as_ptr(), libc::O_CREAT | libc::O_EXCL | libc::O_RDWR, 0o600)
+            libc::shm_open(
+                c_name.as_ptr(),
+                libc::O_CREAT | libc::O_EXCL | libc::O_RDWR,
+                0o600,
+            )
         });
 
         if fd < 0 {
@@ -171,13 +181,17 @@ impl SharedMemoryRegion {
 
         // From here on we own a new segment; any failure must unlink the name.
         let unlink_on_fail = || {
-            // SAFETY: shm_unlink called with valid C string.
+            // SAFETY:
+            // 1. `c_name` remains alive and valid until `unlink_on_fail` returns.
+            // 2. Only this error path unlinks the newly created shared-memory object.
             unsafe {
                 libc::shm_unlink(c_name.as_ptr());
             }
         };
 
-        // SAFETY: ftruncate called with valid open fd.
+        // SAFETY:
+        // 1. `fd` is a valid writable file descriptor returned by `shm_open` above.
+        // 2. `bytes > 0` is validated above and converted safely to `libc::off_t`.
         let trunc_res = retry_eintr(|| unsafe { libc::ftruncate(fd, bytes as libc::off_t) });
         if trunc_res != 0 {
             let errno = std::io::Error::last_os_error().raw_os_error().unwrap_or(0);
@@ -185,7 +199,9 @@ impl SharedMemoryRegion {
             return Err(ShmPubSubError::OsError(errno));
         }
 
-        // SAFETY: mmap called with valid fd, MAP_SHARED, PROT_READ|PROT_WRITE.
+        // SAFETY:
+        // 1. `fd` backs a shared-memory object already truncated to `bytes` bytes.
+        // 2. `addr == NULL`, `PROT_READ | PROT_WRITE`, `MAP_SHARED`, and offset `0` are valid POSIX `mmap` arguments.
         let base = unsafe {
             libc::mmap(
                 core::ptr::null_mut(),
@@ -210,7 +226,9 @@ impl SharedMemoryRegion {
 
         // Lock pages into RAM if requested.
         if memory_lock && !lock_pages(byte_base, bytes) {
-            // SAFETY: munmap called with mapped address and size.
+            // SAFETY:
+            // 1. `byte_base` was just returned by `mmap` with length `bytes` (`!= MAP_FAILED`).
+            // 2. No other reference to `byte_base` exists because `Self` has not yet been constructed.
             unsafe {
                 libc::munmap(byte_base.cast(), bytes);
             }
@@ -230,12 +248,14 @@ impl SharedMemoryRegion {
     /// # Errors
     /// Returns `ShmPubSubError::InvalidArgument`, `ShmPubSubError::NotFound`,
     /// `ShmPubSubError::LayoutMismatch`, `ShmPubSubError::MemoryLockFailed`, or `ShmPubSubError::OsError`.
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    #[allow(unsafe_code, clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     pub fn open(name: &str, memory_lock: bool) -> Result<Self, ShmPubSubError> {
         validate_name(name)?;
         let c_name = CString::new(name).map_err(|_| ShmPubSubError::InvalidArgument)?;
 
-        // SAFETY: shm_open called with valid C string.
+        // SAFETY:
+        // 1. `c_name` is a valid, NUL-terminated `CString` constructed from a validated SHM name.
+        // 2. `O_RDWR` without `O_CREAT` takes mode `0` and opens an existing segment without creating it.
         let fd = retry_eintr(|| unsafe { libc::shm_open(c_name.as_ptr(), libc::O_RDWR, 0) });
         if fd < 0 {
             let errno = std::io::Error::last_os_error().raw_os_error().unwrap_or(0);
@@ -247,9 +267,13 @@ impl SharedMemoryRegion {
         }
         let _guard = FdGuard(fd);
 
-        // SAFETY: stat_buf is plain POD data, all-zeros is valid.
+        // SAFETY:
+        // 1. `libc::stat` is a C ABI POD struct for which all-zero bit patterns are valid.
+        // 2. All fields are overwritten immediately by `libc::fstat` before any read.
         let mut stat_buf: libc::stat = unsafe { core::mem::zeroed() };
-        // SAFETY: fstat called with valid fd and mutable raw pointer.
+        // SAFETY:
+        // 1. `fd` is a valid open file descriptor owned by `_guard`.
+        // 2. `&raw mut stat_buf` points to valid, properly aligned writable stack storage for `libc::stat`.
         let fstat_res = unsafe { libc::fstat(fd, &raw mut stat_buf) };
         if fstat_res != 0 || stat_buf.st_size <= 0 {
             let errno = std::io::Error::last_os_error().raw_os_error().unwrap_or(0);
@@ -266,7 +290,9 @@ impl SharedMemoryRegion {
         #[cfg(not(target_os = "linux"))]
         let populate_flag = 0;
 
-        // SAFETY: mmap called with valid fd, MAP_SHARED, PROT_READ|PROT_WRITE.
+        // SAFETY:
+        // 1. `fd` is an open shared-memory descriptor whose size was verified to be `bytes > 0`.
+        // 2. `mmap` parameters (`NULL`, `PROT_READ | PROT_WRITE`, `MAP_SHARED | populate_flag`, offset `0`) are valid.
         let base = unsafe {
             libc::mmap(
                 core::ptr::null_mut(),
@@ -286,7 +312,9 @@ impl SharedMemoryRegion {
         let byte_base = base.cast::<u8>();
 
         if memory_lock && !lock_pages(byte_base, bytes) {
-            // SAFETY: munmap called with mapped pointer and size.
+            // SAFETY:
+            // 1. `byte_base` is a valid non-`MAP_FAILED` mapping of `bytes` bytes created above.
+            // 2. No aliases exist because `Self` has not yet been constructed.
             unsafe {
                 libc::munmap(byte_base.cast(), bytes);
             }
@@ -306,11 +334,14 @@ impl SharedMemoryRegion {
     ///
     /// # Errors
     /// Returns `ShmPubSubError::InvalidArgument`, `ShmPubSubError::NotFound`, or `ShmPubSubError::OsError`.
+    #[allow(unsafe_code)]
     pub fn unlink(name: &str) -> Result<(), ShmPubSubError> {
         validate_name(name)?;
         let c_name = CString::new(name).map_err(|_| ShmPubSubError::InvalidArgument)?;
 
-        // SAFETY: shm_unlink called with valid C string.
+        // SAFETY:
+        // 1. `c_name` is a valid, NUL-terminated `CString` representing a validated SHM object name.
+        // 2. `shm_unlink` only removes the directory link and does not dereference process memory.
         let ret = unsafe { libc::shm_unlink(c_name.as_ptr()) };
         if ret != 0 {
             let errno = std::io::Error::last_os_error().raw_os_error().unwrap_or(0);
@@ -337,13 +368,15 @@ impl SharedMemoryRegion {
 
     /// Checks if a process `pid` exists and is not a zombie (SHMPS-REQ-007, SHMPS-REQ-020).
     #[must_use]
-    #[allow(clippy::cast_possible_truncation)]
+    #[allow(unsafe_code, clippy::cast_possible_truncation)]
     pub fn process_alive(pid: i64) -> bool {
         if pid <= 0 {
             return false;
         }
 
-        // SAFETY: getpgid only queries process group identity; makes no mutations.
+        // SAFETY:
+        // 1. `pid > 0` is validated above before converting to `libc::pid_t`.
+        // 2. `getpgid` is a read-only POSIX query that takes no pointers and performs no mutations.
         let ret = unsafe { libc::getpgid(pid as libc::pid_t) };
         if ret == -1 {
             let errno = std::io::Error::last_os_error().raw_os_error().unwrap_or(0);
@@ -356,16 +389,23 @@ impl SharedMemoryRegion {
 
     /// Returns the calling process's PID.
     #[must_use]
+    #[allow(unsafe_code)]
     pub fn current_process_id() -> i64 {
-        // SAFETY: getpid is a safe POSIX query.
+        // SAFETY:
+        // 1. `getpid` takes no arguments and dereferences no pointers.
+        // 2. The returned `libc::pid_t` widens losslessly into `i64`.
         unsafe { i64::from(libc::getpid()) }
     }
 }
 
 impl Drop for SharedMemoryRegion {
+    #[allow(unsafe_code)]
     fn drop(&mut self) {
         if !self.base.is_null() && self.size > 0 {
-            // SAFETY: self.base was returned by mmap with self.size bytes.
+            // SAFETY:
+            // 1. `self.base` was returned by `mmap` with length `self.size` during `create` or `open`.
+            // 2. `Drop::drop` runs only once after the final `Arc<SharedMemoryRegion>` strong reference
+            //    is released, guaranteeing no outstanding `ChannelView` references exist.
             unsafe {
                 libc::munmap(self.base.cast(), self.size);
             }
@@ -376,13 +416,21 @@ impl Drop for SharedMemoryRegion {
 }
 
 /// Inspects whether a process is an unreaped zombie (`SZOMB` on macOS, `'Z'`/`'X'` on Linux).
-#[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+#[allow(
+    unsafe_code,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap
+)]
 fn is_zombie(pid: i64) -> bool {
     #[cfg(target_os = "macos")]
     {
-        // SAFETY: proc_bsdshortinfo is plain POD data, all-zeros is valid.
+        // SAFETY:
+        // 1. `libc::proc_bsdshortinfo` is a plain C POD struct for which all-zero bit patterns are valid.
+        // 2. `proc_pidinfo` initializes all read fields before `info.pbsi_status` is inspected.
         let mut info: libc::proc_bsdshortinfo = unsafe { core::mem::zeroed() };
-        // SAFETY: proc_pidinfo called with valid raw pointer and size for proc_bsdshortinfo.
+        // SAFETY:
+        // 1. `&raw mut info` points to valid, aligned writable storage of exact size `size_of::<proc_bsdshortinfo>()`.
+        // 2. Passing the matching buffer size prevents any kernel write past `info`.
         let ret = unsafe {
             libc::proc_pidinfo(
                 pid as libc::c_int,

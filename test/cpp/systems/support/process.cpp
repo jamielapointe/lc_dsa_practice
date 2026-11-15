@@ -1,9 +1,7 @@
 /// @file process.cpp
 /// @brief Implementation of the fork-based child-process harness.
 
-#if defined(SYSTEMS_POSIX_SUPPORTED) &&                                       \
-    ((defined(__linux__) && (defined(__x86_64__) || defined(__aarch64__))) || \
-     (defined(__APPLE__) && defined(__aarch64__)))
+#if defined(SYSTEMS_POSIX_SUPPORTED)
 
 #include "systems_test/process.hpp"
 
@@ -14,7 +12,11 @@
 #include <thread>
 #include <utility>
 
+#include "systems/platform.hpp"
 #include "systems_test/reap.hpp"
+
+static_assert(systems::platform::kIsSupportedTarget,
+              "process.cpp compiled on an unsupported target");
 
 namespace systems_test {
 namespace {
@@ -109,5 +111,5 @@ auto ChildProcess::send_signal(int signal) const noexcept -> bool {
 
 #else
 #error \
-    "process.cpp requires a supported POSIX target (Linux x86_64/aarch64 or macOS arm64) and SYSTEMS_POSIX_SUPPORTED."
+    "process.cpp requires a supported POSIX target (Linux x86_64/aarch64/riscv64 or macOS arm64) and SYSTEMS_POSIX_SUPPORTED."
 #endif

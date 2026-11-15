@@ -19,9 +19,7 @@
 ///         `sem_trywait` (re-posting on success) and otherwise sleeps for a
 ///         bounded monotonic slice (`std::min(slice, 200us)`).
 
-#if defined(SYSTEMS_POSIX_SUPPORTED) &&                                       \
-    ((defined(__linux__) && (defined(__x86_64__) || defined(__aarch64__))) || \
-     (defined(__APPLE__) && defined(__aarch64__)))
+#if defined(SYSTEMS_POSIX_SUPPORTED)
 
 #include <fcntl.h>
 #include <semaphore.h>
@@ -334,5 +332,5 @@ void RendezvousOsHandle::wait_slice(
 
 #else
 #error \
-    "process_rendezvous_posix.cpp requires a supported POSIX target (Linux x86_64/aarch64 or macOS arm64) and SYSTEMS_POSIX_SUPPORTED."
+    "process_rendezvous_posix.cpp requires a supported POSIX target (Linux x86_64/aarch64/riscv64 or macOS arm64) and SYSTEMS_POSIX_SUPPORTED."
 #endif

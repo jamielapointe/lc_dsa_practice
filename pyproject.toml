@@ -278,8 +278,15 @@ lines-after-imports = 2
   "too-many-arguments",
   "too-many-locals",
   "too-many-statements",
+  "used-dummy-variable",
+  "useless-expression",
 ]
 "scripts/**" = [
+  "start-process-with-partial-path",
+  "subprocess-without-shell-equals-true",
+  "suspicious-subprocess-import",
+]
+"test/python/scripts/**" = [
   "start-process-with-partial-path",
   "subprocess-without-shell-equals-true",
   "suspicious-subprocess-import",

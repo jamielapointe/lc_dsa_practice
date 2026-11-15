@@ -1,15 +1,18 @@
 /// @file shared_region.cpp
 /// @brief Anonymous shared mapping used by `SharedRegion<T>`.
 
-#if defined(SYSTEMS_POSIX_SUPPORTED) &&                                       \
-    ((defined(__linux__) && (defined(__x86_64__) || defined(__aarch64__))) || \
-     (defined(__APPLE__) && defined(__aarch64__)))
+#if defined(SYSTEMS_POSIX_SUPPORTED)
 
 #include "systems_test/shared_region.hpp"
 
 #include <sys/mman.h>
 
 #include <cstddef>
+
+#include "systems/platform.hpp"
+
+static_assert(systems::platform::kIsSupportedTarget,
+              "shared_region.cpp compiled on an unsupported target");
 
 namespace systems_test::detail {
 
@@ -33,5 +36,5 @@ AnonymousSharedMapping::~AnonymousSharedMapping() {
 
 #else
 #error \
-    "shared_region.cpp requires a supported POSIX target (Linux x86_64/aarch64 or macOS arm64) and SYSTEMS_POSIX_SUPPORTED."
+    "shared_region.cpp requires a supported POSIX target (Linux x86_64/aarch64/riscv64 or macOS arm64) and SYSTEMS_POSIX_SUPPORTED."
 #endif

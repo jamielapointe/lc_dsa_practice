@@ -9,7 +9,11 @@ on:
       - main
   workflow_dispatch:
 
-permissions: read-all
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   analysis:
@@ -17,13 +21,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
-      security-events: write
-      id-token: write
-      contents: read
-      actions: read
-      issues: read
-      pull-requests: read
-      checks: read
+      security-events: write # Upload SARIF results to GitHub Code Scanning
+      id-token: write # Mint OIDC token for OpenSSF Scorecard attestation
+      contents: read # Inspect repository files and metadata
+      actions: read # Audit GitHub Actions workflow configurations
+      issues: read # Check repository issue activity metrics
+      pull-requests: read # Check PR review and branch protection metrics
+      checks: read # Inspect CI check status history
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

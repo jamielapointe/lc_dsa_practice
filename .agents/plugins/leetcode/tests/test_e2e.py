@@ -4,7 +4,7 @@ Tiers:
     1. Plugin manifest and MCP configuration
     2. Skill specification (language selection and per-language references)
     3. Shared C++ data structures
-    4. Reference problems exist in both languages and are registered with the build system
+    4. Reference problems exist in all three languages and are registered with the build system
     5. Live MCP client invariants (opt-in with ``-m live``)
 """
 
@@ -27,7 +27,7 @@ class TestTier1PluginManifest:
     """Tier 1: validation of plugin.json and mcp_config.json."""
 
     def test_plugin_json_structure(self) -> None:
-        """The manifest advertises both languages."""
+        """The manifest advertises C++, Python, and Rust."""
         data = json.loads((PLUGIN_ROOT / "plugin.json").read_text(encoding="utf-8"))
         assert data["name"] == "leetcode"
         for key in ("displayName", "version", "description"):
@@ -35,6 +35,7 @@ class TestTier1PluginManifest:
         prompts = " ".join(data["suggestedPrompts"])
         assert "C++" in prompts
         assert "Python" in prompts
+        assert "Rust" in prompts
         assert (PLUGIN_ROOT / data["logo"]).is_file()
 
     def test_mcp_config_launches_through_pixi(self) -> None:
@@ -62,12 +63,13 @@ class TestTier2SkillSpecification:
         assert "description:" in match.group(1)
 
     def test_skill_requires_explicit_language(self) -> None:
-        """The skill must make the user choose cpp or python and link both references."""
+        """The skill must make the user choose cpp, python, or rust and link all references."""
         content = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
         assert "Determine the language" in content
         assert "Never guess or default" in content
         assert "references/cpp.md" in content
         assert "references/python.md" in content
+        assert "references/rust.md" in content
         assert "github-mcp-server" in content
 
     @pytest.mark.parametrize(
@@ -95,6 +97,18 @@ class TestTier2SkillSpecification:
                     "ty",
                     "ruff",
                     "pixi run",
+                ],
+            ),
+            (
+                "rust.md",
+                [
+                    "Solution",
+                    "#[must_use]",
+                    "let _ =",
+                    "cargo test",
+                    "cargo clippy",
+                    "pixi run",
+                    "std::time::Instant",
                 ],
             ),
         ],
@@ -127,7 +141,7 @@ class TestTier3SharedDataStructures:
 
 
 class TestTier4ReferenceProblems:
-    """Tier 4: reference problems exist in both languages and are registered."""
+    """Tier 4: reference problems exist in all three languages and are registered."""
 
     def test_cpp_two_sum_artifacts_and_cmake_registration(self) -> None:
         """C++ files live in the new tree and are registered in CMake."""
@@ -153,6 +167,24 @@ class TestTier4ReferenceProblems:
         assert (
             REPO_ROOT / "test" / "python" / "leet_code" / "test_two_sum.py"
         ).is_file()
+
+    def test_rust_two_sum_artifacts_and_cargo_registration(self) -> None:
+        """Rust files live in the workspace tree and are registered in Cargo."""
+        assert (REPO_ROOT / "src" / "rust" / "leet_code" / "Cargo.toml").is_file()
+        assert (
+            REPO_ROOT / "src" / "rust" / "leet_code" / "src" / "two_sum.rs"
+        ).is_file()
+        assert (REPO_ROOT / "test" / "rust" / "leet_code" / "two_sum_test.rs").is_file()
+        root_cargo = (REPO_ROOT / "Cargo.toml").read_text(encoding="utf-8")
+        crate_cargo = (
+            REPO_ROOT / "src" / "rust" / "leet_code" / "Cargo.toml"
+        ).read_text(encoding="utf-8")
+        lib_rs = (
+            REPO_ROOT / "src" / "rust" / "leet_code" / "src" / "lib.rs"
+        ).read_text(encoding="utf-8")
+        assert '"src/rust/leet_code"' in root_cargo
+        assert 'name = "two_sum_test"' in crate_cargo
+        assert "pub mod two_sum;" in lib_rs
 
     def test_model_naming_helpers_cover_both_languages(self) -> None:
         """ProblemMetadata derives file names for C++, Python, and Rust."""
@@ -182,11 +214,12 @@ class TestTier5LiveMCPProtocol:
 
     @pytest.mark.live
     async def test_live_client_returns_both_snippets(self) -> None:
-        """Problem #2 is fetched with C++ and Python snippets."""
+        """Problem #2 is fetched with C++, Python, and Rust snippets."""
         async with LeetCodeClient() as client:
             details = await client.fetch_problem(2)
         assert isinstance(details, ProblemDetails)
         assert details.slug == "add-two-numbers"
         assert "ListNode" in details.cpp_snippet
         assert "class Solution" in details.python_snippet
+        assert "impl Solution" in details.rust_snippet
         assert len(details.constraints) >= 2

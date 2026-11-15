@@ -418,13 +418,15 @@ void initialize_layout(std::byte* base,
 // 5. Bounded back-off for blocking receives
 // =====================================================================
 
-/// @brief CPU hint that we are busy-waiting: `pause` on x86 (saves power,
-/// avoids a memory-order pipeline flush on exit), `yield` on ARM.
+/// @brief CPU hint that we are busy-waiting: `pause` on x86 and RISC-V
+/// (`Zihintpause`), `yield` on ARM.
 inline void cpu_relax() noexcept {
 #if defined(__x86_64__) || defined(__i386__)
   __builtin_ia32_pause();
 #elif defined(__aarch64__) || defined(__arm__)
   asm volatile("yield" ::: "memory");
+#elif defined(__riscv) && defined(__riscv_zihintpause)
+  asm volatile("pause" ::: "memory");
 #else
   std::atomic_signal_fence(std::memory_order_seq_cst);
 #endif

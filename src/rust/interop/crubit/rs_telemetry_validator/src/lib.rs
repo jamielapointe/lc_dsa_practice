@@ -141,7 +141,10 @@ mod tests {
         let fault = interceptor.validate_command(2_000_000, 2_500_000, 95.0, false);
         assert_eq!(fault.state, SafetyState::FaultEstop);
         assert!((fault.safe_torque_nm - 0.0).abs() < 1e-12);
-        assert_eq!(fault.fault_mask, FAULT_TORQUE_OUT_OF_RANGE | FAULT_CRC_MISMATCH);
+        assert_eq!(
+            fault.fault_mask,
+            FAULT_TORQUE_OUT_OF_RANGE | FAULT_CRC_MISMATCH
+        );
 
         // Remains latched even for valid frames.
         let latched = interceptor.validate_command(3_000_000, 3_500_000, 10.0, true);

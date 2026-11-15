@@ -26,7 +26,7 @@ extern "C" {
 #endif
 
 /// @brief Status codes returned by bounded_fifo operations.
-// NOLINTNEXTLINE(cppcoreguidelines-use-enum-class)
+// NOLINTNEXTLINE(cppcoreguidelines-use-enum-class): C23 public ABI enum.
 typedef enum bounded_fifo_status : int32_t {
   BOUNDED_FIFO_OK = 0,
   BOUNDED_FIFO_ERR_FULL = 1,
@@ -131,11 +131,11 @@ void bounded_fifo_close(struct bounded_fifo* fifo);
 
 /// @brief Returns true if the FIFO is closed (snapshot).
 /// @param fifo Pointer to the initialized FIFO.
-[[nodiscard]] bool bounded_fifo_is_closed(const struct bounded_fifo* fifo);
+[[nodiscard]] bool bounded_fifo_is_closed(struct bounded_fifo* fifo);
 
 /// @brief Returns the current number of queued elements (snapshot).
 /// @param fifo Pointer to the initialized FIFO.
-[[nodiscard]] size_t bounded_fifo_size(const struct bounded_fifo* fifo);
+[[nodiscard]] size_t bounded_fifo_size(struct bounded_fifo* fifo);
 
 /// @brief Returns the maximum capacity of the FIFO.
 /// @param fifo Pointer to the initialized FIFO.
@@ -143,11 +143,11 @@ void bounded_fifo_close(struct bounded_fifo* fifo);
 
 /// @brief Returns true if the FIFO has no queued elements (snapshot).
 /// @param fifo Pointer to the initialized FIFO.
-[[nodiscard]] bool bounded_fifo_is_empty(const struct bounded_fifo* fifo);
+[[nodiscard]] bool bounded_fifo_is_empty(struct bounded_fifo* fifo);
 
 /// @brief Returns true if the FIFO is at maximum capacity (snapshot).
 /// @param fifo Pointer to the initialized FIFO.
-[[nodiscard]] bool bounded_fifo_is_full(const struct bounded_fifo* fifo);
+[[nodiscard]] bool bounded_fifo_is_full(struct bounded_fifo* fifo);
 
 #ifdef __cplusplus
 }  // extern "C"

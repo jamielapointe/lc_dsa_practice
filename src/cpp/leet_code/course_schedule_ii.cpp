@@ -37,7 +37,7 @@ auto course_schedule_ii(size_t num_courses,
   return {};
 }
 
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static): LeetCode API.
 auto Solution::findOrder(int numCourses,
                          std::vector<std::vector<int>>& prerequisites)
     -> std::vector<int> {

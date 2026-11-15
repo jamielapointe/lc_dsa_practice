@@ -30,12 +30,15 @@ import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Annotated, Final, cast
-lazy from collections.abc import Sequence
+from typing import TYPE_CHECKING, Annotated, Final, cast
 
 import cyclopts
 import structlog
 from cyclopts import Parameter, Token, validators
+
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 MAX_EXPECTED_SKIP_FRAMES: Final[int] = 2

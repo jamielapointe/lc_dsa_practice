@@ -43,7 +43,10 @@ jobs:
         run: pixi run audit
 
       - name: Check Marimo notebooks
-        run: pixi run notebook-check
+        run: |
+          pixi run notebook-check
+          pixi run python notebooks/benchmark_telemetry_explorer.py
+          pixi run pytest notebooks/benchmark_telemetry_explorer.py -v
 
   python-tests:
     name: Python Tests (${{ matrix.os }})
@@ -244,6 +247,9 @@ jobs:
 
       - name: Build and test Crubit interop (Debug)
         run: pixi run test-interop
+
+      - name: Run Crubit interop showcase examples (Debug)
+        run: pixi run python scripts/examples/run_crubit_examples.py --preset interop-debug
 
       - name: Build and test Crubit interop (Release)
         run: pixi run interop-release

@@ -6,9 +6,7 @@
 
 #include "systems/platform.h"
 
-#if defined(SYSTEMS_POSIX_SUPPORTED) &&                                       \
-    ((defined(__linux__) && (defined(__x86_64__) || defined(__aarch64__))) || \
-     (defined(__APPLE__) && (defined(__aarch64__) || defined(__arm64__))))
+#if defined(SYSTEMS_POSIX_SUPPORTED) && SYSTEMS_IS_SUPPORTED_TARGET
 
 #include <errno.h>  // IWYU pragma: keep
 #include <fcntl.h>  // IWYU pragma: keep
@@ -17,7 +15,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/mman.h>  // IWYU pragma: keep
-#if defined(__APPLE__)
+#if SYSTEMS_IS_MACOS
 #include <sys/proc.h>
 #include <sys/sysctl.h>
 #endif
@@ -83,7 +81,7 @@ static void prefault_by_reading(const uint8_t* base, size_t bytes) {
 }
 
 [[nodiscard]] static bool is_zombie_process(int64_t pid) {
-#if defined(__APPLE__)
+#if SYSTEMS_IS_MACOS
   int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, (int)pid};
   struct kinfo_proc info = {};
   size_t length = sizeof(info);
@@ -91,7 +89,7 @@ static void prefault_by_reading(const uint8_t* base, size_t bytes) {
     return false;
   }
   return info.kp_proc.p_stat == SZOMB;
-#elif defined(__linux__)
+#elif SYSTEMS_IS_LINUX
   if (pid <= 0) {
     return false;
   }
@@ -302,7 +300,15 @@ void shm_pubsub_posix_sleep_ns(int64_t sleep_ns) {
       .tv_sec = (time_t)(sleep_ns / 1'000'000'000LL),
       .tv_nsec = (long)(sleep_ns % 1'000'000'000LL),
   };
-  nanosleep(&req, nullptr);
+  (void)nanosleep(&req, nullptr);
+}
+
+[[nodiscard]] int64_t shm_pubsub_posix_monotonic_now_ns() {
+  struct timespec ts = {};
+  if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+    return 0;
+  }
+  return ((int64_t)ts.tv_sec * 1'000'000'000LL) + (int64_t)ts.tv_nsec;
 }
 
 #else

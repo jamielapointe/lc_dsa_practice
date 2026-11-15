@@ -4,9 +4,13 @@ use core::pin::Pin;
 use std::process::ExitCode;
 
 use cc_ownership_raii::interop::crubit::LeaseGuard;
-use cc_primitives_enums::interop::crubit::{FlightPhase, Waypoint3d, advance_phase, euclidean_distance};
+use cc_primitives_enums::interop::crubit::{
+    FlightPhase, Waypoint3d, advance_phase, euclidean_distance,
+};
 use cc_references_views::interop::crubit::{SignalWindow, scale_in_place, select_dominant_window};
-use cc_telemetry_bridge::interop::crubit::{ActuatorSink, compute_frame_crc32, make_verified_frame};
+use cc_telemetry_bridge::interop::crubit::{
+    ActuatorSink, compute_frame_crc32, make_verified_frame,
+};
 use cc_traits_errors::interop::crubit::{CalibrationCode, calibrate_pd_controller};
 use cref::CRef;
 use ctor::CtorNew;
@@ -55,7 +59,9 @@ fn run_primitives_enums() -> Result<(), &'static str> {
         return Err("unexpected FlightPhase transition");
     }
 
-    println!("[CRUBIT_RUST_DEMO] module=primitives_enums status=ok dist_m={dist_m:.2} phase=kClimb");
+    println!(
+        "[CRUBIT_RUST_DEMO] module=primitives_enums status=ok dist_m={dist_m:.2} phase=kClimb"
+    );
     Ok(())
 }
 
@@ -76,7 +82,9 @@ fn run_references_views() -> Result<(), &'static str> {
         return Err("unexpected scale_in_place result");
     }
 
-    println!("[CRUBIT_RUST_DEMO] module=references_views status=ok peak={peak:.2} count={count} scaled={scalar:.2}");
+    println!(
+        "[CRUBIT_RUST_DEMO] module=references_views status=ok peak={peak:.2} count={count} scaled={scalar:.2}"
+    );
     Ok(())
 }
 
@@ -147,12 +155,8 @@ fn run_telemetry_capstone() -> Result<(), &'static str> {
 
     // Inject over-torque fault and verify both sides latch until authenticated reset.
     let frame2 = make_verified_frame(2, 12_000_000, 110.0, 2.5);
-    let dec2 = interceptor.validate_command(
-        frame2.timestamp_ns,
-        13_000_000,
-        frame2.torque_cmd_nm,
-        true,
-    );
+    let dec2 =
+        interceptor.validate_command(frame2.timestamp_ns, 13_000_000, frame2.torque_cmd_nm, true);
     if dec2.state != SafetyState::FaultEstop
         || sink.commit(dec2.safe_torque_nm, dec2.fault_mask)
         || sink.latched_fault_mask() == 0
@@ -166,12 +170,8 @@ fn run_telemetry_capstone() -> Result<(), &'static str> {
     sink.clear_latched_fault();
 
     let frame3 = make_verified_frame(3, 14_000_000, 24.0, 1.1);
-    let dec3 = interceptor.validate_command(
-        frame3.timestamp_ns,
-        15_000_000,
-        frame3.torque_cmd_nm,
-        true,
-    );
+    let dec3 =
+        interceptor.validate_command(frame3.timestamp_ns, 15_000_000, frame3.torque_cmd_nm, true);
     if !sink.commit(dec3.safe_torque_nm, dec3.fault_mask) {
         return Err("post-reset frame rejected");
     }

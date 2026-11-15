@@ -120,6 +120,7 @@ TEST(PlatformCTest, StdbitUtilitiesProduceAccurateBitCounts) {
 // ---------------------------------------------------------------------------
 
 TEST(BoundedFifoCTest, InitValidationRejectsInvalidParameters) {
+  RecordProperty("requirements", "FIFO-REQ-001");
   struct bounded_fifo fifo{};
   std::array<int, 4> buffer{};
 
@@ -140,6 +141,7 @@ TEST(BoundedFifoCTest, InitValidationRejectsInvalidParameters) {
 }
 
 TEST(BoundedFifoCTest, StartsEmptyWithConfiguredCapacity) {
+  RecordProperty("requirements", "FIFO-REQ-001,FIFO-REQ-003");
   struct bounded_fifo fifo{};
   std::array<int, 4> buffer{};
   ASSERT_EQ(bounded_fifo_init(&fifo, buffer.data(), 4, sizeof(int)),
@@ -155,6 +157,7 @@ TEST(BoundedFifoCTest, StartsEmptyWithConfiguredCapacity) {
 }
 
 TEST(BoundedFifoCTest, PreservesFifoOrder) {
+  RecordProperty("requirements", "FIFO-REQ-002,FIFO-REQ-003");
   struct bounded_fifo fifo{};
   std::array<int, 8> buffer{};
   ASSERT_EQ(bounded_fifo_init(&fifo, buffer.data(), 8, sizeof(int)),
@@ -176,6 +179,7 @@ TEST(BoundedFifoCTest, PreservesFifoOrder) {
 }
 
 TEST(BoundedFifoCTest, TryPushFailsWhenFull) {
+  RecordProperty("requirements", "FIFO-REQ-003,FIFO-REQ-004");
   struct bounded_fifo fifo{};
   std::array<int, 2> buffer{};
   ASSERT_EQ(bounded_fifo_init(&fifo, buffer.data(), 2, sizeof(int)),
@@ -195,6 +199,7 @@ TEST(BoundedFifoCTest, TryPushFailsWhenFull) {
 }
 
 TEST(BoundedFifoCTest, TryPopReturnsEmptyWhenEmpty) {
+  RecordProperty("requirements", "FIFO-REQ-003");
   struct bounded_fifo fifo{};
   std::array<int, 2> buffer{};
   ASSERT_EQ(bounded_fifo_init(&fifo, buffer.data(), 2, sizeof(int)),
@@ -207,6 +212,7 @@ TEST(BoundedFifoCTest, TryPopReturnsEmptyWhenEmpty) {
 }
 
 TEST(BoundedFifoCTest, BlockingPushAndPopWorkWithoutContention) {
+  RecordProperty("requirements", "FIFO-REQ-003");
   struct bounded_fifo fifo{};
   std::array<int, 2> buffer{};
   ASSERT_EQ(bounded_fifo_init(&fifo, buffer.data(), 2, sizeof(int)),
@@ -233,6 +239,7 @@ TEST(BoundedFifoCTest, BlockingPushAndPopWorkWithoutContention) {
 // ---------------------------------------------------------------------------
 
 TEST(BoundedFifoCTest, CapacityOneAlternatesPushPop) {
+  RecordProperty("requirements", "FIFO-REQ-001,FIFO-REQ-003");
   struct bounded_fifo fifo{};
   std::array<int, 1> buffer{};
   ASSERT_EQ(bounded_fifo_init(&fifo, buffer.data(), 1, sizeof(int)),
@@ -253,6 +260,7 @@ TEST(BoundedFifoCTest, CapacityOneAlternatesPushPop) {
 }
 
 TEST(BoundedFifoCTest, WrapsAroundTheRingBuffer) {
+  RecordProperty("requirements", "FIFO-REQ-001,FIFO-REQ-003");
   struct bounded_fifo fifo{};
   std::array<int, 3> buffer{};
   ASSERT_EQ(bounded_fifo_init(&fifo, buffer.data(), 3, sizeof(int)),
@@ -289,6 +297,7 @@ struct TestPayload {
 };
 
 TEST(BoundedFifoCTest, SupportsCustomStructPayloads) {
+  RecordProperty("requirements", "FIFO-REQ-001");
   struct bounded_fifo fifo{};
   std::array<TestPayload, 4> buffer{};
   ASSERT_EQ(bounded_fifo_init(&fifo, buffer.data(), 4, sizeof(TestPayload)),
@@ -317,6 +326,7 @@ TEST(BoundedFifoCTest, SupportsCustomStructPayloads) {
 }
 
 TEST(BoundedFifoCTest, NullPointersRejectedAcrossAllOperations) {
+  RecordProperty("requirements", "FIFO-REQ-003,FIFO-REQ-004");
   struct bounded_fifo fifo{};
   std::array<int, 2> buffer{};
   ASSERT_EQ(bounded_fifo_init(&fifo, buffer.data(), 2, sizeof(int)),
@@ -363,6 +373,7 @@ TEST(BoundedFifoCTest, NullPointersRejectedAcrossAllOperations) {
 // ---------------------------------------------------------------------------
 
 TEST(BoundedFifoCTest, SteadyStatePushPopProducesZeroHeapAllocations) {
+  RecordProperty("requirements", "FIFO-REQ-001");
   struct bounded_fifo fifo{};
   std::array<int, 16> buffer{};
   ASSERT_EQ(bounded_fifo_init(&fifo, buffer.data(), 16, sizeof(int)),
@@ -386,6 +397,7 @@ TEST(BoundedFifoCTest, SteadyStatePushPopProducesZeroHeapAllocations) {
 }
 
 TEST(BoundedFifoCTest, StaticStorageLifecycleProducesZeroHeapAllocations) {
+  RecordProperty("requirements", "FIFO-REQ-001,FIFO-REQ-006");
   static struct bounded_fifo static_fifo;
   static std::array<int, 8> static_buffer{};
 
@@ -412,6 +424,7 @@ TEST(BoundedFifoCTest, StaticStorageLifecycleProducesZeroHeapAllocations) {
 // ---------------------------------------------------------------------------
 
 TEST(BoundedFifoCTest, TimedOperationsTimeOutOnFullAndEmpty) {
+  RecordProperty("requirements", "FIFO-REQ-003");
   struct bounded_fifo fifo{};
   std::array<int, 1> buffer{};
   ASSERT_EQ(bounded_fifo_init(&fifo, buffer.data(), 1, sizeof(int)),
@@ -439,6 +452,7 @@ TEST(BoundedFifoCTest, TimedOperationsTimeOutOnFullAndEmpty) {
 }
 
 TEST(BoundedFifoCTest, ZeroAndNegativeTimeoutsHandledCorrectly) {
+  RecordProperty("requirements", "FIFO-REQ-003");
   struct bounded_fifo fifo{};
   std::array<int, 2> buffer{};
   ASSERT_EQ(bounded_fifo_init(&fifo, buffer.data(), 2, sizeof(int)),
@@ -470,6 +484,7 @@ TEST(BoundedFifoCTest, ZeroAndNegativeTimeoutsHandledCorrectly) {
 }
 
 TEST(BoundedFifoCTest, ClosedQueueRejectsPushesButDrainsExistingElements) {
+  RecordProperty("requirements", "FIFO-REQ-004,FIFO-REQ-005");
   struct bounded_fifo fifo{};
   std::array<int, 4> buffer{};
   ASSERT_EQ(bounded_fifo_init(&fifo, buffer.data(), 4, sizeof(int)),
@@ -508,6 +523,7 @@ TEST(BoundedFifoCTest, ClosedQueueRejectsPushesButDrainsExistingElements) {
 // ---------------------------------------------------------------------------
 
 TEST(BoundedFifoCTest, BlockedPopIsWokenByPush) {
+  RecordProperty("requirements", "FIFO-REQ-002,FIFO-REQ-003");
   struct bounded_fifo fifo{};
   std::array<int, 2> buffer{};
   ASSERT_EQ(bounded_fifo_init(&fifo, buffer.data(), 2, sizeof(int)),
@@ -528,6 +544,7 @@ TEST(BoundedFifoCTest, BlockedPopIsWokenByPush) {
 }
 
 TEST(BoundedFifoCTest, BlockedPushIsWokenByPop) {
+  RecordProperty("requirements", "FIFO-REQ-002,FIFO-REQ-003");
   struct bounded_fifo fifo{};
   std::array<int, 1> buffer{};
   ASSERT_EQ(bounded_fifo_init(&fifo, buffer.data(), 1, sizeof(int)),
@@ -561,6 +578,7 @@ TEST(BoundedFifoCTest, BlockedPushIsWokenByPop) {
 }
 
 TEST(BoundedFifoCTest, CloseWakesBlockedConsumersAndProducers) {
+  RecordProperty("requirements", "FIFO-REQ-005");
   struct bounded_fifo empty_fifo{};
   std::array<int, 1> empty_buf{};
   ASSERT_EQ(bounded_fifo_init(&empty_fifo, empty_buf.data(), 1, sizeof(int)),
@@ -602,6 +620,7 @@ TEST(BoundedFifoCTest, CloseWakesBlockedConsumersAndProducers) {
 }
 
 TEST(BoundedFifoStressCTest, SingleProducerSingleConsumerKeepsOrder) {
+  RecordProperty("requirements", "FIFO-REQ-002");
   constexpr int kCount = 50000;
   struct bounded_fifo fifo{};
   std::array<int, 64> buffer{};
@@ -628,6 +647,7 @@ TEST(BoundedFifoStressCTest, SingleProducerSingleConsumerKeepsOrder) {
 }
 
 TEST(BoundedFifoStressCTest, MultiProducerMultiConsumerDeliversEverythingOnce) {
+  RecordProperty("requirements", "FIFO-REQ-002,FIFO-REQ-005");
   constexpr int kProducers = 4;
   constexpr int kConsumers = 4;
   constexpr int kPerProducer = 20000;

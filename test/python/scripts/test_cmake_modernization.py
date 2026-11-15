@@ -3,7 +3,7 @@
 import json
 import re
 import shutil
-import subprocess  # ruff: ignore[suspicious-subprocess-import]
+import subprocess
 import tomllib
 from pathlib import Path
 from typing import cast
@@ -305,7 +305,7 @@ def test_cmake_list_presets_cli() -> None:
     cmake_bin = shutil.which("cmake")
     assert cmake_bin is not None, "cmake binary must be available in Pixi environment"
 
-    result = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+    result = subprocess.run(
         [cmake_bin, "--list-presets=all"],
         cwd=REPO_ROOT,
         capture_output=True,

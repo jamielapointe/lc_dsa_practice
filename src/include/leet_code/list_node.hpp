@@ -46,7 +46,6 @@ struct ListNode {
 inline void free_linked_list(ListNode* head) noexcept {
   while (head != nullptr) {
     ListNode* next_node = head->next;
-    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory)
     delete head;
     head = next_node;
   }
@@ -75,7 +74,6 @@ inline void free_linked_list(ListNode* head) noexcept {
 
   try {
     for (const int value : values) {
-      // NOLINTNEXTLINE(cppcoreguidelines-owning-memory)
       tail->next = new ListNode(value);
       tail = tail->next;
     }

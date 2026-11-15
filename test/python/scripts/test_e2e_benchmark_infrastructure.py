@@ -11,7 +11,7 @@ performance analysis infrastructure across 4 tiers of testing:
 import json
 import math
 import shutil
-import subprocess  # ruff: ignore[suspicious-subprocess-import]
+import subprocess
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -487,7 +487,7 @@ class TestTier1FeatureCoverage:
 
         tombi_bin = shutil.which("tombi")
         assert tombi_bin is not None, "tombi binary must be installed in Pixi env"
-        tombi_res = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+        tombi_res = subprocess.run(
             [tombi_bin, "format", "--check", str(pyproject_path), str(pixi_path)],
             cwd=REPO_ROOT,
             capture_output=True,
@@ -781,7 +781,7 @@ class TestTier3CrossFeatureCombinations:
             # Run git status --porcelain
             git_bin = shutil.which("git")
             assert git_bin is not None, "git binary must be installed"
-            result = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+            result = subprocess.run(
                 [git_bin, "status", "--porcelain", "data/"],
                 cwd=REPO_ROOT,
                 capture_output=True,
