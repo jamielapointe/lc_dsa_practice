@@ -8,7 +8,6 @@
 
 #include <errno.h>  // IWYU pragma: keep
 #include <pthread.h>
-#include <stdbool.h>
 #include <stdckdint.h>
 #include <stddef.h>
 #include <stdint.h>

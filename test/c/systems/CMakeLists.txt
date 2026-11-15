@@ -15,6 +15,10 @@ function(add_project_c_test test_target)
     add_executable(${test_target})
     target_sources(${test_target} PRIVATE FILE_SET sources TYPE SOURCES FILES ${ARG_SOURCES})
     target_compile_features(${test_target} PRIVATE c_std_23)
+    target_compile_options(
+        ${test_target}
+        PRIVATE $<$<COMPILE_LANGUAGE:C>:-ftrivial-auto-var-init=zero>
+    )
     target_link_libraries(
         ${test_target}
         PRIVATE ${ARG_LIBS} project_options project_warnings project_sanitizers project_architecture

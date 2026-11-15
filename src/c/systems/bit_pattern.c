@@ -87,7 +87,7 @@
 [[nodiscard]] static inline uint8_t get_msb_bit(const uint8_t* const data_bytes,
                                                 const size_t bit_index) {
   const size_t byte_idx = bit_index >> 3U;
-  const size_t bit_shift = (uint8_t)(7U - (bit_index & 7U));
+  const uint8_t bit_shift = (uint8_t)(7U - (bit_index & 7U));
   return (data_bytes[byte_idx] >> bit_shift) & 1U;
 }
 
@@ -179,7 +179,7 @@ static void build_lps(const void* const pattern, size_t pattern_size,
     return PATTERN_NOT_FOUND;
   }
 
-  uint16_t lps[BIT_PATTERN_MAX_PATTERN_BITS];
+  uint16_t lps[BIT_PATTERN_MAX_PATTERN_BITS] = {};
   build_lps(pattern, pattern_size, lps);
 
   size_t data_idx = 0U;

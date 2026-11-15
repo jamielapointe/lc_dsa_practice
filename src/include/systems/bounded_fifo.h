@@ -18,7 +18,6 @@
 /// units.
 
 #include <pthread.h>
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -37,6 +36,9 @@ typedef enum bounded_fifo_status : int32_t {
   BOUNDED_FIFO_ERR_INVALID_ARG = 5,
   BOUNDED_FIFO_ERR_NULL_PTR = 6,
 } bounded_fifo_status;
+
+static_assert(sizeof(enum bounded_fifo_status) == 4U,
+              "ABI requires 32-bit bounded_fifo_status");
 
 /// @brief Fixed-capacity bounded FIFO ring buffer representation.
 struct bounded_fifo {

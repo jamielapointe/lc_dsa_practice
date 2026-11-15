@@ -3,7 +3,6 @@
 /// @file shm_pubsub_posix.h
 /// @brief Internal POSIX OS adapter declarations for shm_pubsub in ISO C23.
 
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 

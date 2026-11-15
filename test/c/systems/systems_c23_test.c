@@ -3,7 +3,7 @@
 /// headers in src/include/systems/*.h compile and execute cleanly in a native
 /// C23 translation unit without C++ compiler leakage.
 
-#include <stdbool.h>
+#include <stdckdint.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -21,8 +21,31 @@
 
 static_assert(__STDC_VERSION__ == 202311L,
               "Must be compiled as strict ISO C23");
+static_assert(sizeof(nullptr_t) == sizeof(void*),
+              "C23 nullptr_t must match pointer width");
+static_assert(sizeof(bool) == 1U, "C23 native bool must be 1 byte");
 static_assert(systems_cache_line_size >= 64U,
               "Cache line size must be at least 64 bytes");
+static_assert(sizeof(enum systems_os_family) == 1U,
+              "systems_os_family must have 8-bit underlying type");
+static_assert(sizeof(enum systems_arch_family) == 1U,
+              "systems_arch_family must have 8-bit underlying type");
+static_assert(sizeof(enum FoundError) == 4U,
+              "FoundError must have 32-bit underlying type");
+static_assert(sizeof(enum bitmap_flip_error) == 4U,
+              "bitmap_flip_error must have 32-bit underlying type");
+static_assert(sizeof(enum bounded_fifo_status) == 4U,
+              "bounded_fifo_status must have 32-bit underlying type");
+static_assert(sizeof(enum huffman_error) == 4U,
+              "huffman_error must have 32-bit underlying type");
+static_assert(sizeof(enum priority_scheduler_error) == 4U,
+              "priority_scheduler_error must have 32-bit underlying type");
+static_assert(sizeof(enum process_rendezvous_error) == 4U,
+              "process_rendezvous_error must have 32-bit underlying type");
+static_assert(sizeof(enum shm_pubsub_error) == 4U,
+              "shm_pubsub_error must have 32-bit underlying type");
+static_assert(sizeof(enum shm_read_mode) == 1U,
+              "shm_read_mode must have 8-bit underlying type");
 static_assert(HUFFMAN_MAX_SYMBOLS == 256U,
               "Huffman alphabet must cover all 256 byte values");
 static_assert(HUFFMAN_MAX_CODE_LENGTH == 32U,
@@ -45,7 +68,26 @@ static_assert(PRIORITY_LOWEST == 255U, "Lowest priority must be 255");
       !systems_is_supported_target) {
     return false;
   }
-  return stdc_count_ones_uc(0xAAU) == 4U;
+  uint32_t sum = 0U;
+  uint32_t diff = 0U;
+  uint32_t prod = 0U;
+  if (ckd_add(&sum, 100U, 200U) || sum != 300U ||
+      !ckd_add(&sum, UINT32_MAX, 1U) || ckd_sub(&diff, 500U, 200U) ||
+      diff != 300U || !ckd_sub(&diff, 0U, 1U) || ckd_mul(&prod, 16U, 32U) ||
+      prod != 512U || !ckd_mul(&prod, UINT32_MAX, 2U)) {
+    return false;
+  }
+  return (bool)(stdc_count_ones_uc(0xAAU) == 4U &&
+                stdc_count_ones_ui(0xF0F0'0F0FU) == 16U &&
+                stdc_count_ones_ull(0x8000'0000'0000'0001ULL) == 2U &&
+                stdc_leading_zeros_uc(0U) == 8U &&
+                stdc_leading_zeros_uc(0x10U) == 3U &&
+                stdc_leading_zeros_ui(0U) == 32U &&
+                stdc_leading_zeros_ull(0U) == 64U &&
+                stdc_trailing_zeros_uc(0U) == 8U &&
+                stdc_trailing_zeros_uc(0x08U) == 3U &&
+                stdc_trailing_zeros_ui(0U) == 32U &&
+                stdc_trailing_zeros_ull(0U) == 64U);
 }
 
 [[nodiscard]] static bool test_bounded_fifo_c23() {
@@ -83,6 +125,20 @@ static_assert(PRIORITY_LOWEST == 255U, "Lowest priority must be 255");
     return false;
   }
   if (row[0] != 0x01U || row[1] != 0x00U) {
+    return false;
+  }
+  if (bitmap_flip_unaligned(row, sizeof(row), 16U, 1U) != BITMAP_FLIP_OK ||
+      row[0] != 0x00U || row[1] != 0x80U) {
+    return false;
+  }
+  if (bitmap_flip_strided(row, sizeof(row), 16U, 1U, 2U) != BITMAP_FLIP_OK ||
+      row[0] != 0x01U || row[1] != 0x00U) {
+    return false;
+  }
+  const struct bitmap_roi roi = {.x = 0U, .y = 0U, .width = 16U, .height = 1U};
+  if (bitmap_flip_roi(row, sizeof(row), 16U, 1U, 2U, roi) != BITMAP_FLIP_OK ||
+      row[0] != 0x00U || row[1] != 0x80U ||
+      bitmap_flip_error_to_string(BITMAP_FLIP_OK) == nullptr) {
     return false;
   }
   return bitmap_reverse_bits_lookup(0x01U) == 0x80U;
@@ -177,10 +233,14 @@ static_assert(PRIORITY_LOWEST == 255U, "Lowest priority must be 255");
   const uint8_t pattern[1] = {0xAAU};
   const enum FoundError res = found(data, 16U, pattern, 8U);
   const char* const msg = found_error_to_string(res);
+  const uint8_t unaligned_data[2] = {0x35U, 0x80U};
+  const uint8_t unaligned_pat[1] = {0xACU};
   return (bool)(msg != nullptr && res == FOUND_PATTERN &&
                 bit_pattern_find_byte_aligned(data, 16U, pattern, 8U) ==
                     FOUND_PATTERN &&
                 bit_pattern_find_naive(data, 16U, pattern, 8U) ==
+                    FOUND_PATTERN &&
+                bit_pattern_find_kmp(unaligned_data, 10U, unaligned_pat, 6U) ==
                     FOUND_PATTERN);
 }
 
@@ -190,6 +250,30 @@ static void record_c23_task_tick(void* const user_data, const uint64_t now_ns) {
 }
 
 [[nodiscard]] static bool test_priority_scheduler_c23() {
+  struct priority_queue pq = {};
+  if (priority_queue_init(&pq) != PRIORITY_SCHEDULER_OK) {
+    return false;
+  }
+  const struct scheduled_task pq_entry = {
+      .next_deadline_ns = 5'000ULL,
+      .period_ns = 5'000ULL,
+      .sequence_id = 1ULL,
+      .executions = 0ULL,
+      .deadline_misses = 0ULL,
+      .task_id = 1U,
+      .priority = PRIORITY_HIGHEST,
+      .callback = record_c23_task_tick,
+      .user_data = nullptr,
+  };
+  struct scheduled_task popped = {};
+  if (!priority_queue_is_empty(&pq) ||
+      priority_queue_push(&pq, &pq_entry) != PRIORITY_SCHEDULER_OK ||
+      priority_queue_size(&pq) != 1U ||
+      priority_queue_pop(&pq, &popped) != PRIORITY_SCHEDULER_OK ||
+      popped.next_deadline_ns != 5'000ULL) {
+    return false;
+  }
+
   struct priority_scheduler sched = {};
   if (priority_scheduler_init(&sched) != PRIORITY_SCHEDULER_OK) {
     return false;
@@ -204,6 +288,8 @@ static void record_c23_task_tick(void* const user_data, const uint64_t now_ns) {
       .user_data = &ran_at_ns,
   };
   struct priority_dispatch_result res = {};
+  uint64_t next_dl = 0ULL;
+  uint32_t next_id = 0U;
   const char* const ok_str =
       priority_scheduler_error_to_string(PRIORITY_SCHEDULER_OK);
   const bool ok =
@@ -213,7 +299,12 @@ static void record_c23_task_tick(void* const user_data, const uint64_t now_ns) {
              priority_scheduler_step(&sched, 10'000'000ULL, &res) ==
                  PRIORITY_SCHEDULER_OK &&
              ran_at_ns == 10'000'000ULL && res.task_id == 1U &&
-             !res.missed_deadline && res.next_deadline_ns == 20'000'000ULL);
+             !res.missed_deadline && res.next_deadline_ns == 20'000'000ULL &&
+             priority_scheduler_peek_next_deadline(
+                 &sched, &next_dl, &next_id) == PRIORITY_SCHEDULER_OK &&
+             next_dl == 20'000'000ULL && next_id == 1U &&
+             priority_scheduler_cancel(&sched, 1U) == PRIORITY_SCHEDULER_OK &&
+             priority_scheduler_size(&sched) == 0U);
   priority_scheduler_destroy(&sched);
   return ok;
 }

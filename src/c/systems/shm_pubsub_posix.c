@@ -14,7 +14,6 @@
 #include <fcntl.h>  // IWYU pragma: keep
 #include <sched.h>  // IWYU pragma: keep
 #include <stdatomic.h>
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/mman.h>  // IWYU pragma: keep
@@ -44,7 +43,7 @@ static constexpr int kMlockRetries = 3;
 static constexpr int64_t kMlockFirstDelayNs = 1'000'000LL;
 static constexpr size_t kFallbackPageSize = 4096U;
 
-static size_t get_page_size() {
+[[nodiscard]] static size_t get_page_size() {
   // NOLINTNEXTLINE(google-runtime-int): sysconf's POSIX return type is long.
   const long sz = sysconf(_SC_PAGESIZE);
   return sz > 0 ? (size_t)sz : kFallbackPageSize;
@@ -69,7 +68,7 @@ static void prefault_by_reading(const uint8_t* base, size_t bytes) {
   (void)sink;
 }
 
-static bool lock_pages(void* base, size_t bytes) {
+[[nodiscard]] static bool lock_pages(void* base, size_t bytes) {
   int64_t delay_ns = kMlockFirstDelayNs;
   for (int attempt = 0;; ++attempt) {
     if (mlock(base, bytes) == 0) {
@@ -83,7 +82,7 @@ static bool lock_pages(void* base, size_t bytes) {
   }
 }
 
-static bool is_zombie_process(int64_t pid) {
+[[nodiscard]] static bool is_zombie_process(int64_t pid) {
 #if defined(__APPLE__)
   int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, (int)pid};
   struct kinfo_proc info = {};
@@ -154,8 +153,8 @@ static bool is_zombie_process(int64_t pid) {
 #endif
 }
 
-enum shm_pubsub_error shm_pubsub_posix_create(struct shm_channel* channel,
-                                              const char* name, size_t bytes) {
+[[nodiscard]] enum shm_pubsub_error shm_pubsub_posix_create(
+    struct shm_channel* channel, const char* name, size_t bytes) {
   if (channel == nullptr || name == nullptr || bytes == 0U) {
     return SHM_PUBSUB_ERR_INVALID_ARGUMENT;
   }
@@ -203,8 +202,8 @@ enum shm_pubsub_error shm_pubsub_posix_create(struct shm_channel* channel,
   return SHM_PUBSUB_OK;
 }
 
-enum shm_pubsub_error shm_pubsub_posix_open(struct shm_channel* channel,
-                                            const char* name) {
+[[nodiscard]] enum shm_pubsub_error shm_pubsub_posix_open(
+    struct shm_channel* channel, const char* name) {
   if (channel == nullptr || name == nullptr) {
     return SHM_PUBSUB_ERR_INVALID_ARGUMENT;
   }
@@ -253,7 +252,7 @@ enum shm_pubsub_error shm_pubsub_posix_open(struct shm_channel* channel,
   return SHM_PUBSUB_OK;
 }
 
-enum shm_pubsub_error shm_pubsub_posix_unlink(const char* name) {
+[[nodiscard]] enum shm_pubsub_error shm_pubsub_posix_unlink(const char* name) {
   if (name == nullptr) {
     return SHM_PUBSUB_ERR_INVALID_ARGUMENT;
   }
@@ -274,7 +273,7 @@ void shm_pubsub_posix_unmap(struct shm_channel* channel) {
   channel->size = 0U;
 }
 
-bool shm_pubsub_posix_process_alive(int64_t pid) {
+[[nodiscard]] bool shm_pubsub_posix_process_alive(int64_t pid) {
   if (pid <= 0) {
     return false;
   }
@@ -287,7 +286,7 @@ bool shm_pubsub_posix_process_alive(int64_t pid) {
   return true;
 }
 
-int64_t shm_pubsub_posix_current_pid() {
+[[nodiscard]] int64_t shm_pubsub_posix_current_pid() {
   return (int64_t)getpid();
 }
 

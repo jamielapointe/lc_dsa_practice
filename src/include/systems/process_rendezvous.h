@@ -11,7 +11,6 @@
 
 #include <semaphore.h>
 #include <stdatomic.h>
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -35,6 +34,11 @@ typedef enum process_rendezvous_error : int32_t {
   PROCESS_RENDEZVOUS_ERR_LAYOUT_MISMATCH = 8,
   PROCESS_RENDEZVOUS_ERR_OS = 9,
 } process_rendezvous_error;
+
+static_assert(sizeof(enum process_rendezvous_error) == 4U,
+              "ABI requires 32-bit process_rendezvous_error");
+static_assert(ATOMIC_INT_LOCK_FREE == 2,
+              "Cross-process 32-bit atomics must be always lock-free");
 
 /// @brief Returns a human-readable description of the given error code.
 [[nodiscard]] const char* process_rendezvous_error_to_string(

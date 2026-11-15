@@ -81,7 +81,6 @@
 
 #include "systems/huffman_tree.h"
 
-#include <stdbool.h>
 #include <stdckdint.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -457,7 +456,7 @@ static inline void reset_tree(struct huffman_tree* const tree) {
     return HUFFMAN_ERR_TOO_MANY_SYMBOLS;
   }
 
-  struct huffman_symbol_length sorted_entries[HUFFMAN_MAX_SYMBOLS];
+  struct huffman_symbol_length sorted_entries[HUFFMAN_MAX_SYMBOLS] = {};
   const enum huffman_error err =
       validate_and_bucket_sort_entries(entries, count, sorted_entries);
   if (err != HUFFMAN_OK) {

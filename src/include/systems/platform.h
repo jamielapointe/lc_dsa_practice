@@ -12,7 +12,6 @@
 /// Dual-language safe: can be included by both ISO C23 and C++23 translation
 /// units.
 
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -38,6 +37,11 @@ typedef enum systems_arch_family : uint8_t {
   SYSTEMS_ARCH_AARCH64 = 1,
   SYSTEMS_ARCH_OTHER = 2,
 } systems_arch_family;
+
+static_assert(sizeof(enum systems_os_family) == 1U,
+              "ABI requires 8-bit systems_os_family");
+static_assert(sizeof(enum systems_arch_family) == 1U,
+              "ABI requires 8-bit systems_arch_family");
 
 // NOLINTBEGIN(cppcoreguidelines-macro-usage,modernize-macro-to-enum)
 #if defined(__QNX__) || defined(__QNXNTO__)

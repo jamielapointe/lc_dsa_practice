@@ -4,7 +4,7 @@
 
 #include <errno.h>  // IWYU pragma: keep
 #include <inttypes.h>
-#include <stdbool.h>
+#include <stdckdint.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -91,14 +91,23 @@ struct producer_options {
   return true;
 }
 
-static uint64_t monotonic_now_ns() {
+[[nodiscard]] static uint64_t monotonic_now_ns() {
   struct timespec ts = {};
   clock_gettime(CLOCK_MONOTONIC, &ts);
-  return ((uint64_t)ts.tv_sec * 1'000'000'000ULL) + (uint64_t)ts.tv_nsec;
+  uint64_t sec_ns = 0ULL;
+  uint64_t total_ns = 0ULL;
+  if (ckd_mul(&sec_ns, (uint64_t)ts.tv_sec, 1'000'000'000ULL) ||
+      ckd_add(&total_ns, sec_ns, (uint64_t)ts.tv_nsec)) {
+    return UINT64_MAX;
+  }
+  return total_ns;
 }
 
 static void sleep_ms(uint32_t ms) {
-  const uint64_t total_ns = (uint64_t)ms * 1'000'000ULL;
+  uint64_t total_ns = 0ULL;
+  if (ckd_mul(&total_ns, (uint64_t)ms, 1'000'000ULL)) {
+    total_ns = UINT64_MAX;
+  }
   struct timespec req = {
       .tv_sec = (time_t)(total_ns / 1'000'000'000ULL),
       .tv_nsec = (long)(total_ns % 1'000'000'000ULL),
@@ -106,7 +115,7 @@ static void sleep_ms(uint32_t ms) {
   nanosleep(&req, nullptr);
 }
 
-static uint32_t xorshift32(uint32_t* state) {
+[[nodiscard]] static uint32_t xorshift32(uint32_t* state) {
   uint32_t x = *state;
   if (x == 0U) {
     x = 0xA5A5'5A5AU;
@@ -118,7 +127,7 @@ static uint32_t xorshift32(uint32_t* state) {
   return x;
 }
 
-static int run_producer(const struct producer_options* opts) {
+[[nodiscard]] static int run_producer(const struct producer_options* opts) {
   const int64_t timeout_ns = (int64_t)opts->timeout_ms * 1'000'000LL;
   (void)shm_channel_unlink(opts->channel_name);
 

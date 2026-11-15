@@ -6,7 +6,6 @@
 #include "systems/process_rendezvous.h"
 
 #include <stdatomic.h>
-#include <stdbool.h>
 #include <stdckdint.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -90,7 +89,7 @@
     deadline_ns = INT64_MAX;
   }
 
-  constexpr int64_t kMaxSliceNs = 2'000'000LL;  // 2 ms slice
+  static constexpr int64_t kMaxSliceNs = 2'000'000LL;  // 2 ms slice
 
   for (;;) {
     const enum process_rendezvous_error status = try_wait_flag(rdv, flag);
@@ -108,7 +107,7 @@
   }
 }
 
-enum process_rendezvous_error process_rendezvous_create(
+[[nodiscard]] enum process_rendezvous_error process_rendezvous_create(
     struct process_rendezvous* rdv, const char* name) {
   if (rdv == nullptr) {
     return PROCESS_RENDEZVOUS_ERR_INVALID_ARGUMENT;
@@ -118,7 +117,7 @@ enum process_rendezvous_error process_rendezvous_create(
     return err;
   }
 
-  memset(rdv, 0, sizeof(*rdv));
+  *rdv = (struct process_rendezvous){};
   rdv->shm_fd = -1;
 
   const enum process_rendezvous_error os_err = process_rendezvous_posix_create(
@@ -137,7 +136,7 @@ enum process_rendezvous_error process_rendezvous_create(
   return PROCESS_RENDEZVOUS_OK;
 }
 
-enum process_rendezvous_error process_rendezvous_open(
+[[nodiscard]] enum process_rendezvous_error process_rendezvous_open(
     struct process_rendezvous* rdv, const char* name) {
   if (rdv == nullptr) {
     return PROCESS_RENDEZVOUS_ERR_INVALID_ARGUMENT;
@@ -147,7 +146,7 @@ enum process_rendezvous_error process_rendezvous_open(
     return err;
   }
 
-  memset(rdv, 0, sizeof(*rdv));
+  *rdv = (struct process_rendezvous){};
   rdv->shm_fd = -1;
 
   const enum process_rendezvous_error os_err =
@@ -166,7 +165,7 @@ enum process_rendezvous_error process_rendezvous_open(
   return PROCESS_RENDEZVOUS_OK;
 }
 
-enum process_rendezvous_error process_rendezvous_attach(
+[[nodiscard]] enum process_rendezvous_error process_rendezvous_attach(
     struct process_rendezvous* rdv, const char* name, int64_t timeout_ns) {
   if (rdv == nullptr) {
     return PROCESS_RENDEZVOUS_ERR_INVALID_ARGUMENT;
@@ -208,7 +207,8 @@ enum process_rendezvous_error process_rendezvous_attach(
   }
 }
 
-enum process_rendezvous_error process_rendezvous_unlink(const char* name) {
+[[nodiscard]] enum process_rendezvous_error process_rendezvous_unlink(
+    const char* name) {
   const enum process_rendezvous_error err = validate_name(name);
   if (err != PROCESS_RENDEZVOUS_OK) {
     return err;
@@ -228,8 +228,8 @@ void process_rendezvous_destroy(struct process_rendezvous* rdv) {
   process_rendezvous_posix_cleanup(rdv);
 }
 
-enum process_rendezvous_error process_rendezvous_signal_producer_ready(
-    struct process_rendezvous* rdv) {
+[[nodiscard]] enum process_rendezvous_error
+process_rendezvous_signal_producer_ready(struct process_rendezvous* rdv) {
   if (rdv == nullptr || rdv->shared == nullptr) {
     return PROCESS_RENDEZVOUS_ERR_INVALID_ARGUMENT;
   }
@@ -241,20 +241,22 @@ enum process_rendezvous_error process_rendezvous_signal_producer_ready(
   return PROCESS_RENDEZVOUS_OK;
 }
 
-enum process_rendezvous_error process_rendezvous_wait_producer_ready(
-    struct process_rendezvous* rdv) {
+[[nodiscard]] enum process_rendezvous_error
+process_rendezvous_wait_producer_ready(struct process_rendezvous* rdv) {
   return process_rendezvous_wait_producer_ready_for(rdv, INT64_MAX);
 }
 
-enum process_rendezvous_error process_rendezvous_wait_producer_ready_for(
-    struct process_rendezvous* rdv, int64_t timeout_ns) {
+[[nodiscard]] enum process_rendezvous_error
+process_rendezvous_wait_producer_ready_for(struct process_rendezvous* rdv,
+                                           int64_t timeout_ns) {
   if (rdv == nullptr || rdv->shared == nullptr) {
     return PROCESS_RENDEZVOUS_ERR_INVALID_ARGUMENT;
   }
   return wait_flag_until(rdv, &rdv->shared->producer_ready, timeout_ns);
 }
 
-enum process_rendezvous_error process_rendezvous_try_wait_producer_ready(
+[[nodiscard]] enum process_rendezvous_error
+process_rendezvous_try_wait_producer_ready(
     const struct process_rendezvous* rdv) {
   if (rdv == nullptr || rdv->shared == nullptr) {
     return PROCESS_RENDEZVOUS_ERR_INVALID_ARGUMENT;
@@ -262,8 +264,8 @@ enum process_rendezvous_error process_rendezvous_try_wait_producer_ready(
   return try_wait_flag(rdv, &rdv->shared->producer_ready);
 }
 
-enum process_rendezvous_error process_rendezvous_signal_consumer_ready(
-    struct process_rendezvous* rdv) {
+[[nodiscard]] enum process_rendezvous_error
+process_rendezvous_signal_consumer_ready(struct process_rendezvous* rdv) {
   if (rdv == nullptr || rdv->shared == nullptr) {
     return PROCESS_RENDEZVOUS_ERR_INVALID_ARGUMENT;
   }
@@ -275,20 +277,22 @@ enum process_rendezvous_error process_rendezvous_signal_consumer_ready(
   return PROCESS_RENDEZVOUS_OK;
 }
 
-enum process_rendezvous_error process_rendezvous_wait_consumer_ready(
-    struct process_rendezvous* rdv) {
+[[nodiscard]] enum process_rendezvous_error
+process_rendezvous_wait_consumer_ready(struct process_rendezvous* rdv) {
   return process_rendezvous_wait_consumer_ready_for(rdv, INT64_MAX);
 }
 
-enum process_rendezvous_error process_rendezvous_wait_consumer_ready_for(
-    struct process_rendezvous* rdv, int64_t timeout_ns) {
+[[nodiscard]] enum process_rendezvous_error
+process_rendezvous_wait_consumer_ready_for(struct process_rendezvous* rdv,
+                                           int64_t timeout_ns) {
   if (rdv == nullptr || rdv->shared == nullptr) {
     return PROCESS_RENDEZVOUS_ERR_INVALID_ARGUMENT;
   }
   return wait_flag_until(rdv, &rdv->shared->consumer_ready, timeout_ns);
 }
 
-enum process_rendezvous_error process_rendezvous_try_wait_consumer_ready(
+[[nodiscard]] enum process_rendezvous_error
+process_rendezvous_try_wait_consumer_ready(
     const struct process_rendezvous* rdv) {
   if (rdv == nullptr || rdv->shared == nullptr) {
     return PROCESS_RENDEZVOUS_ERR_INVALID_ARGUMENT;
@@ -296,14 +300,15 @@ enum process_rendezvous_error process_rendezvous_try_wait_consumer_ready(
   return try_wait_flag(rdv, &rdv->shared->consumer_ready);
 }
 
-bool process_rendezvous_is_closed(const struct process_rendezvous* rdv) {
+[[nodiscard]] bool process_rendezvous_is_closed(
+    const struct process_rendezvous* rdv) {
   if (rdv == nullptr || rdv->shared == nullptr) {
     return false;
   }
   return atomic_load_explicit(&rdv->shared->closed, memory_order_acquire) != 0U;
 }
 
-bool process_rendezvous_producer_is_ready(
+[[nodiscard]] bool process_rendezvous_producer_is_ready(
     const struct process_rendezvous* rdv) {
   if (rdv == nullptr || rdv->shared == nullptr) {
     return false;
@@ -312,7 +317,7 @@ bool process_rendezvous_producer_is_ready(
                               memory_order_acquire) != 0U;
 }
 
-bool process_rendezvous_consumer_is_ready(
+[[nodiscard]] bool process_rendezvous_consumer_is_ready(
     const struct process_rendezvous* rdv) {
   if (rdv == nullptr || rdv->shared == nullptr) {
     return false;

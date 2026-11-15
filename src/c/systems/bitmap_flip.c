@@ -161,8 +161,10 @@ static void flip_row_standard(uint8_t* row, size_t num_bytes,
   }
 }
 
-enum bitmap_flip_error bitmap_flip_aligned(uint8_t* bitmap, size_t buf_size,
-                                           size_t width, size_t height) {
+[[nodiscard]] enum bitmap_flip_error bitmap_flip_aligned(uint8_t* bitmap,
+                                                         size_t buf_size,
+                                                         size_t width,
+                                                         size_t height) {
   if (bitmap == nullptr || buf_size == 0U) {
     return BITMAP_FLIP_ERR_NULL_POINTER;
   }
@@ -185,8 +187,10 @@ enum bitmap_flip_error bitmap_flip_aligned(uint8_t* bitmap, size_t buf_size,
   return BITMAP_FLIP_OK;
 }
 
-enum bitmap_flip_error bitmap_flip_unaligned(uint8_t* bitmap, size_t buf_size,
-                                             size_t width, size_t height) {
+[[nodiscard]] enum bitmap_flip_error bitmap_flip_unaligned(uint8_t* bitmap,
+                                                           size_t buf_size,
+                                                           size_t width,
+                                                           size_t height) {
   if (bitmap == nullptr || buf_size == 0U) {
     return BITMAP_FLIP_ERR_NULL_POINTER;
   }
@@ -207,10 +211,8 @@ enum bitmap_flip_error bitmap_flip_unaligned(uint8_t* bitmap, size_t buf_size,
   return BITMAP_FLIP_OK;
 }
 
-enum bitmap_flip_error bitmap_flip_unaligned_optimized(uint8_t* bitmap,
-                                                       size_t buf_size,
-                                                       size_t width,
-                                                       size_t height) {
+[[nodiscard]] enum bitmap_flip_error bitmap_flip_unaligned_optimized(
+    uint8_t* bitmap, size_t buf_size, size_t width, size_t height) {
   if (bitmap == nullptr || buf_size == 0U) {
     return BITMAP_FLIP_ERR_NULL_POINTER;
   }
@@ -224,9 +226,9 @@ enum bitmap_flip_error bitmap_flip_unaligned_optimized(uint8_t* bitmap,
   }
   const size_t remainder = width % BITMAP_BITS_PER_BYTE;
   const size_t half_bytes = num_bytes / 2U;
-  constexpr size_t kBytesPerWord64 = sizeof(uint64_t);
-  constexpr size_t kBytesPerQuadWord = 4U * kBytesPerWord64;
-  constexpr size_t kBytesPerDualWord = 2U * kBytesPerWord64;
+  static constexpr size_t kBytesPerWord64 = sizeof(uint64_t);
+  static constexpr size_t kBytesPerQuadWord = 4U * kBytesPerWord64;
+  static constexpr size_t kBytesPerDualWord = 2U * kBytesPerWord64;
 
   for (size_t row = 0U; row < height; ++row) {
     uint8_t* const row_ptr = bitmap + (row * num_bytes);
@@ -312,9 +314,11 @@ enum bitmap_flip_error bitmap_flip_unaligned_optimized(uint8_t* bitmap,
   return BITMAP_FLIP_OK;
 }
 
-enum bitmap_flip_error bitmap_flip_strided(uint8_t* bitmap, size_t buf_size,
-                                           size_t width, size_t height,
-                                           size_t stride_bytes) {
+[[nodiscard]] enum bitmap_flip_error bitmap_flip_strided(uint8_t* bitmap,
+                                                         size_t buf_size,
+                                                         size_t width,
+                                                         size_t height,
+                                                         size_t stride_bytes) {
   if (bitmap == nullptr || buf_size == 0U) {
     return BITMAP_FLIP_ERR_NULL_POINTER;
   }
@@ -338,10 +342,9 @@ enum bitmap_flip_error bitmap_flip_strided(uint8_t* bitmap, size_t buf_size,
   return BITMAP_FLIP_OK;
 }
 
-enum bitmap_flip_error bitmap_flip_roi(uint8_t* bitmap, size_t buf_size,
-                                       size_t frame_width, size_t frame_height,
-                                       size_t stride_bytes,
-                                       struct bitmap_roi roi) {
+[[nodiscard]] enum bitmap_flip_error bitmap_flip_roi(
+    uint8_t* bitmap, size_t buf_size, size_t frame_width, size_t frame_height,
+    size_t stride_bytes, struct bitmap_roi roi) {
   if (bitmap == nullptr || buf_size == 0U) {
     return BITMAP_FLIP_ERR_NULL_POINTER;
   }

@@ -8,7 +8,6 @@
 /// Dual-language safe: can be included by both ISO C23 and C++23 translation
 /// units.
 
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -37,6 +36,9 @@ typedef enum shm_pubsub_error : int32_t {
   SHM_PUBSUB_ERR_MEMORY_LOCK_FAILED = 13,
   SHM_PUBSUB_ERR_OS_ERROR = 14,
 } shm_pubsub_error;
+
+static_assert(sizeof(enum shm_pubsub_error) == 4U,
+              "ABI requires 32-bit shm_pubsub_error");
 
 /// @brief Human-readable description of a shm_pubsub_error.
 [[nodiscard]] const char* shm_pubsub_error_to_string(
@@ -68,6 +70,9 @@ typedef enum shm_read_mode : uint8_t {
   SHM_READ_MODE_IN_ORDER = 0U,
   SHM_READ_MODE_LATEST = 1U,
 } shm_read_mode;
+
+static_assert(sizeof(enum shm_read_mode) == 1U,
+              "ABI requires 8-bit shm_read_mode");
 
 /// @brief Cached view of a mapped channel's base address and ring geometry.
 struct shm_channel_view {

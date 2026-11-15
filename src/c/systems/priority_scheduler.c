@@ -32,7 +32,6 @@
 #include "systems/priority_scheduler.h"
 
 #include <pthread.h>
-#include <stdbool.h>
 #include <stdckdint.h>
 #include <stddef.h>
 #include <stdint.h>
