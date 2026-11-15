@@ -8,6 +8,7 @@ authors = ["Jamie LaPointe <jamielapointe@google.com>"]
 publish = false
 
 [workspace]
+resolver = "3"
 
 [lib]
 path = "src/lib.rs"
@@ -25,6 +26,7 @@ rs_telemetry_validator = { path = "../../../../../src/rust/interop/crubit/rs_tel
 
 [lints.rust]
 unsafe_code = "deny"
+unsafe_op_in_unsafe_fn = "deny"
 missing_docs = "warn"
 rust_2024_compatibility = { level = "warn", priority = -1 }
 non_ascii_idents = "deny"

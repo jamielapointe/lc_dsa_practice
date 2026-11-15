@@ -5,7 +5,8 @@
 
 #![allow(unsafe_code)]
 
-use crate::platform::{self, MAX_SHM_NAME_LENGTH};
+use crate::platform;
+use crate::platform::MAX_SHM_NAME_LENGTH;
 use crate::shm_pubsub::error::ShmPubSubError;
 use core::sync::atomic::{AtomicU8, Ordering, compiler_fence};
 use std::ffi::CString;
@@ -52,7 +53,9 @@ struct FdGuard(libc::c_int);
 impl Drop for FdGuard {
     fn drop(&mut self) {
         if self.0 >= 0 {
-            // SAFETY: self.0 is a valid, open file descriptor.
+            // SAFETY:
+            // 1. `self.0` is a valid non-negative file descriptor returned by `shm_open`.
+            // 2. `FdGuard` owns the descriptor exclusively and closes it exactly once on drop.
             unsafe {
                 libc::close(self.0);
             }
@@ -65,10 +68,12 @@ fn prefault_by_writing(base: *mut u8, bytes: usize) {
     let step = platform::page_size();
     let mut offset = 0;
     while offset < bytes {
-        // SAFETY: base is valid for bytes bytes; offset is within bounds.
+        // SAFETY:
+        // 1. `base` points to a newly mapped `MAP_SHARED` segment of `bytes` length and `offset < bytes`.
+        // 2. `AtomicU8` has 1-byte alignment and size matching `u8`.
+        // 3. The segment is not yet visible to readers (`magic` is 0), so relaxed atomic stores are race-free.
         unsafe {
-            let ptr = base.add(offset).cast::<AtomicU8>();
-            (*ptr).store(0, Ordering::Relaxed);
+            AtomicU8::from_ptr(base.add(offset)).store(0, Ordering::Relaxed);
         }
         offset += step;
     }
@@ -80,10 +85,13 @@ fn prefault_by_reading(base: *mut u8, bytes: usize) {
     let mut offset = 0;
     let mut sink: u8 = 0;
     while offset < bytes {
-        // SAFETY: base is valid for bytes bytes; offset is within bounds.
+        // SAFETY:
+        // 1. `base` points to a valid `MAP_SHARED` mapping of `bytes` length and `offset < bytes`.
+        // 2. `AtomicU8` has 1-byte alignment and size matching `u8`.
+        // 3. Using `AtomicU8::load(Ordering::Relaxed)` faults the page table entry without mutating
+        //    shared state or introducing data races against concurrent atomic writes.
         unsafe {
-            let ptr = base.add(offset).cast::<AtomicU8>();
-            sink |= (*ptr).load(Ordering::Relaxed);
+            sink |= AtomicU8::from_ptr(base.add(offset)).load(Ordering::Relaxed);
         }
         offset += step;
     }
@@ -95,7 +103,9 @@ fn prefault_by_reading(base: *mut u8, bytes: usize) {
 fn lock_pages(base: *mut u8, bytes: usize) -> bool {
     let mut delay = Duration::from_millis(1);
     for attempt in 0..=3 {
-        // SAFETY: base and bytes define a mapped memory range.
+        // SAFETY:
+        // 1. `base` is a page-aligned pointer returned by `mmap` for a valid region of `bytes` bytes.
+        // 2. `mlock` pins virtual pages in physical RAM without modifying region contents.
         let ret = unsafe { libc::mlock(base.cast(), bytes) };
         if ret == 0 {
             return true;
@@ -118,9 +128,14 @@ pub struct SharedMemoryRegion {
     size: usize,
 }
 
-// SAFETY: Mapped shared memory region is safe to send across threads.
+// SAFETY:
+// 1. `SharedMemoryRegion` owns a process-wide `MAP_SHARED` virtual memory mapping created by `mmap`.
+// 2. POSIX `mmap` regions are valid across all threads within the process and can be unmapped from any thread.
 unsafe impl Send for SharedMemoryRegion {}
-// SAFETY: Access to mapped shared memory is guarded by atomics and seqlocks.
+
+// SAFETY:
+// 1. `SharedMemoryRegion` exposes only its immutable `base` address and `size`.
+// 2. All reads and writes to the underlying memory occur via atomics and seqlocks in `layout`.
 unsafe impl Sync for SharedMemoryRegion {}
 
 impl SharedMemoryRegion {

@@ -32,7 +32,8 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 use systems::platform;
-use systems::shm_pubsub::layout::{self, ChannelHeader};
+use systems::shm_pubsub::layout;
+use systems::shm_pubsub::layout::ChannelHeader;
 use systems::shm_pubsub::{
     MAX_SLOT_COUNT, MAX_SLOT_SIZE, MIN_SLOT_COUNT, ShmChannel, ShmPubSubConfig, ShmPubSubError, ShmPublisher,
     ShmReadMode, ShmSubscriber,
@@ -773,10 +774,10 @@ fn test_tier2_reject_incompatible_and_foreign_segments() {
     let config = ShmPubSubConfig::new(4, 64);
     let channel = ShmChannel::create(shm_name, config).expect("create");
     let view = channel.view();
-    // SAFETY: view.base is aligned and large enough for ChannelHeader.
+    // SAFETY: view.base is aligned and large enough for ChannelHeader; `&raw mut` writes the field directly.
     unsafe {
         let header_ptr = view.base.cast::<ChannelHeader>();
-        (*header_ptr).layout_version = 999;
+        (&raw mut (*header_ptr).layout_version).write(999);
     }
     drop(channel);
     assert_eq!(ShmChannel::open(shm_name).err(), Some(ShmPubSubError::LayoutMismatch));
@@ -785,10 +786,10 @@ fn test_tier2_reject_incompatible_and_foreign_segments() {
     // 4. Segment with corrupted slot_count in header (3 is not a power of 2)
     let channel = ShmChannel::create(shm_name, config).expect("create");
     let view = channel.view();
-    // SAFETY: view.base is aligned and large enough for ChannelHeader.
+    // SAFETY: view.base is aligned and large enough for ChannelHeader; `&raw mut` writes the field directly.
     unsafe {
         let header_ptr = view.base.cast::<ChannelHeader>();
-        (*header_ptr).slot_count = 3;
+        (&raw mut (*header_ptr).slot_count).write(3);
     }
     drop(channel);
     assert_eq!(ShmChannel::open(shm_name).err(), Some(ShmPubSubError::LayoutMismatch));

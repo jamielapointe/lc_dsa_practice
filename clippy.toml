@@ -3,7 +3,28 @@ type-complexity-threshold = 250
 too-many-lines-threshold = 100
 too-many-arguments-threshold = 7
 enum-variant-size-threshold = 128
-doc-valid-idents = ["AntiGravity", "Pixi", "LeetCode", "Crubit", "RAII"]
+doc-valid-idents = [
+  "AntiGravity",
+  "CANFD",
+  "Crubit",
+  "EtherCAT",
+  "FreeRTOS",
+  "Halos",
+  "Holoscan",
+  "IEEE754",
+  "LeetCode",
+  "Linux",
+  "MMIO",
+  "Miri",
+  "NVIDIA",
+  "Pixi",
+  "QEMU",
+  "RAII",
+  "RISCV",
+  "RVA23",
+  "Thor",
+  "WCET",
+]
 disallowed-methods = [
   { path = "std::panic::catch_unwind", reason = "Production targets compile with panic=abort; catch_unwind is strictly prohibited by Google style" },
   { path = "core::option::Option::unwrap", reason = "Use pattern matching (if let Some / let else) or expect with invariant rationale instead of unwrap" },

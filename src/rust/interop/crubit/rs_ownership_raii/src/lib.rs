@@ -1,11 +1,11 @@
 //! Crubit interop Module 3: heap-owning Rust RAII buffer (`String`, `Vec<u8>`, `Box<T>`) with deterministic `Drop`.
 
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 static LIVE_PACKET_BUFFERS: AtomicUsize = AtomicUsize::new(0);
 
 /// Summary statistics tracked inside a heap-allocated [`TelemetryPacketBuffer`].
+#[must_use]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct PacketStats {
     /// Total bytes appended to the packet buffer.

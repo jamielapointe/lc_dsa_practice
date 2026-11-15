@@ -63,6 +63,7 @@ impl Default for ShmPubSubConfig {
 }
 
 /// Metadata of a sample received by a subscriber.
+#[must_use]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct ShmSample {
     /// Monotonic sequence number assigned by the publisher, starting at 1.

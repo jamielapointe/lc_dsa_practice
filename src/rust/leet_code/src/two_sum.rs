@@ -5,6 +5,7 @@
 use std::collections::HashMap;
 
 /// Errors that may occur during the evaluation of `two_sum`.
+#[must_use]
 #[derive(Clone, Debug, Eq, PartialEq, thiserror::Error)]
 pub enum TwoSumError {
     /// No two distinct elements sum to the specified target.
