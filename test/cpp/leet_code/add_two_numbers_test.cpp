@@ -21,7 +21,6 @@
 
 #include <gtest/gtest.h>
 
-#include <cstddef>
 #include <vector>
 
 #include "leet_code/list_node.hpp"
