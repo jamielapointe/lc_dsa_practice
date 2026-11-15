@@ -10,8 +10,12 @@ if(ENABLE_COVERAGE)
     if(NOT CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
         message(FATAL_ERROR "ENABLE_COVERAGE requires a Clang-based compiler.")
     endif()
-    # Every project target links project_options, so the flags propagate everywhere.
-    target_compile_options(project_options INTERFACE -fprofile-instr-generate -fcoverage-mapping)
-    target_link_options(project_options INTERFACE -fprofile-instr-generate)
+    # Every project target links project_options, so the flags propagate everywhere during builds
+    # without leaking into CPS / exported install interfaces.
+    target_compile_options(
+        project_options
+        INTERFACE "$<BUILD_INTERFACE:-fprofile-instr-generate;-fcoverage-mapping>"
+    )
+    target_link_options(project_options INTERFACE "$<BUILD_INTERFACE:-fprofile-instr-generate>")
     message(STATUS "LLVM source-based coverage instrumentation enabled")
 endif()
