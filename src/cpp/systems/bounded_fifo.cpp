@@ -12,7 +12,7 @@ namespace systems {
 
 // Common instantiations used by the tests; keeps the template compiling under
 // -Werror on every build.
-template class BoundedFifo<int, 16>;
-template class BoundedFifo<uint8_t, 64>;
+template class BoundedFifo<int, 16uz>;
+template class BoundedFifo<uint8_t, 64uz>;
 
 }  // namespace systems

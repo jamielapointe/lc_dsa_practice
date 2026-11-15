@@ -302,7 +302,7 @@ TEST(ProcessRendezvousTest, NoHeapAllocationAfterInit) {
   auto sub = ProcessRendezvous::open(name.str());
   ASSERT_TRUE(sub.has_value());
 
-  size_t allocations = 0;
+  size_t allocations = 0uz;
   bool ok = false;
   {
     const systems_test::AllocationScope scope;
@@ -316,7 +316,7 @@ TEST(ProcessRendezvousTest, NoHeapAllocationAfterInit) {
     allocations = scope.allocations();
   }
   EXPECT_TRUE(ok);
-  EXPECT_EQ(allocations, 0U);
+  EXPECT_EQ(allocations, 0uz);
 }
 
 // ===================================================== Tier 4: multi-thread

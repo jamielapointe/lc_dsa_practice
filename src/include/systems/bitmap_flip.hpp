@@ -154,11 +154,11 @@
 namespace systems {
 
 /// @brief Number of bits (pixels) in one byte of a 1-bpp bitmap.
-inline constexpr size_t kBitsPerByte = 8;
+inline constexpr size_t kBitsPerByte = 8uz;
 
 /// @brief Maximum number of distinct values for an 8-bit unsigned integer
 /// (2^8).
-inline constexpr size_t kMaxUint8Combinations = 256;
+inline constexpr size_t kMaxUint8Combinations = 256uz;
 
 /// @brief Error codes returned by the span-based flip operations.
 enum class [[nodiscard]] BitmapFlipError : uint8_t {
@@ -208,13 +208,13 @@ enum class [[nodiscard]] BitmapFlipError : uint8_t {
 /// `y + height <= framebuffer_height` (evaluated without overflow).
 struct BitmapRoi {
   /// Leftmost pixel column of the ROI.
-  size_t x{0};
+  size_t x{0uz};
   /// Topmost row of the ROI.
-  size_t y{0};
+  size_t y{0uz};
   /// ROI width in pixels.
-  size_t width{0};
+  size_t width{0uz};
   /// ROI height in rows.
-  size_t height{0};
+  size_t height{0uz};
 };
 /// @brief Flips a tightly packed, byte-aligned (`width % 8 == 0`) bitmap
 /// horizontally in place (Problem 0 and Follow-up 1).

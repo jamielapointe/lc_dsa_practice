@@ -115,18 +115,18 @@ inline constexpr bool kHasPhysicalShmCtl = kIsQnx;
 /// @brief Longest portable POSIX shared-memory object name, including the
 /// leading `/`. macOS allows 31 characters; 30 leaves headroom and is accepted
 /// by Linux (`NAME_MAX`) and QNX.
-inline constexpr size_t kMaxShmNameLength = 30;
+inline constexpr size_t kMaxShmNameLength = 30uz;
 
 /// @brief Cache-line size used to separate data written by different cores or
 /// processes (false-sharing avoidance) in shared layouts. Apple Silicon uses a
 /// 128-byte coherence granule (`hw.cachelinesize`).
 #if defined(__APPLE__) && defined(__aarch64__)
-inline constexpr size_t kCacheLineSize = 128;
+inline constexpr size_t kCacheLineSize = 128uz;
 #elif defined(__cpp_lib_hardware_interference_size)
 inline constexpr size_t kCacheLineSize =
     std::hardware_destructive_interference_size;
 #else
-inline constexpr size_t kCacheLineSize = 64;
+inline constexpr size_t kCacheLineSize = 64uz;
 #endif
 
 static_assert(kCacheLineSize >= alignof(std::max_align_t),

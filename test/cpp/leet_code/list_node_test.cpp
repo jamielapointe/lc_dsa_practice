@@ -139,7 +139,7 @@ TEST(LinkedListHelpersTest, EmptySpanCreatesNullptr) {
 }
 
 TEST(LinkedListHelpersTest, NonOwningSpanCompatibility) {
-  const std::array<int, 4> array_input{7, 8, 9, 10};
+  const std::array<int, 4uz> array_input{7, 8, 9, 10};
   leet_code::ListNode* head = leet_code::create_linked_list(array_input);
   ASSERT_NE(head, nullptr);
   EXPECT_EQ(leet_code::linked_list_to_vector(head),
@@ -288,7 +288,7 @@ TEST(ScopedLinkedListTest, SelfMoveAssignmentSafety) {
 
 TEST(LinkedListStressTest, DeepListIterativeDestructionAvoidsStackOverflow) {
   // Test with 50,000 nodes. Recursive destruction would overflow stack.
-  constexpr size_t kLargeSize = 50'000;
+  constexpr size_t kLargeSize = 50'000uz;
   std::vector<int> large_vec(kLargeSize, 1);
 
   {
@@ -306,7 +306,7 @@ TEST(LinkedListStressTest, ReallocationAndChurnLoopUnderASan) {
     leet_code::ScopedLinkedList list_b;
     list_b = std::move(list_a);
     list_b.reset(leet_code::create_linked_list({iter + 3, iter + 4}));
-    EXPECT_EQ(list_b.to_vector().size(), 2U);
+    EXPECT_EQ(list_b.to_vector().size(), 2uz);
   }
 }
 

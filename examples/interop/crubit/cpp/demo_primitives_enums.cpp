@@ -1,4 +1,4 @@
-#include <iostream>
+#include <print>
 
 #include "crubit/rs_primitives_enums.h"
 #include "interop/crubit/primitives_and_enums.hpp"
@@ -24,8 +24,9 @@ auto main() -> int {
     return 1;
   }
 
-  std::cout << "[CRUBIT_CPP_DEMO] module=primitives_enums status=ok dist_m="
-            << dist_m << " next_pos_m=" << integrated.position_m
-            << " target_alt_m=" << target_alt << '\n';
+  std::println(
+      "[CRUBIT_CPP_DEMO] module=primitives_enums status=ok dist_m={} "
+      "next_pos_m={} target_alt_m={}",
+      dist_m, integrated.position_m, target_alt);
   return 0;
 }

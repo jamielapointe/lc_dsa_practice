@@ -23,6 +23,7 @@ inline constexpr uint32_t kCameraFrameHeight = 64;
 /// 16 KiB).
 inline constexpr size_t kCameraPixelCount =
     static_cast<size_t>(kCameraFrameWidth) * kCameraFrameHeight;
+static_assert(kCameraPixelCount == 4096uz);
 
 /// @brief Fixed-size camera sample transmitted across a `systems::ShmChannel`
 /// slot.

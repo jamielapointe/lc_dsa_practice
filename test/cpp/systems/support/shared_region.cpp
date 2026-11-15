@@ -14,7 +14,7 @@
 namespace systems_test::detail {
 
 AnonymousSharedMapping::AnonymousSharedMapping(size_t bytes) noexcept
-    : bytes_{bytes == 0 ? 1 : bytes} {
+    : bytes_{bytes == 0uz ? 1uz : bytes} {
   void* const base = ::mmap(nullptr, bytes_, PROT_READ | PROT_WRITE,
                             MAP_SHARED | MAP_ANON, -1, 0);
   // NOLINTNEXTLINE(*-pro-type-cstyle-cast,performance-no-int-to-ptr): POSIX.

@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include <chrono>
+#include <cstddef>
 
 namespace {
 
@@ -24,7 +25,7 @@ TEST(DesignCircularQueueTest, Example1) {
 }
 
 TEST(DesignCircularQueueModernTest, Example1) {
-  leet_code::CircularQueue queue(3);
+  leet_code::CircularQueue queue(3uz);
   EXPECT_EQ(queue.en_queue(1), true);
   EXPECT_EQ(queue.en_queue(2), true);
   EXPECT_EQ(queue.en_queue(3), true);
@@ -41,7 +42,7 @@ TEST(DesignCircularQueueModernTest, Example1) {
 // -----------------------------------------------------------------------------
 
 TEST(DesignCircularQueueTest, CapacityOne) {
-  leet_code::CircularQueue queue(1);
+  leet_code::CircularQueue queue(1uz);
   EXPECT_EQ(queue.is_empty(), true);
   EXPECT_EQ(queue.is_full(), false);
   EXPECT_EQ(queue.en_queue(10), true);
@@ -57,7 +58,7 @@ TEST(DesignCircularQueueTest, CapacityOne) {
 }
 
 TEST(DesignCircularQueueTest, EmptyOperations) {
-  leet_code::CircularQueue queue(5);
+  leet_code::CircularQueue queue(5uz);
   EXPECT_EQ(queue.de_queue(), false);
   EXPECT_EQ(queue.front(), -1);
   EXPECT_EQ(queue.rear(), -1);
@@ -68,7 +69,7 @@ TEST(DesignCircularQueueTest, EmptyOperations) {
 // -----------------------------------------------------------------------------
 
 TEST(DesignCircularQueueTest, WrapAroundMemory) {
-  leet_code::CircularQueue queue(3);
+  leet_code::CircularQueue queue(3uz);
   EXPECT_EQ(queue.en_queue(1), true);
   EXPECT_EQ(queue.en_queue(2), true);
   EXPECT_EQ(queue.en_queue(3), true);
@@ -86,7 +87,7 @@ TEST(DesignCircularQueueTest, WrapAroundMemory) {
 
 TEST(DesignCircularQueueTest, StressTest) {
   const int k = 1000;
-  leet_code::CircularQueue queue(k);
+  leet_code::CircularQueue queue(static_cast<size_t>(k));
 
   auto start = std::chrono::steady_clock::now();
 

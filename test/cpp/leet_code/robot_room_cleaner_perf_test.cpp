@@ -1,7 +1,9 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cstddef>
+#include <ranges>
 #include <utility>
 #include <vector>
 
@@ -14,38 +16,34 @@ using leet_code::CellValue;
 using leet_code::DefaultRobot;
 using leet_code::Point;
 
-auto make_grid(const std::vector<std::vector<int>>& int_grid)
+[[nodiscard]] auto make_grid(const std::vector<std::vector<int>>& int_grid)
     -> DefaultRobot::Grid {
-  DefaultRobot::Grid grid;
-  grid.reserve(int_grid.size());
-  for (const auto& row : int_grid) {
-    std::vector<CellValue> grid_row;
-    grid_row.reserve(row.size());
-    for (const auto& val : row) {
-      grid_row.push_back(static_cast<CellValue>(val));
-    }
-    grid.push_back(grid_row);
-  }
-  return grid;
+  return int_grid | std::views::transform([](const std::vector<int>& row) {
+           return row | std::views::transform([](int val) {
+                    return static_cast<CellValue>(val);
+                  }) |
+                  std::ranges::to<std::vector<CellValue>>();
+         }) |
+         std::ranges::to<DefaultRobot::Grid>();
 }
 
-bool all_cleaned(const std::vector<std::vector<int>>& original_room,
-                 const DefaultRobot& robot) {
+[[nodiscard]] auto all_cleaned(
+    const std::vector<std::vector<int>>& original_room,
+    const DefaultRobot& robot) -> bool {
   const auto& robot_grid = robot.grid();
-  for (size_t i = 0; i < original_room.size(); ++i) {
-    for (size_t j = 0; j < original_room[0].size(); ++j) {
-      if (original_room[i][j] == 1 &&
-          robot_grid[i][j] != CellValue::OpenClean) {
-        return false;
-      }
-    }
-  }
-  return true;
+  return std::ranges::all_of(
+      std::views::iota(0uz, original_room.size()), [&](size_t i) {
+        return std::ranges::all_of(
+            std::views::iota(0uz, original_room[0uz].size()), [&](size_t j) {
+              return original_room[i][j] != 1 ||
+                     robot_grid[i][j] == CellValue::OpenClean;
+            });
+      });
 }
 
 // Tier 4: Performance & Stress Workloads
 TEST(RobotRoomCleanerPerfTest, LargeGrid) {
-  std::vector<std::vector<int>> room(100, std::vector<int>(200, 1));
+  std::vector<std::vector<int>> room(100uz, std::vector<int>(200uz, 1));
   auto grid = make_grid(room);
   DefaultRobot robot(std::move(grid), Point{.row = 50, .col = 100});
 

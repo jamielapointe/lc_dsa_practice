@@ -80,22 +80,22 @@ class CircularQueue {
 
  private:
   std::vector<int> queue_;
-  size_t capacity_{};
-  size_t head_{0};
-  size_t tail_{0};
-  size_t size_{0};
+  size_t capacity_{0uz};
+  size_t head_{0uz};
+  size_t tail_{0uz};
+  size_t size_{0uz};
 };
 
 /// LeetCode Compatibility Wrapper
 class MyCircularQueue {
  public:
   explicit MyCircularQueue(int k);
-  bool enQueue(int value);
-  bool deQueue();
-  int Front();
-  int Rear();
-  bool isEmpty();
-  bool isFull();
+  [[nodiscard]] auto enQueue(int value) -> bool;
+  [[nodiscard]] auto deQueue() -> bool;
+  [[nodiscard]] auto Front() -> int;
+  [[nodiscard]] auto Rear() -> int;
+  [[nodiscard]] auto isEmpty() -> bool;
+  [[nodiscard]] auto isFull() -> bool;
 
  private:
   CircularQueue queue_;

@@ -51,7 +51,8 @@ namespace leet_code {
 /// @brief LeetCode Compatibility Wrapper
 class Solution {
  public:
-  auto maxSlidingWindow(std::vector<int>& nums, int k) -> std::vector<int>;
+  [[nodiscard]] auto maxSlidingWindow(std::vector<int>& nums, int k)
+      -> std::vector<int>;
 };
 
 }  // namespace leet_code

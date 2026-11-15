@@ -56,7 +56,7 @@ static_assert(std::atomic<uint64_t>::is_always_lock_free);
 static_assert(std::atomic<uint32_t>::is_always_lock_free);
 static_assert(std::is_trivially_destructible_v<RendezvousHeader>);
 static_assert(std::is_standard_layout_v<RendezvousHeader>);
-static_assert(sizeof(RendezvousHeader) % kCacheLine == 0);
+static_assert(sizeof(RendezvousHeader) % kCacheLine == 0uz);
 
 constexpr size_t kHeaderBytes = sizeof(RendezvousHeader);
 
@@ -68,8 +68,8 @@ constexpr size_t kHeaderBytes = sizeof(RendezvousHeader);
 /// @brief PRV-REQ-002: `/name`, single leading slash, no NULs, within length.
 [[nodiscard]] auto validate_name(std::string_view name) noexcept
     -> std::expected<void, ProcessRendezvousError> {
-  if (name.size() < 2 || name.front() != '/' ||
-      name.find('/', 1) != std::string_view::npos || name.contains('\0')) {
+  if (name.size() < 2uz || name.front() != '/' ||
+      name.find('/', 1uz) != std::string_view::npos || name.contains('\0')) {
     return std::unexpected(ProcessRendezvousError::kInvalidArgument);
   }
   if (name.size() > platform::kMaxShmNameLength) {

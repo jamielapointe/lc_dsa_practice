@@ -27,8 +27,8 @@ namespace leet_code {
 
 class Solution {
  public:
-  auto static shortestPathBinaryMatrix(std::span<const std::vector<int>> grid)
-      -> int;
+  [[nodiscard]] static auto shortestPathBinaryMatrix(
+      std::span<const std::vector<int>> grid) -> int;
 };
 
 }  // namespace leet_code

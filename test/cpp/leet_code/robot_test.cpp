@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+#include <cstddef>
+#include <ranges>
 #include <utility>
 #include <vector>
 
@@ -12,19 +14,15 @@ using leet_code::DefaultRobot;
 using leet_code::Direction;
 using leet_code::Point;
 
-auto make_grid(const std::vector<std::vector<int>>& int_grid)
+[[nodiscard]] auto make_grid(const std::vector<std::vector<int>>& int_grid)
     -> DefaultRobot::Grid {
-  DefaultRobot::Grid grid;
-  grid.reserve(int_grid.size());
-  for (const auto& row : int_grid) {
-    std::vector<CellValue> grid_row;
-    grid_row.reserve(row.size());
-    for (const auto& val : row) {
-      grid_row.push_back(static_cast<CellValue>(val));
-    }
-    grid.push_back(grid_row);
-  }
-  return grid;
+  return int_grid | std::views::transform([](const std::vector<int>& row) {
+           return row | std::views::transform([](int val) {
+                    return static_cast<CellValue>(val);
+                  }) |
+                  std::ranges::to<std::vector<CellValue>>();
+         }) |
+         std::ranges::to<DefaultRobot::Grid>();
 }
 
 // Tier 1: Canonical Feature Coverage - Initialization
@@ -45,7 +43,7 @@ TEST(DefaultRobotTest, InitializationTakesOwnership) {
   EXPECT_NO_THROW(robot.clean());
 
   // Verify it actually cleans
-  EXPECT_EQ(robot.grid()[1][0], CellValue::OpenClean);
+  EXPECT_EQ(robot.grid()[1uz][0uz], CellValue::OpenClean);
 }
 
 // Tier 1: Canonical Feature Coverage - Move Forward (Blocked)

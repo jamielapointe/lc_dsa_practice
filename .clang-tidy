@@ -33,9 +33,11 @@ Checks: "-*,
   bugprone-string-constructor,
   bugprone-stringview-nullptr,
   bugprone-suspicious-memset-usage,
+  bugprone-unchecked-optional-access,
   bugprone-undefined-memory-manipulation,
   bugprone-undelegated-constructor,
   bugprone-unused-raii,
+  bugprone-unused-return-value,
   bugprone-use-after-move,
   clang-diagnostic-deprecated-declarations,
   clang-diagnostic-deprecated-register,
@@ -62,7 +64,6 @@ Checks: "-*,
   clang-diagnostic-user-defined-warnings,
   cppcoreguidelines-avoid-capturing-lambda-coroutines,
   cppcoreguidelines-avoid-const-or-ref-data-members,
-  cppcoreguidelines-avoid-do-while,
   cppcoreguidelines-avoid-goto,
   cppcoreguidelines-avoid-non-const-global-variables,
   cppcoreguidelines-avoid-reference-coroutine-parameters,
@@ -104,16 +105,21 @@ Checks: "-*,
   google-runtime-memset,
   google-runtime-operator,
   google-upgrade-googletest-case,
-  misc-coroutine-hostile-rail,
+  misc-confusable-identifiers,
+  misc-coroutine-hostile-raii,
   misc-definitions-in-headers,
   misc-explicit-constructor,
+  misc-header-include-cycle,
   misc-include-cleaner,
   misc-non-private-member-variables-in-classes,
+  misc-predictable-rand,
+  misc-redundant-expression,
   misc-static-assert,
   misc-unconventional-assign-operator,
   misc-uniqueptr-reset-release,
   misc-unused-alias-decls,
   misc-unused-using-decls,
+  misc-use-internal-linkage,
   modernize-avoid-c-arrays,
   modernize-avoid-c-style-cast,
   modernize-avoid-setjmp-longjmp,
@@ -144,7 +150,6 @@ Checks: "-*,
   modernize-use-emplace,
   modernize-use-equals-default,
   modernize-use-equals-delete,
-  modernize-use-integer-sign-comparison,
   modernize-use-nodiscard,
   modernize-use-noexcept,
   modernize-use-nullptr,
@@ -240,11 +245,13 @@ Checks: "-*,
   readability-use-std-min-max"
 CheckOptions:
   - key: 'bugprone-assert-side-effect.AssertMacros'
-    value: assert,DCHECK
+    value: 'assert,ABSL_CHECK,ABSL_DCHECK'
+  - key: 'bugprone-unused-return-value.AllowCastToVoid'
+    value: 'true'
   - key: 'bugprone-string-constructor.WarnOnLargeLength'
-    value: 0
+    value: '0'
   - key: 'bugprone-dangling-handle.HandleClasses'
-    value: '::std::string_view;::std::experimental::string_view;::absl::string_view;::absl::Span;::absl::FunctionRef;::llvm::StringRef;::llvm::ArrayRef;::absl::BitGenRef;::mlir::BlockRange;::mlir::OperandRange;::mlir::RegionRange;::mlir::ResultRange;::mlir::SuccessorRange;::mlir::TypeRange;::mlir::ValueRange'
+    value: '::std::string_view;::std::span;::std::experimental::string_view;::absl::string_view;::absl::Span;::absl::FunctionRef;::llvm::StringRef;::llvm::ArrayRef;::absl::BitGenRef;::mlir::BlockRange;::mlir::OperandRange;::mlir::RegionRange;::mlir::ResultRange;::mlir::SuccessorRange;::mlir::TypeRange;::mlir::ValueRange'
   - key: 'google-readability-function-size.ParameterThreshold'
     value: 100
   - key: 'cppcoreguidelines-init-variables.IncludeStyle'

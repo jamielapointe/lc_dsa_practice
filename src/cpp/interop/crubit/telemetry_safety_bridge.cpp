@@ -23,9 +23,9 @@ auto crc32_update_byte(uint32_t crc, uint8_t byte) noexcept -> uint32_t {
 }
 
 template <size_t ByteCount>
-void append_le_bytes(uint64_t value, std::array<uint8_t, 28>& out,
+void append_le_bytes(uint64_t value, std::array<uint8_t, 28uz>& out,
                      size_t offset) noexcept {
-  for (size_t idx = 0; idx < ByteCount; ++idx) {
+  for (size_t idx = 0uz; idx < ByteCount; ++idx) {
     out.at(offset + idx) = static_cast<uint8_t>((value >> (8U * idx)) & 0xFFU);
   }
 }
@@ -35,11 +35,11 @@ void append_le_bytes(uint64_t value, std::array<uint8_t, 28>& out,
 auto compute_frame_crc32(uint32_t sequence_id, uint64_t timestamp_ns,
                          double torque_cmd_nm, double velocity_rad_s) noexcept
     -> uint32_t {
-  std::array<uint8_t, 28> payload{};
-  append_le_bytes<4>(static_cast<uint64_t>(sequence_id), payload, 0);
-  append_le_bytes<8>(timestamp_ns, payload, 4);
-  append_le_bytes<8>(std::bit_cast<uint64_t>(torque_cmd_nm), payload, 12);
-  append_le_bytes<8>(std::bit_cast<uint64_t>(velocity_rad_s), payload, 20);
+  std::array<uint8_t, 28uz> payload{};
+  append_le_bytes<4uz>(static_cast<uint64_t>(sequence_id), payload, 0uz);
+  append_le_bytes<8uz>(timestamp_ns, payload, 4uz);
+  append_le_bytes<8uz>(std::bit_cast<uint64_t>(torque_cmd_nm), payload, 12uz);
+  append_le_bytes<8uz>(std::bit_cast<uint64_t>(velocity_rad_s), payload, 20uz);
 
   uint32_t crc = 0xFFFFFFFFU;
   for (const uint8_t byte : payload) {

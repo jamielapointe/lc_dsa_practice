@@ -281,12 +281,12 @@ class SharedMemoryRegion {
   auto operator=(const SharedMemoryRegion&) -> SharedMemoryRegion& = delete;
   SharedMemoryRegion(SharedMemoryRegion&& other) noexcept
       : base_{std::exchange(other.base_, nullptr)},
-        size_{std::exchange(other.size_, 0)} {}
+        size_{std::exchange(other.size_, 0uz)} {}
   auto operator=(SharedMemoryRegion&& other) noexcept -> SharedMemoryRegion& {
     if (this != &other) {
       SharedMemoryRegion discarded{std::move(*this)};
       base_ = std::exchange(other.base_, nullptr);
-      size_ = std::exchange(other.size_, 0);
+      size_ = std::exchange(other.size_, 0uz);
     }
     return *this;
   }
@@ -326,7 +326,7 @@ class SharedMemoryRegion {
       : base_{base}, size_{size} {}
 
   std::byte* base_{nullptr};
-  size_t size_{0};
+  size_t size_{0uz};
 };
 
 }  // namespace detail

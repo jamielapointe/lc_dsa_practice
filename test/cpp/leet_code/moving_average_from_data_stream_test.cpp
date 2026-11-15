@@ -28,7 +28,7 @@ TEST(MovingAverageTest, StressTest) {
   leet_code::MovingAverage ma(1000);
   auto start = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < 10000; ++i) {
-    ma.next(i);
+    static_cast<void>(ma.next(i));
   }
   auto end = std::chrono::high_resolution_clock::now();
   auto duration =

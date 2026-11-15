@@ -8,14 +8,15 @@ namespace leet_code {
 // Idiomatic Modern C++23 Implementation (TDD Stub)
 // -----------------------------------------------------------------------------
 
-CircularQueue::CircularQueue(size_t k) : queue_(k, 0), capacity_(k) {}
+CircularQueue::CircularQueue(size_t k) : queue_(k, 0), capacity_(k) {
+}
 
 auto CircularQueue::en_queue(int value) -> bool {
   if (is_full()) {
     return false;
   }
   queue_[tail_] = value;
-  tail_ = (tail_ + 1) % capacity_;
+  tail_ = (tail_ + 1uz) % capacity_;
   ++size_;
   return true;
 }
@@ -24,7 +25,7 @@ auto CircularQueue::de_queue() -> bool {
   if (is_empty()) {
     return false;
   }
-  head_ = (head_ + 1) % capacity_;
+  head_ = (head_ + 1uz) % capacity_;
   --size_;
   return true;
 }
@@ -40,30 +41,47 @@ auto CircularQueue::rear() const -> int {
   if (is_empty()) {
     return -1;
   }
-  size_t rear_index = tail_ == 0 ? capacity_ - 1 : tail_ - 1;
+  size_t rear_index = tail_ == 0uz ? capacity_ - 1uz : tail_ - 1uz;
   return queue_[rear_index];
 }
 
-auto CircularQueue::is_empty() const -> bool { return size_ == 0; }
+auto CircularQueue::is_empty() const -> bool {
+  return size_ == 0uz;
+}
 
-auto CircularQueue::is_full() const -> bool { return size_ == capacity_; }
+auto CircularQueue::is_full() const -> bool {
+  return size_ == capacity_;
+}
 
 // -----------------------------------------------------------------------------
 // LeetCode Compatibility Wrapper
 // -----------------------------------------------------------------------------
 
-MyCircularQueue::MyCircularQueue(int k) : queue_(static_cast<size_t>(k)) {}
+MyCircularQueue::MyCircularQueue(int k) : queue_(static_cast<size_t>(k)) {
+}
 
-bool MyCircularQueue::enQueue(int value) { return queue_.en_queue(value); }
+auto MyCircularQueue::enQueue(int value) -> bool {
+  return queue_.en_queue(value);
+}
 
-bool MyCircularQueue::deQueue() { return queue_.de_queue(); }
+auto MyCircularQueue::deQueue() -> bool {
+  return queue_.de_queue();
+}
 
-int MyCircularQueue::Front() { return queue_.front(); }
+auto MyCircularQueue::Front() -> int {
+  return queue_.front();
+}
 
-int MyCircularQueue::Rear() { return queue_.rear(); }
+auto MyCircularQueue::Rear() -> int {
+  return queue_.rear();
+}
 
-bool MyCircularQueue::isEmpty() { return queue_.is_empty(); }
+auto MyCircularQueue::isEmpty() -> bool {
+  return queue_.is_empty();
+}
 
-bool MyCircularQueue::isFull() { return queue_.is_full(); }
+auto MyCircularQueue::isFull() -> bool {
+  return queue_.is_full();
+}
 
 }  // namespace leet_code

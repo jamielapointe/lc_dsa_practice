@@ -53,7 +53,7 @@ namespace leet_code {
 
 class Solution {
  public:
-  int numIslands(std::vector<std::vector<char>>& grid);
+  [[nodiscard]] auto numIslands(std::vector<std::vector<char>>& grid) -> int;
 };
 
 }  // namespace leet_code

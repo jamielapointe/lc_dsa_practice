@@ -15,9 +15,9 @@ auto HitCounter::hit(int timestamp) -> void {
   if (buckets_[tail_].first == timestamp) {
     ++buckets_[tail_].second;
   } else {
-    buckets_[tail_ = (tail_ + 1) % kBucketSize] = {timestamp, 1};
+    buckets_[tail_ = (tail_ + 1uz) % kBucketSize] = {timestamp, 1};
     if (tail_ == head_) [[unlikely]] {
-      head_ = (head_ + 1) % kBucketSize;
+      head_ = (head_ + 1uz) % kBucketSize;
     }
   }
 }
@@ -41,13 +41,13 @@ auto HitCounter::getHits(int timestamp) -> int {
       static_cast<int>(kBucketSize)) {
     hits += buckets_[current_head].second;
   }
-  current_head = (current_head + 1) % kBucketSize;
+  current_head = (current_head + 1uz) % kBucketSize;
   while (current_head != head_) {
     if ((timestamp - buckets_[current_head].first) <
         static_cast<int>(kBucketSize)) {
       hits += buckets_[current_head].second;
     }
-    current_head = (current_head + 1) % kBucketSize;
+    current_head = (current_head + 1uz) % kBucketSize;
   }
   return hits;
 }

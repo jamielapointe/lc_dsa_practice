@@ -1,5 +1,5 @@
 #include <array>
-#include <iostream>
+#include <print>
 #include <span>
 
 #include "crubit/rs_references_views.h"
@@ -28,8 +28,9 @@ auto main() -> int {
     return 1;
   }
 
-  std::cout << "[CRUBIT_CPP_DEMO] module=references_views status=ok peak="
-            << dominant.peak_ref() << " rms_before=" << rms_before
-            << " tag_id=" << tag_id << " cursor_idx=" << next_idx << '\n';
+  std::println(
+      "[CRUBIT_CPP_DEMO] module=references_views status=ok peak={} "
+      "rms_before={} tag_id={} cursor_idx={}",
+      dominant.peak_ref(), rms_before, tag_id, next_idx);
   return 0;
 }

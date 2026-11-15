@@ -287,9 +287,13 @@ bool shm_pubsub_posix_process_alive(int64_t pid) {
   return true;
 }
 
-int64_t shm_pubsub_posix_current_pid() { return (int64_t)getpid(); }
+int64_t shm_pubsub_posix_current_pid() {
+  return (int64_t)getpid();
+}
 
-void shm_pubsub_posix_yield() { (void)sched_yield(); }
+void shm_pubsub_posix_yield() {
+  (void)sched_yield();
+}
 
 void shm_pubsub_posix_sleep_ns(int64_t sleep_ns) {
   if (sleep_ns <= 0) {

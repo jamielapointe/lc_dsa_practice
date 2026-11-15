@@ -47,10 +47,10 @@ TEST(NumberOfIslandsTest, EmptyGridRow) {
 // Tier 4: Stress Workloads & OJ Simulation
 TEST(NumberOfIslandsTest, MaxConstraintsGrid) {
   // 300x300 grid filled with '1's and '0's in checkerboard
-  std::vector<std::vector<char>> grid(300, std::vector<char>(300, '0'));
-  for (size_t i = 0; i < 300; ++i) {
-    for (size_t j = 0; j < 300; ++j) {
-      if ((i + j) % 2 == 0) {
+  std::vector<std::vector<char>> grid(300uz, std::vector<char>(300uz, '0'));
+  for (size_t i = 0uz; i < 300uz; ++i) {
+    for (size_t j = 0uz; j < 300uz; ++j) {
+      if ((i + j) % 2uz == 0uz) {
         grid[i][j] = '1';
       }
     }

@@ -23,7 +23,7 @@ namespace {
 constexpr uint64_t kDeterministicBenchmarkSeed = 0x5EED'B17A'F119'2026ULL;
 
 [[nodiscard]] constexpr auto bytes_per_row(size_t width) noexcept -> size_t {
-  return (width / 8U) + ((width % 8U != 0U) ? 1U : 0U);
+  return (width / 8uz) + ((width % 8uz != 0uz) ? 1uz : 0uz);
 }
 
 [[nodiscard]] auto make_test_buffer(size_t byte_count) -> std::vector<uint8_t> {
@@ -109,9 +109,10 @@ REGISTER_FLIP_BENCHMARK(10800, 7200);
 
 #if defined(__APPLE__)
 auto sysctl_string(const char* name) -> std::string {
-  std::array<char, 256> buffer{};
+  std::array<char, 256uz> buffer{};
   size_t size = buffer.size();
-  if (sysctlbyname(name, buffer.data(), &size, nullptr, 0) == 0 && size > 0U) {
+  if (sysctlbyname(name, buffer.data(), &size, nullptr, 0uz) == 0 &&
+      size > 0uz) {
     return std::string{buffer.data()};
   }
   return {};
@@ -120,7 +121,7 @@ auto sysctl_string(const char* name) -> std::string {
 auto sysctl_int64(const char* name) -> int64_t {
   int64_t value = 0;
   size_t size = sizeof(value);
-  if (sysctlbyname(name, &value, &size, nullptr, 0) == 0) {
+  if (sysctlbyname(name, &value, &size, nullptr, 0uz) == 0) {
     return value;
   }
   return 0;

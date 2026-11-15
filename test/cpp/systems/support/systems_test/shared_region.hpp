@@ -35,7 +35,7 @@ class AnonymousSharedMapping {
       -> AnonymousSharedMapping& = delete;
   AnonymousSharedMapping(AnonymousSharedMapping&& other) noexcept
       : base_{std::exchange(other.base_, nullptr)},
-        bytes_{std::exchange(other.bytes_, 0)} {}
+        bytes_{std::exchange(other.bytes_, 0uz)} {}
   auto operator=(AnonymousSharedMapping&&) -> AnonymousSharedMapping& = delete;
 
   [[nodiscard]] auto data() const noexcept -> void* { return base_; }
@@ -43,7 +43,7 @@ class AnonymousSharedMapping {
 
  private:
   void* base_{nullptr};
-  size_t bytes_{0};
+  size_t bytes_{0uz};
 };
 
 /// True unless `T` is (an array of) a `std::atomic` that is not always

@@ -2,6 +2,9 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace leet_code {
@@ -81,7 +84,9 @@ struct Point {
     return *this;
   }
 
-  friend constexpr auto operator+(Point cell, Direction dir) noexcept -> Point {
+  [[nodiscard]] friend constexpr auto operator+(Point cell,
+                                                Direction dir) noexcept
+      -> Point {
     cell += dir;
     return cell;
   }
@@ -90,8 +95,9 @@ struct Point {
 };
 
 struct PointHash {
-  auto operator()(const Point& cell) const -> size_t {
-    return std::hash<int>()(cell.row) ^ (std::hash<int>()(cell.col) << 1U);
+  [[nodiscard]] constexpr auto operator()(const Point& cell) const noexcept
+      -> size_t {
+    return std::hash<int>()(cell.row) ^ (std::hash<int>()(cell.col) << 1uz);
   }
 };
 
@@ -151,25 +157,24 @@ class DefaultRobot final : public Robot {
   int height_;  // n
   Direction direction_{Direction::Up};
 
-  [[nodiscard]] auto current_cell_value() -> CellValue& {
-    return cell_value(current_cell_);
-  }
-
-  [[nodiscard]] auto current_cell_value() const -> CellValue {
-    return cell_value(current_cell_);
-  }
-
-  [[nodiscard]] auto cell_value(Point cell) -> CellValue& {
+  template <typename Self>
+  [[nodiscard]] auto cell_value(this Self&& self, Point cell) -> auto&& {
     auto const [row, col] = cell;
-    return grid_[static_cast<size_t>(row)][static_cast<size_t>(col)];
-  }
-
-  [[nodiscard]] auto cell_value(Point cell) const -> CellValue {
-    auto const [row, col] = cell;
-    if (row < 0 || col < 0 || row >= height_ || col >= width_) {
-      return CellValue::Wall;
+    if constexpr (std::is_const_v<std::remove_reference_t<Self>>) {
+      static constexpr CellValue kWall = CellValue::Wall;
+      if (row < 0 || col < 0 || row >= self.height_ || col >= self.width_) {
+        return std::forward_like<Self>(kWall);
+      }
     }
-    return grid_[static_cast<size_t>(row)][static_cast<size_t>(col)];
+    return std::forward_like<Self>(
+        std::forward<Self>(self)
+            .grid_[static_cast<size_t>(row)][static_cast<size_t>(col)]);
+  }
+
+  template <typename Self>
+  [[nodiscard]] auto current_cell_value(this Self&& self) -> auto&& {
+    auto const current = self.current_cell_;
+    return std::forward<Self>(self).cell_value(current);
   }
 };
 

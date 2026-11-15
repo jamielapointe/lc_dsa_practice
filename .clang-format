@@ -1,4 +1,14 @@
 ---
+# .clang-format - Google C++ Style Guide (November 2026 / LLVM Clang 23.1.5)
+# Enforces left pointer/reference alignment (int* p, const Foo& x) and
+# modern C++23 formatting defaults.
 BasedOnStyle: Google
 Language: Cpp
+Standard: Latest
+ColumnLimit: 80
+DerivePointerAlignment: false
+PointerAlignment: Left
+AllowShortFunctionsOnASingleLine: InlineOnly
+IncludeBlocks: Regroup
+SortIncludes: CaseSensitive
 ...

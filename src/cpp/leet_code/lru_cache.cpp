@@ -10,7 +10,7 @@ LruCache::LruCache(int capacity) : capacity_(static_cast<size_t>(capacity)) {
   if (capacity <= 0) {
     throw std::invalid_argument("Capacity must be positive");
   }
-  cache_.reserve(capacity_ + 1U);
+  cache_.reserve(capacity_ + 1uz);
 }
 
 auto LruCache::get(int key) -> int {

@@ -17,12 +17,16 @@ auto main() -> int {
   const auto ok_exp = interop::crubit::to_expected(
       interop::crubit::calibrate_pd_controller(10.0, 0.7));
   INTEROP_EXPECT_TRUE(ctx, ok_exp.has_value());
-  INTEROP_EXPECT_TRUE(ctx, ok_exp->kp > 0.0);
+  if (ok_exp.has_value()) {
+    INTEROP_EXPECT_TRUE(ctx, ok_exp->kp > 0.0);
+  }
   const auto bad_exp = interop::crubit::to_expected(
       interop::crubit::calibrate_pd_controller(-1.0, 0.7));
   INTEROP_EXPECT_TRUE(ctx, !bad_exp.has_value());
-  INTEROP_EXPECT_EQ(ctx, bad_exp.error(),
-                    interop::crubit::CalibrationCode::kOutOfRange);
+  if (!bad_exp.has_value()) {
+    INTEROP_EXPECT_EQ(ctx, bad_exp.error(),
+                      interop::crubit::CalibrationCode::kOutOfRange);
+  }
 
   // Test Rust PidScheduleId traits: Default, PartialEq, Display (operator<<).
   const rs_traits_errors::PidScheduleId default_id;
@@ -34,17 +38,21 @@ auto main() -> int {
   INTEROP_EXPECT_TRUE(ctx, parsed_ok.has_value());
   const rs_traits_errors::PidScheduleId expected_id{.controller_id = 42,
                                                     .profile_slot = 3};
-  INTEROP_EXPECT_TRUE(ctx, parsed_ok.value() == expected_id);
+  if (parsed_ok.has_value()) {
+    INTEROP_EXPECT_TRUE(ctx, *parsed_ok == expected_id);
 
-  std::ostringstream oss;
-  oss << parsed_ok.value();
-  INTEROP_EXPECT_EQ(ctx, oss.str(), std::string{"42:3"});
+    std::ostringstream oss;
+    oss << *parsed_ok;
+    INTEROP_EXPECT_EQ(ctx, oss.str(), std::string{"42:3"});
+  }
 
   // Test std::optional<double> from lookup_nominal_gain.
   const std::optional<double> valid_gain =
       rs_traits_errors::lookup_nominal_gain(3);
   INTEROP_EXPECT_TRUE(ctx, valid_gain.has_value());
-  INTEROP_EXPECT_TRUE(ctx, *valid_gain > 0.0);
+  if (valid_gain.has_value()) {
+    INTEROP_EXPECT_TRUE(ctx, *valid_gain > 0.0);
+  }
 
   const std::optional<double> invalid_gain =
       rs_traits_errors::lookup_nominal_gain(99);

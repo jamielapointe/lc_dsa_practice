@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cstddef>
 #include <vector>
 
 namespace {
@@ -54,7 +55,7 @@ TEST(ShortestPathInBinaryMatrixTest, ASanCleanliness) {
 // Tier 4: Stress Workloads & OJ Simulation
 TEST(ShortestPathInBinaryMatrixTest, MaximumConstraint) {
   // 100x100 matrix of 0s
-  std::vector<std::vector<int>> grid(100, std::vector<int>(100, 0));
+  std::vector<std::vector<int>> grid(100uz, std::vector<int>(100uz, 0));
   // The shortest path in an empty grid of 100x100 is the diagonal, which is 100
   // cells.
   EXPECT_EQ(leet_code::shortest_path_in_binary_matrix(grid), 100);

@@ -46,7 +46,8 @@ namespace systems {
 /// @tparam Capacity Maximum number of elements; must be greater than zero.
 template <typename T, size_t Capacity>
 class BoundedFifo {
-  static_assert(Capacity > 0, "BoundedFifo capacity must be greater than zero");
+  static_assert(Capacity > 0uz,
+                "BoundedFifo capacity must be greater than zero");
   static_assert(std::is_nothrow_destructible_v<T>,
                 "BoundedFifo requires a nothrow-destructible element type");
 
@@ -74,7 +75,7 @@ class BoundedFifo {
   }
 
   /// @brief True when no element is queued (snapshot).
-  [[nodiscard]] auto empty() const -> bool { return size() == 0; }
+  [[nodiscard]] auto empty() const -> bool { return size() == 0uz; }
 
   /// @brief True when `capacity()` elements are queued (snapshot).
   [[nodiscard]] auto full() const -> bool { return size() == Capacity; }
@@ -180,7 +181,7 @@ class BoundedFifo {
   /// drained.
   [[nodiscard]] auto pop() -> std::optional<T> {
     std::unique_lock lock{mutex_};
-    not_empty_.wait(lock, [this] { return closed_ || count_ > 0; });
+    not_empty_.wait(lock, [this] { return closed_ || count_ > 0uz; });
     return pop_front_locked(lock);
   }
 
@@ -192,7 +193,7 @@ class BoundedFifo {
       -> std::optional<T> {
     std::unique_lock lock{mutex_};
     if (!not_empty_.wait_for(lock, timeout,
-                             [this] { return closed_ || count_ > 0; })) {
+                             [this] { return closed_ || count_ > 0uz; })) {
       return std::nullopt;
     }
     return pop_front_locked(lock);
@@ -212,14 +213,17 @@ class BoundedFifo {
   /// Pops the oldest element, releasing `lock` before waking a producer.
   auto pop_front_locked(std::unique_lock<std::mutex>& lock)
       -> std::optional<T> {
-    if (count_ == 0) {
+    if (count_ == 0uz) {
       return std::nullopt;
     }
     std::optional<T>& slot = slots_[head_];
+    if (!slot.has_value()) {
+      return std::nullopt;
+    }
     std::optional<T> out{std::in_place,
                          std::move(*slot)};  // May throw; queue unchanged.
     slot.reset();
-    head_ = (head_ + 1) % Capacity;
+    head_ = (head_ + 1uz) % Capacity;
     --count_;
     lock.unlock();
     not_full_.notify_one();
@@ -233,8 +237,8 @@ class BoundedFifo {
   // std::array).
   // NOLINTNEXTLINE(modernize-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays)
   std::optional<T> slots_[Capacity];
-  size_t head_{0};
-  size_t count_{0};
+  size_t head_{0uz};
+  size_t count_{0uz};
   bool closed_{false};
 };
 
