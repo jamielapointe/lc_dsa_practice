@@ -105,7 +105,7 @@ pub struct ShmHandoffChannel;
 #[derive(Debug)]
 struct CachePadded<T>(T);
 
-/// Private single-slot SPSC shared state backing PacketProducer & Packet Consumer.
+/// Private single-slot SPSC shared state backing `PacketProducer` & `PacketConsumer`.
 ///
 /// State protocol (`occupied`):
 /// - `false` → empty; producer can write
@@ -186,10 +186,14 @@ impl PacketBuffer {
                 capacity: PACKET_CAPACITY,
             });
         }
+        let payload_len = u16::try_from(data.len()).map_err(|_| PacketError::PayloadTooLarge {
+            requested: data.len(),
+            capacity: PACKET_CAPACITY,
+        })?;
         let header = PacketHeader {
             channel_id,
             sequence_num,
-            payload_len: data.len() as u16,
+            payload_len,
             flags: 0,
         };
         let mut payload = [0u8; PACKET_CAPACITY];
@@ -270,13 +274,13 @@ impl PacketProducer {
         }
 
         // SAFETY:
-        // 1. `&mut self` guarantess no concurrent `PacketProducer` call exists, and only
-        //    `PacketProducer::sent` transitions `occupied` from `false` to `true`.
+        // 1. `&mut self` guarantees no concurrent `PacketProducer` call exists, and only
+        //    `PacketProducer::send` transitions `occupied` from `false` to `true`.
         // 2. Observing `occupied == false` with `Ordering::Acquire` synchronizes-with
         //    any prior `Release` store of `false` in `PacketConsumer::receive` (or
         //    initial construction), proving the consumer has finished reading `slot`
-        //   and will not access `slot` again until `occupied` becomes `true`.
-        // 3. `self.shared.slot.get()` is non-null, properly aligned for
+        //    and will not access `slot` again until `occupied` becomes `true`.
+        // 3. `self.shared_mem.slot.get()` is non-null, properly aligned for
         //    `MaybeUninit<PacketBuffer>`, and uniquely accessed by this thread.
         unsafe {
             (*self.shared_mem.slot.get()).write(packet);

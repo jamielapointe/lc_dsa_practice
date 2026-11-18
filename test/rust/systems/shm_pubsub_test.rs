@@ -35,8 +35,8 @@ use systems::platform;
 use systems::shm_pubsub::layout;
 use systems::shm_pubsub::layout::ChannelHeader;
 use systems::shm_pubsub::{
-    MAX_SLOT_COUNT, MAX_SLOT_SIZE, MIN_SLOT_COUNT, ShmChannel, ShmPubSubConfig, ShmPubSubError, ShmPublisher,
-    ShmReadMode, ShmSubscriber,
+    MAX_SLOT_COUNT, MAX_SLOT_SIZE, MIN_SLOT_COUNT, ShmChannel, ShmPubSubConfig, ShmPubSubError,
+    ShmPublisher, ShmReadMode, ShmSubscriber,
 };
 
 // ===========================================================================
@@ -135,7 +135,12 @@ impl ChildProcess {
 
 /// Spawns a child OS process executing `helper_child_process_runner` with the requested role.
 /// Blocks until the child outputs its "READY" handshake line on stdout.
-fn spawn_child(role: &str, shm_name: &str, count: Option<u64>, extra_env: &[(&str, &str)]) -> ChildProcess {
+fn spawn_child(
+    role: &str,
+    shm_name: &str,
+    count: Option<u64>,
+    extra_env: &[(&str, &str)],
+) -> ChildProcess {
     let exe = std::env::current_exe().expect("current_exe");
     let mut cmd = Command::new(exe);
     cmd.arg("helper_child_process_runner")
@@ -171,7 +176,10 @@ fn spawn_child(role: &str, shm_name: &str, count: Option<u64>, extra_env: &[(&st
             break;
         }
     }
-    assert!(ready, "child process failed to signal READY within deadline");
+    assert!(
+        ready,
+        "child process failed to signal READY within deadline"
+    );
 
     ChildProcess {
         child,
@@ -196,7 +204,8 @@ fn helper_child_process_runner() {
                 .parse()
                 .expect("parse count");
             let channel = ShmChannel::open(&name).expect("child open");
-            let mut sub = ShmSubscriber::attach(&channel, ShmReadMode::InOrder).expect("child attach sub");
+            let mut sub =
+                ShmSubscriber::attach(&channel, ShmReadMode::InOrder).expect("child attach sub");
 
             // Signal ready
             println!("READY");
@@ -252,7 +261,8 @@ fn helper_child_process_runner() {
         }
         "blocking_subscriber" => {
             let channel = ShmChannel::open(&name).expect("child open");
-            let mut sub = ShmSubscriber::attach(&channel, ShmReadMode::InOrder).expect("child attach");
+            let mut sub =
+                ShmSubscriber::attach(&channel, ShmReadMode::InOrder).expect("child attach");
 
             // Signal ready
             println!("READY");
@@ -294,7 +304,10 @@ fn helper_child_process_runner() {
             assert_eq!(created.err(), Some(ShmPubSubError::MemoryLockFailed));
 
             // Fresh channel must NOT have been left behind in POSIX shared memory (SHMPS-REQ-024)
-            assert_eq!(ShmChannel::open(&fresh_name).err(), Some(ShmPubSubError::NotFound));
+            assert_eq!(
+                ShmChannel::open(&fresh_name).err(),
+                Some(ShmPubSubError::NotFound)
+            );
 
             // Existing channel open must fail with MemoryLockFailed and NOT unlink the existing segment
             let opened = ShmChannel::open(&existing_name);
@@ -358,8 +371,8 @@ fn test_tier1_publish_and_receive_canonical() {
     let channel = ShmChannel::create(shm_name, config).expect("create should succeed");
 
     let mut publisher = ShmPublisher::attach(&channel).expect("publisher attach should succeed");
-    let mut subscriber =
-        ShmSubscriber::attach(&channel, ShmReadMode::InOrder).expect("subscriber attach should succeed");
+    let mut subscriber = ShmSubscriber::attach(&channel, ShmReadMode::InOrder)
+        .expect("subscriber attach should succeed");
 
     // Second publisher attach while alive must fail with PublisherExists (SHMPS-REQ-007)
     assert_eq!(
@@ -481,7 +494,10 @@ fn test_tier1_buffer_drainage_after_close() {
     assert_eq!(&buf[..s3.size], b"msg-3");
 
     // Now drained: subscriber must report Closed
-    assert_eq!(subscriber.try_receive(&mut buf), Err(ShmPubSubError::Closed));
+    assert_eq!(
+        subscriber.try_receive(&mut buf),
+        Err(ShmPubSubError::Closed)
+    );
     assert_eq!(subscriber.receive(&mut buf), Err(ShmPubSubError::Closed));
     assert_eq!(
         subscriber.receive_for(&mut buf, Duration::from_millis(20)),
@@ -510,7 +526,10 @@ fn test_tier1_boundary_payload_sizes_zero_and_max() {
 
     // Oversized payload before any valid publish (65 bytes > 64 bytes)
     let oversized = vec![0xee; slot_size + 1];
-    assert_eq!(publisher.publish(&oversized), Err(ShmPubSubError::PayloadTooLarge));
+    assert_eq!(
+        publisher.publish(&oversized),
+        Err(ShmPubSubError::PayloadTooLarge)
+    );
     assert_eq!(
         publisher.next_sequence(),
         1,
@@ -524,18 +543,24 @@ fn test_tier1_boundary_payload_sizes_zero_and_max() {
 
     // Boundary: exact slot_size payload (64 bytes)
     let exact_payload = vec![0xaa; slot_size];
-    let seq2 = publisher.publish(&exact_payload).expect("exact slot_size payload");
+    let seq2 = publisher
+        .publish(&exact_payload)
+        .expect("exact slot_size payload");
     assert_eq!(seq2, 2);
     assert_eq!(publisher.next_sequence(), 3);
 
     // Receive 0-byte payload
     let mut rx_buf = vec![0u8; slot_size];
-    let sample1 = subscriber.try_receive(&mut rx_buf).expect("receive sample 1");
+    let sample1 = subscriber
+        .try_receive(&mut rx_buf)
+        .expect("receive sample 1");
     assert_eq!(sample1.sequence, 1);
     assert_eq!(sample1.size, 0);
 
     // Receive exact slot_size payload
-    let sample2 = subscriber.try_receive(&mut rx_buf).expect("receive sample 2");
+    let sample2 = subscriber
+        .try_receive(&mut rx_buf)
+        .expect("receive sample 2");
     assert_eq!(sample2.sequence, 2);
     assert_eq!(sample2.size, slot_size);
     assert_eq!(&rx_buf[..sample2.size], &exact_payload);
@@ -597,7 +622,10 @@ fn test_tier2_invalid_configurations_rejected() {
     ];
 
     for (i, config) in invalid_configs.into_iter().enumerate() {
-        assert!(!config.is_valid(), "config {config:?} must be reported as invalid");
+        assert!(
+            !config.is_valid(),
+            "config {config:?} must be reported as invalid"
+        );
         let name = format!("/t2_inv_cfg_{i}");
         let _guard = TestShmGuard(&name);
         let _ = ShmChannel::unlink(&name);
@@ -606,7 +634,10 @@ fn test_tier2_invalid_configurations_rejected() {
         assert_eq!(result.err(), Some(ShmPubSubError::InvalidArgument));
 
         // Invariant: Failed create must leave no segment in shared memory namespace
-        assert_eq!(ShmChannel::open(&name).err(), Some(ShmPubSubError::NotFound));
+        assert_eq!(
+            ShmChannel::open(&name).err(),
+            Some(ShmPubSubError::NotFound)
+        );
     }
 }
 
@@ -625,7 +656,8 @@ fn test_tier2_boundary_configurations_accepted() {
         let _guard = TestShmGuard(&name);
         let _ = ShmChannel::unlink(&name);
 
-        let channel = ShmChannel::create(&name, config).expect("boundary config creation should succeed");
+        let channel =
+            ShmChannel::create(&name, config).expect("boundary config creation should succeed");
         assert_eq!(channel.config().slot_count, config.slot_count);
         assert_eq!(channel.config().slot_size, config.slot_size);
         drop(channel);
@@ -666,8 +698,8 @@ fn test_tier2_channel_name_validation() {
         let _guard = TestShmGuard(&max_len_name);
         let _ = ShmChannel::unlink(&max_len_name);
 
-        let channel =
-            ShmChannel::create(&max_len_name, config).expect("channel creation with 30-char name must succeed");
+        let channel = ShmChannel::create(&max_len_name, config)
+            .expect("channel creation with 30-char name must succeed");
         assert_eq!(channel.name(), max_len_name);
         drop(channel);
 
@@ -681,7 +713,10 @@ fn test_tier2_channel_name_validation() {
         ShmChannel::create(&overlong_31, config).err(),
         Some(ShmPubSubError::NameTooLong)
     );
-    assert_eq!(ShmChannel::open(&overlong_31).err(), Some(ShmPubSubError::NameTooLong));
+    assert_eq!(
+        ShmChannel::open(&overlong_31).err(),
+        Some(ShmPubSubError::NameTooLong)
+    );
     assert_eq!(
         ShmChannel::unlink(&overlong_31).err(),
         Some(ShmPubSubError::NameTooLong)
@@ -720,8 +755,14 @@ fn test_tier2_duplicate_create_and_nonexistent_open() {
     // Nonexistent channel operations
     let missing_name = "/t2_missing_segment";
     let _ = ShmChannel::unlink(missing_name);
-    assert_eq!(ShmChannel::open(missing_name).unwrap_err(), ShmPubSubError::NotFound);
-    assert_eq!(ShmChannel::unlink(missing_name).unwrap_err(), ShmPubSubError::NotFound);
+    assert_eq!(
+        ShmChannel::open(missing_name).unwrap_err(),
+        ShmPubSubError::NotFound
+    );
+    assert_eq!(
+        ShmChannel::unlink(missing_name).unwrap_err(),
+        ShmPubSubError::NotFound
+    );
 
     assert_eq!(ShmChannel::unlink(shm_name), Ok(()));
 }
@@ -736,19 +777,34 @@ fn test_tier2_reject_incompatible_and_foreign_segments() {
     // 1. Foreign segment: 0 bytes
     let c_name = CString::new(shm_name).unwrap();
     // SAFETY: shm_open called with valid C string and POSIX flags.
-    let fd = unsafe { libc::shm_open(c_name.as_ptr(), libc::O_CREAT | libc::O_EXCL | libc::O_RDWR, 0o600) };
+    let fd = unsafe {
+        libc::shm_open(
+            c_name.as_ptr(),
+            libc::O_CREAT | libc::O_EXCL | libc::O_RDWR,
+            0o600,
+        )
+    };
     assert!(fd >= 0);
     // SAFETY: ftruncate and close called with valid fd.
     unsafe {
         assert_eq!(libc::ftruncate(fd, 0), 0);
         libc::close(fd);
     }
-    assert_eq!(ShmChannel::open(shm_name).err(), Some(ShmPubSubError::LayoutMismatch));
+    assert_eq!(
+        ShmChannel::open(shm_name).err(),
+        Some(ShmPubSubError::LayoutMismatch)
+    );
     assert_eq!(ShmChannel::unlink(shm_name), Ok(()));
 
     // 2. Foreign segment: 4096 bytes of 0xAB (corrupt magic and layout)
     // SAFETY: shm_open called with valid C string and POSIX flags.
-    let fd = unsafe { libc::shm_open(c_name.as_ptr(), libc::O_CREAT | libc::O_EXCL | libc::O_RDWR, 0o600) };
+    let fd = unsafe {
+        libc::shm_open(
+            c_name.as_ptr(),
+            libc::O_CREAT | libc::O_EXCL | libc::O_RDWR,
+            0o600,
+        )
+    };
     assert!(fd >= 0);
     let size = 4096;
     // SAFETY: fd is valid; base mapped to size bytes and initialized with invalid layout bytes.
@@ -767,7 +823,10 @@ fn test_tier2_reject_incompatible_and_foreign_segments() {
         libc::munmap(base, size);
         libc::close(fd);
     }
-    assert_eq!(ShmChannel::open(shm_name).err(), Some(ShmPubSubError::LayoutMismatch));
+    assert_eq!(
+        ShmChannel::open(shm_name).err(),
+        Some(ShmPubSubError::LayoutMismatch)
+    );
     assert_eq!(ShmChannel::unlink(shm_name), Ok(()));
 
     // 3. Segment with corrupted layout_version (version 999 != LAYOUT_VERSION)
@@ -780,7 +839,10 @@ fn test_tier2_reject_incompatible_and_foreign_segments() {
         (&raw mut (*header_ptr).layout_version).write(999);
     }
     drop(channel);
-    assert_eq!(ShmChannel::open(shm_name).err(), Some(ShmPubSubError::LayoutMismatch));
+    assert_eq!(
+        ShmChannel::open(shm_name).err(),
+        Some(ShmPubSubError::LayoutMismatch)
+    );
     assert_eq!(ShmChannel::unlink(shm_name), Ok(()));
 
     // 4. Segment with corrupted slot_count in header (3 is not a power of 2)
@@ -792,7 +854,10 @@ fn test_tier2_reject_incompatible_and_foreign_segments() {
         (&raw mut (*header_ptr).slot_count).write(3);
     }
     drop(channel);
-    assert_eq!(ShmChannel::open(shm_name).err(), Some(ShmPubSubError::LayoutMismatch));
+    assert_eq!(
+        ShmChannel::open(shm_name).err(),
+        Some(ShmPubSubError::LayoutMismatch)
+    );
     assert_eq!(ShmChannel::unlink(shm_name), Ok(()));
 }
 
@@ -808,7 +873,10 @@ fn test_tier2_nonblocking_try_receive_would_block() {
     let mut subscriber = ShmSubscriber::attach(&channel, ShmReadMode::InOrder).expect("sub attach");
 
     let mut buf = [0u8; 64];
-    assert_eq!(subscriber.try_receive(&mut buf), Err(ShmPubSubError::WouldBlock));
+    assert_eq!(
+        subscriber.try_receive(&mut buf),
+        Err(ShmPubSubError::WouldBlock)
+    );
 
     drop(subscriber);
     drop(channel);
@@ -913,7 +981,8 @@ fn test_tier2_close_wakes_waiting_subscribers() {
         let channel_sub = channel.clone();
         let ready = Arc::clone(&started);
         handles.push(thread::spawn(move || {
-            let mut sub = ShmSubscriber::attach(&channel_sub, ShmReadMode::InOrder).expect("attach");
+            let mut sub =
+                ShmSubscriber::attach(&channel_sub, ShmReadMode::InOrder).expect("attach");
             ready.fetch_add(1, Ordering::SeqCst);
             let mut buf = [0u8; 64];
             let res = sub.receive(&mut buf);
@@ -932,7 +1001,11 @@ fn test_tier2_close_wakes_waiting_subscribers() {
 
     for handle in handles {
         let (idx, res) = handle.join().expect("join");
-        assert_eq!(res, Err(ShmPubSubError::Closed), "waiter {idx} failed to wake on close");
+        assert_eq!(
+            res,
+            Err(ShmPubSubError::Closed),
+            "waiter {idx} failed to wake on close"
+        );
     }
 
     let elapsed = close_start.elapsed();
@@ -962,13 +1035,24 @@ fn test_tier2_double_unlink_behavior() {
     assert_eq!(ShmChannel::unlink(shm_name), Ok(()));
 
     // Later open calls must return NotFound
-    assert_eq!(ShmChannel::open(shm_name).err(), Some(ShmPubSubError::NotFound));
+    assert_eq!(
+        ShmChannel::open(shm_name).err(),
+        Some(ShmPubSubError::NotFound)
+    );
 
     // Second unlink on unlinked name must return NotFound
-    assert_eq!(ShmChannel::unlink(shm_name).err(), Some(ShmPubSubError::NotFound));
+    assert_eq!(
+        ShmChannel::unlink(shm_name).err(),
+        Some(ShmPubSubError::NotFound)
+    );
 
     // Invariant: Existing mapped handles remain usable after unlink (SHMPS-REQ-006)
-    assert_eq!(publisher.publish(b"still active").expect("pub after unlink"), 1);
+    assert_eq!(
+        publisher
+            .publish(b"still active")
+            .expect("pub after unlink"),
+        1
+    );
 
     let mut buf = [0u8; 64];
     let sample = subscriber.try_receive(&mut buf).expect("read after unlink");
@@ -999,7 +1083,10 @@ fn test_tier2_memory_lock_failure_handling() {
         "memlock_limiter",
         existing_name,
         None,
-        &[("SHM_EXISTING_NAME", existing_name), ("SHM_FRESH_NAME", fresh_name)],
+        &[
+            ("SHM_EXISTING_NAME", existing_name),
+            ("SHM_FRESH_NAME", fresh_name),
+        ],
     );
 
     let status = child.wait().expect("wait child");
@@ -1156,7 +1243,10 @@ fn test_tier3_jump_to_head_latest_mode() {
     assert_eq!(sample.missed, 4);
 
     // No new samples -> WouldBlock
-    assert_eq!(sub_latest.try_receive(&mut buf), Err(ShmPubSubError::WouldBlock));
+    assert_eq!(
+        sub_latest.try_receive(&mut buf),
+        Err(ShmPubSubError::WouldBlock)
+    );
 
     // Publish 3 more (6, 7, 8)
     for s in 6..=8u64 {
@@ -1184,7 +1274,8 @@ fn test_tier3_in_order_consumption_mode() {
     let channel = ShmChannel::create(shm_name, config).expect("create");
 
     let mut publisher = ShmPublisher::attach(&channel).expect("pub attach");
-    let mut sub_inorder = ShmSubscriber::attach(&channel, ShmReadMode::InOrder).expect("sub attach");
+    let mut sub_inorder =
+        ShmSubscriber::attach(&channel, ShmReadMode::InOrder).expect("sub attach");
 
     // InOrder mode receives every published sample sequentially without skips as long as lag < slot_count
     for s in 1..=6u64 {
@@ -1262,7 +1353,9 @@ fn test_tier3_sequence_monotonicity_and_crash_recovery() {
     slot4.header.seq.store(7, Ordering::Release);
 
     // Simulate dead publisher takeover: publisher PID in header set to a non-existent PID (e.g. 999999)
-    view.header().publisher_pid.store(999_999, Ordering::Release);
+    view.header()
+        .publisher_pid
+        .store(999_999, Ordering::Release);
 
     // New publisher attaches via takeover
     let mut pub_takeover = ShmPublisher::attach(&channel).expect("takeover attach");
@@ -1273,7 +1366,9 @@ fn test_tier3_sequence_monotonicity_and_crash_recovery() {
         "recovered sequence must be strictly greater than any started or committed sequence"
     );
 
-    let seq = pub_takeover.publish(b"sample-takeover").expect("takeover publish");
+    let seq = pub_takeover
+        .publish(b"sample-takeover")
+        .expect("takeover publish");
     assert!(seq >= 4);
 
     drop(pub_takeover);
@@ -1447,7 +1542,10 @@ fn test_tier4_spms_multithreaded_stress() {
                         );
 
                         if last_seq > 0 {
-                            assert!(sample.sequence > last_seq, "sub {sub_idx} non-monotonic sequence");
+                            assert!(
+                                sample.sequence > last_seq,
+                                "sub {sub_idx} non-monotonic sequence"
+                            );
                             if mode == ShmReadMode::InOrder {
                                 assert_eq!(
                                     sample.sequence,
@@ -1492,7 +1590,10 @@ fn test_tier4_spms_multithreaded_stress() {
     for (idx, handle) in subscriber_handles.into_iter().enumerate() {
         let (count, last_seq) = handle.join().expect("subscriber join");
         assert!(count > 0, "subscriber {idx} received no samples");
-        assert!(last_seq <= NUM_SAMPLES, "sub {idx} read beyond max published sequence");
+        assert!(
+            last_seq <= NUM_SAMPLES,
+            "sub {idx} read beyond max published sequence"
+        );
     }
 
     drop(publisher);
@@ -1518,7 +1619,8 @@ fn test_tier4_publisher_wait_free_under_slow_subscribers() {
         let channel_sub = channel.clone();
         let stop = Arc::clone(&stop_subscribers);
         sub_handles.push(thread::spawn(move || {
-            let mut sub = ShmSubscriber::attach(&channel_sub, ShmReadMode::InOrder).expect("attach");
+            let mut sub =
+                ShmSubscriber::attach(&channel_sub, ShmReadMode::InOrder).expect("attach");
             let mut buf = [0u8; 128];
             while !stop.load(Ordering::Acquire) {
                 thread::sleep(Duration::from_millis(10));
@@ -1534,7 +1636,9 @@ fn test_tier4_publisher_wait_free_under_slow_subscribers() {
     let start = Instant::now();
 
     for _ in 1..=PUBLISH_COUNT {
-        publisher.publish(&payload).expect("publish must never fail or block");
+        publisher
+            .publish(&payload)
+            .expect("publish must never fail or block");
     }
 
     let elapsed = start.elapsed();
@@ -1578,7 +1682,10 @@ fn test_tier4_cross_process_publish_and_receive() {
     }
 
     let status = child_subscriber_proc.wait().expect("wait child sub");
-    assert!(status.success(), "child subscriber process exited with failure");
+    assert!(
+        status.success(),
+        "child subscriber process exited with failure"
+    );
     drop(publisher);
 
     // Part B: Child publisher process -> Parent subscriber
@@ -1595,7 +1702,10 @@ fn test_tier4_cross_process_publish_and_receive() {
     }
 
     let pub_status = child_publisher_proc.wait().expect("wait child pub");
-    assert!(pub_status.success(), "child publisher process exited with failure");
+    assert!(
+        pub_status.success(),
+        "child publisher process exited with failure"
+    );
 
     drop(subscriber);
     drop(channel);
@@ -1686,12 +1796,11 @@ fn test_tier4_cross_process_publisher_crash_and_takeover() {
     let _ = victim_child.wait().expect("wait victim child exit");
 
     // Probing victim PID must now report dead (ESRCH/dead)
-    assert!(!systems::shm_pubsub::posix::SharedMemoryRegion::process_alive(
-        i64::from(victim_pid)
-    ));
+    assert!(!systems::shm_pubsub::posix::SharedMemoryRegion::process_alive(i64::from(victim_pid)));
 
     // Parent attaches as replacement publisher via dead-process takeover
-    let mut replacement_pub = ShmPublisher::attach(&channel).expect("replacement publisher takeover attach");
+    let mut replacement_pub =
+        ShmPublisher::attach(&channel).expect("replacement publisher takeover attach");
 
     // Invariant: Sequence assigned by replacement publisher must be strictly greater than any sequence
     // published or started by the dead publisher (SHMPS-REQ-020)
@@ -1703,7 +1812,9 @@ fn test_tier4_cross_process_publisher_crash_and_takeover() {
 
     // Replacement publisher publishes a new sample
     let payload = make_payload(next_seq, 64);
-    let pub_seq = replacement_pub.publish(&payload).expect("replacement publish");
+    let pub_seq = replacement_pub
+        .publish(&payload)
+        .expect("replacement publish");
     assert_eq!(pub_seq, next_seq);
 
     // Drain any older samples until we observe the replacement sample

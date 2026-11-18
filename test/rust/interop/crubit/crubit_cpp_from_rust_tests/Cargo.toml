@@ -11,12 +11,14 @@ publish = false
 path = "src/lib.rs"
 
 [dependencies]
+cc_references_views = "0.1.0"
+cref = { path = "../../../../../build/crubit/src/cargo/support/cref" }
+
+[dev-dependencies]
 cc_ownership_raii = "0.1.0"
 cc_primitives_enums = "0.1.0"
-cc_references_views = "0.1.0"
 cc_telemetry_bridge = "0.1.0"
 cc_traits_errors = "0.1.0"
-cref = { path = "../../../../../build/crubit/src/cargo/support/cref" }
 ctor = { path = "../../../../../build/crubit/src/cargo/support/ctor" }
 ffi_11 = { path = "../../../../../build/crubit/src/support/ffi_11" }
 rs_telemetry_validator = { path = "../../../../../src/rust/interop/crubit/rs_telemetry_validator" }

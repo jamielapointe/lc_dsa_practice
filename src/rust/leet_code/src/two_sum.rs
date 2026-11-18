@@ -29,11 +29,14 @@ pub enum TwoSumError {
 /// # Examples
 ///
 /// ```
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// use leet_code::two_sum::two_sum;
 ///
 /// let nums = [2, 7, 11, 15];
-/// let (i, j) = two_sum(&nums, 9).unwrap();
+/// let (i, j) = two_sum(&nums, 9)?;
 /// assert_eq!((i, j), (0, 1));
+/// # Ok(())
+/// # }
 /// ```
 #[expect(
     clippy::cast_lossless,

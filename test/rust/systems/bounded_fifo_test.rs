@@ -1,4 +1,9 @@
-#![allow(clippy::disallowed_methods, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![allow(
+    clippy::disallowed_methods,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic
+)]
 
 //! 4-Tier integration test suite for `systems::BoundedFifo`.
 
@@ -205,7 +210,10 @@ fn test_fifo_drainage_after_close() {
     // When empty and closed, all pop variants return Closed
     assert_eq!(fifo.try_pop(), Err(PopError::Closed));
     assert_eq!(fifo.pop(), Err(PopError::Closed));
-    assert_eq!(fifo.pop_timeout(Duration::from_millis(5)), Err(PopTimeoutError::Closed));
+    assert_eq!(
+        fifo.pop_timeout(Duration::from_millis(5)),
+        Err(PopTimeoutError::Closed)
+    );
 }
 
 #[test]
@@ -216,7 +224,10 @@ fn test_fifo_raii_drop_unconsumed_elements() {
     {
         let fifo = BoundedFifo::<DropDetector, 8>::new();
         for i in 0..5 {
-            assert!(fifo.try_push(DropDetector::new(i, Arc::clone(&drop_counter))).is_ok());
+            assert!(
+                fifo.try_push(DropDetector::new(i, Arc::clone(&drop_counter)))
+                    .is_ok()
+            );
         }
 
         // Pop and drop 2 items
@@ -465,8 +476,14 @@ fn test_adversarial_rejection_contract_zero_leaks() {
         let fifo = BoundedFifo::<DropDetector, 2>::new();
 
         // Pre-fill queue with 2 elements (id 0, 1)
-        assert!(fifo.try_push(DropDetector::new(0, Arc::clone(&drop_counter))).is_ok());
-        assert!(fifo.try_push(DropDetector::new(1, Arc::clone(&drop_counter))).is_ok());
+        assert!(
+            fifo.try_push(DropDetector::new(0, Arc::clone(&drop_counter)))
+                .is_ok()
+        );
+        assert!(
+            fifo.try_push(DropDetector::new(1, Arc::clone(&drop_counter)))
+                .is_ok()
+        );
         assert!(fifo.is_full());
 
         // 1. Try push 1,000 times into full queue.
@@ -489,7 +506,9 @@ fn test_adversarial_rejection_contract_zero_leaks() {
         // 2. Timed push 500 times into full queue with small timeout.
         for id in 1002..1502 {
             let detector = DropDetector::new(id, Arc::clone(&drop_counter));
-            let err = fifo.push_timeout(detector, Duration::from_micros(10)).unwrap_err();
+            let err = fifo
+                .push_timeout(detector, Duration::from_micros(10))
+                .unwrap_err();
             if id % 2 == 0 {
                 let item = err.into_inner();
                 assert_eq!(item.id, id);
@@ -513,7 +532,9 @@ fn test_adversarial_rejection_contract_zero_leaks() {
 
         for id in 2002..2502 {
             let detector = DropDetector::new(id, Arc::clone(&drop_counter));
-            let err = fifo.push_timeout(detector, Duration::from_micros(10)).unwrap_err();
+            let err = fifo
+                .push_timeout(detector, Duration::from_micros(10))
+                .unwrap_err();
             assert_eq!(err.into_inner().id, id);
         }
         assert_eq!(drop_counter.load(Ordering::SeqCst), 2500);
@@ -664,7 +685,10 @@ fn test_adversarial_timeout_edge_cases() {
 
     // Duration::ZERO timeout on empty queue pop
     let start = Instant::now();
-    assert_eq!(fifo.pop_timeout(Duration::ZERO), Err(PopTimeoutError::Timeout));
+    assert_eq!(
+        fifo.pop_timeout(Duration::ZERO),
+        Err(PopTimeoutError::Timeout)
+    );
     assert!(start.elapsed() < Duration::from_millis(50));
 
     // Duration::ZERO timeout on non-full queue push

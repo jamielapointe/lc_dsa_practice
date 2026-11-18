@@ -37,8 +37,8 @@ namespace leet_code {
  * Traverses both linked lists, sums corresponding digits along with any carry
  * from the previous addition, and creates a new result linked list.
  *
- * @param l1 Pointer to the head of the first non-empty linked list.
- * @param l2 Pointer to the head of the second non-empty linked list.
+ * @param list1 Pointer to the head of the first non-empty linked list.
+ * @param list2 Pointer to the head of the second non-empty linked list.
  * @return ListNode* Pointer to the head of the resulting sum linked list.
  * @note The caller assumes ownership of the returned linked list. In test code,
  *       wrap the returned pointer in `leet_code::ScopedLinkedList` to ensure
@@ -58,12 +58,12 @@ class Solution {
   /**
    * @brief LeetCode standard method signature for problem #2.
    *
-   * @param l1 Pointer to head of first linked list.
-   * @param l2 Pointer to head of second linked list.
+   * @param list1 Pointer to head of first linked list.
+   * @param list2 Pointer to head of second linked list.
    * @return ListNode* Pointer to head of sum linked list.
    */
   [[nodiscard]] static auto addTwoNumbers(ListNode* list1, ListNode* list2)
-      -> ListNode*;  // NOLINT
+      -> ListNode*;
 };
 
 }  // namespace leet_code

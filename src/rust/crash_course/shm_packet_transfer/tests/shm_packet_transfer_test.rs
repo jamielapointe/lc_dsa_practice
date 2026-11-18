@@ -1,4 +1,9 @@
-#![allow(clippy::disallowed_methods, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![allow(
+    clippy::disallowed_methods,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic
+)]
 
 //! 4-Tier integration test suite for Module 01: `shm_packet_transfer`.
 //!
@@ -10,7 +15,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 
 use shm_packet_transfer::{
-    PACKET_CAPACITY, PacketBuffer, PacketConsumer, PacketError, PacketHeader, PacketProducer, ShmHandoffChannel,
+    PACKET_CAPACITY, PacketBuffer, PacketConsumer, PacketError, PacketHeader, PacketProducer,
+    ShmHandoffChannel,
 };
 
 // ===========================================================================
@@ -45,7 +51,8 @@ fn test_canonical_packet_construction() {
     let sequence_num = 1_001_u32;
     let data = b"telemetry-sensor-frame-001";
 
-    let packet = PacketBuffer::new(channel_id, sequence_num, data).expect("packet creation should succeed");
+    let packet =
+        PacketBuffer::new(channel_id, sequence_num, data).expect("packet creation should succeed");
 
     assert_eq!(packet.channel_id(), channel_id);
     assert_eq!(packet.sequence_num(), sequence_num);
@@ -69,10 +76,14 @@ fn test_canonical_send_receive_lifecycle() {
     let payload = [0x5au8; 64];
     let packet = PacketBuffer::new(1, 100, &payload).expect("packet creation should succeed");
 
-    producer.send(packet).expect("send into empty channel should succeed");
+    producer
+        .send(packet)
+        .expect("send into empty channel should succeed");
     assert!(consumer.has_data());
 
-    let received = consumer.receive().expect("receive should yield sent packet");
+    let received = consumer
+        .receive()
+        .expect("receive should yield sent packet");
     assert_eq!(received.channel_id(), 1);
     assert_eq!(received.sequence_num(), 100);
     assert_eq!(received.len(), 64);
@@ -113,8 +124,12 @@ fn test_boundary_empty_payload() {
     assert!(empty_packet.is_empty());
     assert_eq!(empty_packet.payload(), b"");
 
-    producer.send(empty_packet).expect("send empty packet should succeed");
-    let received = consumer.receive().expect("receive empty packet should succeed");
+    producer
+        .send(empty_packet)
+        .expect("send empty packet should succeed");
+    let received = consumer
+        .receive()
+        .expect("receive empty packet should succeed");
 
     assert_eq!(received.len(), 0);
     assert!(received.is_empty());
@@ -125,7 +140,8 @@ fn test_boundary_empty_payload() {
 fn test_boundary_max_capacity_payload() {
     let (mut producer, mut consumer) = ShmHandoffChannel::new();
     let max_payload = [0xeeu8; PACKET_CAPACITY];
-    let max_packet = PacketBuffer::new(4, 60, &max_payload).expect("max capacity payload must be permitted");
+    let max_packet =
+        PacketBuffer::new(4, 60, &max_payload).expect("max capacity payload must be permitted");
 
     assert_eq!(max_packet.len(), PACKET_CAPACITY);
     assert_eq!(max_packet.payload(), &max_payload[..]);
@@ -133,7 +149,9 @@ fn test_boundary_max_capacity_payload() {
     producer
         .send(max_packet)
         .expect("send max capacity packet should succeed");
-    let received = consumer.receive().expect("receive max capacity packet should succeed");
+    let received = consumer
+        .receive()
+        .expect("receive max capacity packet should succeed");
 
     assert_eq!(received.len(), PACKET_CAPACITY);
     assert_eq!(received.payload(), &max_payload[..]);
@@ -145,7 +163,10 @@ fn test_boundary_payload_overflow_rejected() {
     let result = PacketBuffer::new(5, 70, &oversized);
 
     match result {
-        Err(PacketError::PayloadTooLarge { requested, capacity }) => {
+        Err(PacketError::PayloadTooLarge {
+            requested,
+            capacity,
+        }) => {
             assert_eq!(requested, PACKET_CAPACITY + 1);
             assert_eq!(capacity, PACKET_CAPACITY);
         }
@@ -157,10 +178,14 @@ fn test_boundary_payload_overflow_rejected() {
 fn test_boundary_send_when_full_returns_packet() {
     let (mut producer, _consumer) = ShmHandoffChannel::new();
 
-    let first_packet = PacketBuffer::new(8, 80, b"initial slot occupant").expect("first packet creation");
-    producer.send(first_packet).expect("first send must succeed");
+    let first_packet =
+        PacketBuffer::new(8, 80, b"initial slot occupant").expect("first packet creation");
+    producer
+        .send(first_packet)
+        .expect("first send must succeed");
 
-    let second_packet = PacketBuffer::new(8, 81, b"competing rejected packet").expect("second packet creation");
+    let second_packet =
+        PacketBuffer::new(8, 81, b"competing rejected packet").expect("second packet creation");
     let send_err = producer.send(second_packet);
 
     assert!(send_err.is_err());
@@ -215,20 +240,27 @@ fn test_invariants_raii_drop_reclamation() {
     {
         let (mut orphan_producer, _orphan_consumer) = ShmHandoffChannel::new();
         let orphan_packet = PacketBuffer::new(1, 3, b"orphaned in slot").expect("packet creation");
-        orphan_producer.send(orphan_packet).expect("send should succeed");
+        orphan_producer
+            .send(orphan_packet)
+            .expect("send should succeed");
     }
 }
 
 #[test]
 fn test_invariants_static_affine_move_enforcement() {
     let (mut producer, mut consumer) = ShmHandoffChannel::new();
-    let packet = PacketBuffer::new(9, 90, b"affine destructive move proof").expect("packet creation");
+    let packet =
+        PacketBuffer::new(9, 90, b"affine destructive move proof").expect("packet creation");
 
     // Passing packet by value consumes ownership destructively (bitwise move).
-    producer.send(packet).expect("send by value consumes packet");
+    producer
+        .send(packet)
+        .expect("send by value consumes packet");
 
     // The consumer receives exclusive ownership of the packet by value.
-    let received = consumer.receive().expect("receive extracts packet by value");
+    let received = consumer
+        .receive()
+        .expect("receive extracts packet by value");
     assert_eq!(received.channel_id(), 9);
     assert_eq!(received.sequence_num(), 90);
     assert_eq!(received.payload(), b"affine destructive move proof");

@@ -24,7 +24,7 @@ static constexpr size_t BITMAP_MAX_UINT8_COMBINATIONS = 256U;
 
 /// @brief Status and error codes returned by bounds-checked bitmap flip
 /// operations.
-// NOLINTNEXTLINE(cppcoreguidelines-use-enum-class)
+// NOLINTNEXTLINE(cppcoreguidelines-use-enum-class): C23 public ABI enum.
 typedef enum bitmap_flip_error : int32_t {
   BITMAP_FLIP_OK = 0,
   BITMAP_FLIP_ERR_NULL_POINTER = 1,

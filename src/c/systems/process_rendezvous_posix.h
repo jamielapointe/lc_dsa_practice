@@ -31,6 +31,8 @@ void process_rendezvous_posix_wait_slice(const struct process_rendezvous* rdv,
 
 void process_rendezvous_posix_sleep_us(uint32_t us);
 
+[[nodiscard]] int64_t process_rendezvous_posix_monotonic_now_ns();
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

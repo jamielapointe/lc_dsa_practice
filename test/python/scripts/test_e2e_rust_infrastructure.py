@@ -17,7 +17,7 @@ throughout incremental development.
 
 import re
 import shutil
-import subprocess  # ruff: ignore[suspicious-subprocess-import]
+import subprocess
 import tomllib
 from pathlib import Path
 
@@ -34,7 +34,7 @@ AGENTS_MD_MAX_BYTES = 24576
 EXPECTED_RUST_VERSION = "1.100"
 EXPECTED_RUST_EDITION = "2024"
 EXPECTED_CARGO_TARGET_DIR = "build/cargo"
-EXPECTED_RUSTFMT_MAX_WIDTH = 120
+EXPECTED_RUSTFMT_MAX_WIDTH = 100
 
 
 # ---------------------------------------------------------------------------
@@ -305,6 +305,7 @@ class TestTier1FeatureCoverage:
         assert rustfmt_path.exists(), "rustfmt.toml must exist"
         rustfmt_content = rustfmt_path.read_text(encoding="utf-8")
         assert f'edition = "{EXPECTED_RUST_EDITION}"' in rustfmt_content
+        assert f'style_edition = "{EXPECTED_RUST_EDITION}"' in rustfmt_content
         assert f"max_width = {EXPECTED_RUSTFMT_MAX_WIDTH}" in rustfmt_content
 
         # clippy.toml check
@@ -706,7 +707,7 @@ class TestTier1FeatureCoverage:
         # Verify no ephemeral agentic files are tracked in Git
         git_bin = shutil.which("git")
         assert git_bin is not None
-        tracked_res = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+        tracked_res = subprocess.run(
             [git_bin, "ls-files"],
             cwd=REPO_ROOT,
             capture_output=True,
@@ -804,7 +805,7 @@ class TestTier2BoundaryAndCornerCases:
         # Verify no root 'target' directory is tracked in git
         git_bin = shutil.which("git")
         assert git_bin is not None
-        result = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+        result = subprocess.run(
             [git_bin, "ls-files", "target/"],
             cwd=REPO_ROOT,
             capture_output=True,
@@ -1013,7 +1014,7 @@ class TestTier3CrossFeatureCombinations:
             pytest.skip("cargo binary not available in current environment")
 
         # Check format
-        fmt_res = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+        fmt_res = subprocess.run(
             [cargo_bin, "fmt", "--all", "--", "--check"],
             cwd=REPO_ROOT,
             capture_output=True,
@@ -1025,7 +1026,7 @@ class TestTier3CrossFeatureCombinations:
         )
 
         # Check clippy
-        clippy_res = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+        clippy_res = subprocess.run(
             [
                 cargo_bin,
                 "clippy",
@@ -1070,7 +1071,7 @@ class TestTier4RealWorldScenarios:
         if not cargo_bin:
             pytest.skip("cargo binary not available in current environment")
 
-        result = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+        result = subprocess.run(
             [cargo_bin, "test", "--workspace", "--all-targets"],
             cwd=REPO_ROOT,
             capture_output=True,
@@ -1092,7 +1093,7 @@ class TestTier4RealWorldScenarios:
             pytest.skip("cargo binary not available in current environment")
 
         # 1. Cargo check
-        check_res = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+        check_res = subprocess.run(
             [cargo_bin, "check", "--workspace", "--all-targets"],
             cwd=REPO_ROOT,
             capture_output=True,
@@ -1102,7 +1103,7 @@ class TestTier4RealWorldScenarios:
         assert check_res.returncode == 0, f"cargo check failed:\n{check_res.stderr}"
 
         # 2. Cargo fmt check
-        fmt_res = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+        fmt_res = subprocess.run(
             [cargo_bin, "fmt", "--all", "--", "--check"],
             cwd=REPO_ROOT,
             capture_output=True,
@@ -1112,7 +1113,7 @@ class TestTier4RealWorldScenarios:
         assert fmt_res.returncode == 0, f"cargo fmt --check failed:\n{fmt_res.stderr}"
 
         # 3. Cargo clippy
-        clippy_res = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+        clippy_res = subprocess.run(
             [
                 cargo_bin,
                 "clippy",
@@ -1130,7 +1131,7 @@ class TestTier4RealWorldScenarios:
         assert clippy_res.returncode == 0, f"cargo clippy failed:\n{clippy_res.stderr}"
 
         # 4. Cargo test
-        test_res = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+        test_res = subprocess.run(
             [cargo_bin, "test", "--workspace", "--all-targets"],
             cwd=REPO_ROOT,
             capture_output=True,

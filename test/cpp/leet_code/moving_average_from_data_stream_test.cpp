@@ -26,11 +26,11 @@ TEST(MovingAverageTest, WindowSizeOne) {
 // Tier 4: Stress Workloads & OJ Simulation
 TEST(MovingAverageTest, StressTest) {
   leet_code::MovingAverage ma(1000);
-  auto start = std::chrono::high_resolution_clock::now();
+  auto start = std::chrono::steady_clock::now();
   for (int i = 0; i < 10000; ++i) {
     static_cast<void>(ma.next(i));
   }
-  auto end = std::chrono::high_resolution_clock::now();
+  auto end = std::chrono::steady_clock::now();
   auto duration =
       std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
   EXPECT_LT(duration.count(), 200);

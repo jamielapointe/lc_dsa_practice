@@ -1,4 +1,4 @@
-#!/usr/bin/env -S uv run --script
+#!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.15"
 # dependencies = [
@@ -34,7 +34,13 @@ from typing import TYPE_CHECKING, Annotated, Any, Final, Literal, cast
 import structlog
 from cyclopts import App, Parameter
 
-from scripts.benchmarks.bayesian_compare import (
+from scripts.benchmarks.host_tuner import (
+    DarwinHostTuner,
+    HostTuner,
+    LinuxHostTuner,
+    get_host_tuner,
+)
+lazy from scripts.benchmarks.bayesian_compare import (
     BestResult,
     analyze_benchmark,
     generate_markdown_report,
@@ -43,16 +49,10 @@ from scripts.benchmarks.bayesian_compare import (
     promote_to_baseline,
     serialize_results,
 )
-from scripts.benchmarks.host_tuner import (
-    DarwinHostTuner,
-    HostTuner,
-    LinuxHostTuner,
-    get_host_tuner,
-)
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping, Sequence
+    from collections.abc import Mapping, Sequence
 
 
 # Re-export tuners for interface inspection
@@ -97,31 +97,23 @@ class _ExecutionSpec:
     tuner: HostTuner | None
 
 
-def _freeze_mapping[K, V](mapping: Mapping[K, V]) -> frozendict[K, V]:
-    """Return an immutable ``frozendict`` copy with strict type precision.
-
-    Args:
-        mapping: Source key-value pairs to freeze.
-
-    Returns:
-        Immutable ``frozendict`` copy preserving insertion order.
-    """
-    constructor = cast("Callable[[Mapping[K, V]], frozendict[K, V]]", frozendict)
-    return constructor(mapping)
-
-
-_MODE_DEFAULTS: Final[frozendict[RunMode, _ModeDefaults]] = _freeze_mapping({
-    "fast-screen": _ModeDefaults(
-        repetitions=3,
-        min_time="0.1s",
-        min_warmup_time="0.02",
-    ),
-    "full-statistical": _ModeDefaults(
-        repetitions=20,
-        min_time="0.5s",
-        min_warmup_time="0.05",
-    ),
-})
+_MODE_DEFAULTS: Final[frozendict[RunMode, _ModeDefaults]] = frozendict[
+    RunMode, _ModeDefaults
+]() | cast(
+    "dict[RunMode, _ModeDefaults]",
+    {
+        "fast-screen": _ModeDefaults(
+            repetitions=3,
+            min_time="0.1s",
+            min_warmup_time="0.02",
+        ),
+        "full-statistical": _ModeDefaults(
+            repetitions=20,
+            min_time="0.5s",
+            min_warmup_time="0.05",
+        ),
+    },
+)
 
 _BINARY_CANDIDATES: Final[tuple[tuple[str, ...], ...]] = (
     ("build", "benchmark", "bin", "bitmap_flip_benchmark"),

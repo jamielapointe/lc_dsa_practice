@@ -182,8 +182,8 @@ TEST(BoundedFifoTest, FailedMovePushLeavesArgumentUntouched) {
   ASSERT_TRUE(fifo.try_push(std::make_unique<int>(1)));
   auto rejected = std::make_unique<int>(2);
   EXPECT_FALSE(fifo.try_push(std::move(rejected)));
-  // Documented guarantee: a failed try_push leaves its rvalue argument
-  // untouched. NOLINTBEGIN(bugprone-use-after-move)
+  // Documented guarantee: failed try_push leaves its rvalue argument untouched.
+  // NOLINTBEGIN(bugprone-use-after-move): checks moved-from argument invariant.
   ASSERT_NE(rejected, nullptr);
   EXPECT_EQ(*rejected, 2);
   // NOLINTEND(bugprone-use-after-move)

@@ -155,7 +155,8 @@ TEST(ChildProcessTest, DestructorReapsRunningChild) {
 TEST(ChildProcessTest, MoveTransfersOwnership) {
   auto first = ChildProcess::spawn([] { return 3; });
   ChildProcess second{std::move(first)};
-  EXPECT_FALSE(first.valid());  // NOLINT(bugprone-use-after-move): checked.
+  // NOLINTNEXTLINE(bugprone-use-after-move): verifies moved-from handle.
+  EXPECT_FALSE(first.valid());
   ChildProcess third;
   third = std::move(second);
   const auto result = third.wait_for(kWait);
@@ -305,7 +306,8 @@ TEST(AllocationScopeTest, CountsHeapAllocationsInsideScope) {
   {
     auto one = std::make_unique<int>(1);
     escape(one.get());
-    auto many = std::make_unique<uint64_t[]>(16uz);  // NOLINT(*-c-arrays)
+    // NOLINTNEXTLINE(*-c-arrays): verifies operator new[] tracking.
+    auto many = std::make_unique<uint64_t[]>(16uz);
     escape(many.get());
   }
   EXPECT_EQ(scope.allocations(), 2uz);

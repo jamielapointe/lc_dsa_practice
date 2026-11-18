@@ -21,12 +21,15 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Annotated, Final, cast
-lazy from collections.abc import Sequence
+from typing import TYPE_CHECKING, Annotated, Final, cast
 
 import cyclopts
 import structlog
 from cyclopts import Parameter
+
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 DEFAULT_CRUBIT_FEATURES: Final[tuple[str, ...]] = ("supported", "assume_lifetimes")
@@ -36,7 +39,11 @@ _app = cyclopts.App(name="invoke-rs-bindings-from-cc", help=__doc__)
 
 def _configure_logging() -> None:
     """Configures standard library logging for Crubit generator CLI execution."""
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(levelname)s: %(message)s",
+        stream=sys.stderr,
+    )
 
 
 def _get_logger() -> structlog.stdlib.BoundLogger:
@@ -271,12 +278,14 @@ def _render_cargo_toml(
         TOML text for the generated crate manifest.
     """
     try:
-        lib_path = os.path.relpath(
-            rs_out.resolve(),
-            cargo_toml_out.resolve().parent,
-        ).replace("\\", "/")
+        lib_path = (
+            rs_out
+            .resolve()
+            .relative_to(cargo_toml_out.resolve().parent, walk_up=True)
+            .as_posix()
+        )
     except ValueError:
-        lib_path = str(rs_out.resolve()).replace("\\", "/")
+        lib_path = rs_out.resolve().as_posix()
 
     src_root = crubit_src.resolve()
     deps = {

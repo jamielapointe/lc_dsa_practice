@@ -19,10 +19,13 @@ Used by `systems-setup` when scaffolding Rust systems components. Follow `rust-p
    - Types placed in shared memory must be `#[repr(C)]`, `Copy`, address-free.
    - Cache-line padding: `#[repr(align(64))]`.
    - Explicit atomic orderings (`Acquire`, `Release`, `Relaxed`).
-5. **Strict `// SAFETY:` Comments**:
-   - Every `unsafe` block must be documented with a detailed `// SAFETY:` comment.
+5. **Zero `unsafe` by Default & Scoped OS Exceptions**:
+   - Workspace lint `unsafe_code = "deny"` forbids `unsafe` in pure thread-safe primitives (such as `BoundedFifo`). Never use crate- or module-wide
+     `#![allow(unsafe_code)]`.
+   - OS / shared-memory FFI modules (such as `shm_pubsub` or `platform`) may attach item-scoped `#[allow(unsafe_code)]` only to the minimal items requiring
+     FFI or mapped-pointer dereferencing, and every `unsafe` block / `unsafe impl` MUST document multi-point `// SAFETY:` invariant proofs.
 6. **OS Adapter Isolation**:
-   - Direct POSIX syscalls (`shm_open`, `mmap`, `sem_*`) must reside in `<name>_posix.rs`.
+   - Direct POSIX syscalls (`shm_open`, `mmap`, `sem_*`) must reside in `<name>/posix.rs` (or `<name>_posix.rs`).
 
 ## Stub Implementation
 
@@ -30,7 +33,7 @@ Stubs return `Err(<Name>Error::NotImplemented)`, never sleep, never spin, never 
 Never use panic!(), todo!(), or unimplemented!() in stubs.
 Unused parameters are suppressed with `_`.
 
-## 6-Tier Test Suite (`test/rust/systems/<name>_test.rs`)
+## 4-Tier / 6-Tier Test Suite (`test/rust/systems/<name>_test.rs`)
 
 1. **Traceability**: First comment or statement of each test tags the requirement:
 
@@ -42,10 +45,10 @@ Unused parameters are suppressed with `_`.
    }
    ```
 
-2. **Tiers**:
+2. **Tiers** (Tiers 1–4 apply to all components; Tiers 5–6 apply when crossing processes or specifying fault-recovery requirements):
    - Tier 1: Functional nominal behavior.
    - Tier 2: Boundary conditions, full/empty buffer, timeouts, use after close.
    - Tier 3: Zero heap allocation after init, static assertions (`Send`, `Sync`).
    - Tier 4: Multi-thread stress test with `std::thread::scope` and `std::sync::Barrier`.
-   - Tier 5: Multi-process test via `std::process::Command` over POSIX shared memory.
-   - Tier 6: Fault injection (killing child processes and verifying survivor state).
+   - Tier 5: Multi-process test via `std::process::Command` over POSIX shared memory (cross-process components).
+   - Tier 6: Fault injection (killing child processes and verifying survivor state, cross-process / crash-recovery components).

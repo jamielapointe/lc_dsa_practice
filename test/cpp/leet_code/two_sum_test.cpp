@@ -113,7 +113,7 @@ TEST(TwoSumTest, NonOwningSpanCompatibilityStdArray) {
 
 // T1-LIB-08: Non-owning span compatibility with raw C-style array view
 TEST(TwoSumTest, NonOwningSpanCompatibilityRawArray) {
-  // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
+  // NOLINTNEXTLINE(*-avoid-c-arrays): tests span conversion from C array.
   const int raw_nums[] = {100, 200, 300};
   const std::span<const int> span_view(raw_nums);
   constexpr int kTarget = 400;

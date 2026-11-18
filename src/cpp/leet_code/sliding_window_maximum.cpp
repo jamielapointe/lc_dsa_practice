@@ -40,7 +40,7 @@ auto sliding_window_maximum(std::span<const int> nums, int k)
   return result;
 }
 
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static): LeetCode API.
 auto Solution::maxSlidingWindow(std::vector<int>& nums, int k)
     -> std::vector<int> {
   return sliding_window_maximum(nums, k);

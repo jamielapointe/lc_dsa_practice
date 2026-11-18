@@ -36,7 +36,7 @@ pub const HAS_MAP_POPULATE: bool = IS_LINUX;
 /// Queries the host OS virtual memory page size.
 /// Defaults to 16384 on macOS Apple Silicon or 4096 on other platforms on failure.
 #[must_use]
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+#[allow(unsafe_code, clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 pub fn page_size() -> usize {
     // SAFETY:
     // 1. `_SC_PAGESIZE` is a standard POSIX sysconf selector requiring no pointer arguments.

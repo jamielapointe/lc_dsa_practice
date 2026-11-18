@@ -97,7 +97,6 @@ TEST(LinkedListHelpersTest, InitializerListOverload) {
 }
 
 TEST(ScopedLinkedListTest, ConstructFromRawPointer) {
-  // NOLINTNEXTLINE(cppcoreguidelines-owning-memory)
   auto* raw = new leet_code::ListNode(100);
   {
     const leet_code::ScopedLinkedList list(raw);
@@ -146,7 +145,7 @@ TEST(LinkedListHelpersTest, NonOwningSpanCompatibility) {
             (std::vector<int>{7, 8, 9, 10}));
   leet_code::free_linked_list(head);
 
-  // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
+  // NOLINTNEXTLINE(*-avoid-c-arrays): tests span conversion from C array.
   int c_array[] = {100, 200};
   leet_code::ListNode* head2 = leet_code::create_linked_list(c_array);
   ASSERT_NE(head2, nullptr);
@@ -245,7 +244,8 @@ TEST(ScopedLinkedListTest, MoveConstructorTransfersOwnership) {
   EXPECT_TRUE(destination);
   EXPECT_EQ(destination.to_vector(), (std::vector<int>{1, 2, 3, 4, 5}));
 
-  // NOLINTBEGIN(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
+  // NOLINTBEGIN(bugprone-use-after-move,clang-analyzer-cplusplus.Move):
+  // verifies moved-from ScopedLinkedList state.
   EXPECT_EQ(source.get(), nullptr);
   EXPECT_FALSE(source);
   // NOLINTEND(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
@@ -260,7 +260,8 @@ TEST(ScopedLinkedListTest, MoveAssignmentFreesTargetAndAdoptsSource) {
   EXPECT_EQ(target.get(), source_head);
   EXPECT_EQ(target.to_vector(), (std::vector<int>{30, 40, 50}));
 
-  // NOLINTBEGIN(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
+  // NOLINTBEGIN(bugprone-use-after-move,clang-analyzer-cplusplus.Move):
+  // verifies moved-from ScopedLinkedList state.
   EXPECT_EQ(source.get(), nullptr);
   EXPECT_FALSE(source);
   // NOLINTEND(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
@@ -275,7 +276,8 @@ TEST(ScopedLinkedListTest, SelfMoveAssignmentSafety) {
   auto* alias = &list;
   *alias = std::move(list);
 
-  // NOLINTBEGIN(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
+  // NOLINTBEGIN(bugprone-use-after-move,clang-analyzer-cplusplus.Move):
+  // verifies self-move leaves ScopedLinkedList intact.
   EXPECT_EQ(list.get(), head_before);
   EXPECT_TRUE(list);
   EXPECT_EQ(list.to_vector(), (std::vector<int>{1, 2, 3}));

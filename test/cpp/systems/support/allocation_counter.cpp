@@ -21,8 +21,10 @@
 namespace systems_test {
 namespace {
 
-std::atomic<bool> g_armed{false};        // NOLINT(*-avoid-non-const-global*)
-std::atomic<size_t> g_allocations{0uz};  // NOLINT(*-avoid-non-const-global*)
+// NOLINTBEGIN(*-avoid-non-const-global*): shared process-wide hook state.
+std::atomic<bool> g_armed{false};
+std::atomic<size_t> g_allocations{0uz};
+// NOLINTEND(*-avoid-non-const-global*)
 
 #if defined(__has_feature)
 #if __has_feature(address_sanitizer) || __has_feature(thread_sanitizer)

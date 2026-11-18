@@ -84,7 +84,7 @@ _app = cyclopts.App(name="check-systems-traceability", help=__doc__)
 
 def _configure_logging() -> None:
     """Configures standard library logging for traceability CLI execution."""
-    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stderr)
 
 
 def _get_logger() -> structlog.stdlib.BoundLogger:

@@ -1,4 +1,9 @@
-#![allow(clippy::disallowed_methods, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![allow(
+    clippy::disallowed_methods,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic
+)]
 
 //! 4-Tier integration test suite for LeetCode #146: LRU Cache.
 
@@ -239,7 +244,9 @@ fn test_adversarial_lru_high_churn_300k() {
     // Deterministic pseudo-random sequence
     let mut state: u64 = 123_456_789;
     let mut next_rand = || {
-        state = state.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+        state = state
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1);
         (state >> 33) as u32
     };
 

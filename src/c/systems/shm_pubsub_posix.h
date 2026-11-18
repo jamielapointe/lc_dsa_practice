@@ -30,6 +30,8 @@ void shm_pubsub_posix_yield();
 
 void shm_pubsub_posix_sleep_ns(int64_t sleep_ns);
 
+[[nodiscard]] int64_t shm_pubsub_posix_monotonic_now_ns();
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

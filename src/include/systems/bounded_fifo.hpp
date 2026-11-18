@@ -233,9 +233,8 @@ class BoundedFifo {
   mutable std::mutex mutex_;
   std::condition_variable not_empty_;
   std::condition_variable not_full_;
-  // Intentionally a C array: this container is built without STL containers (no
-  // std::array).
-  // NOLINTNEXTLINE(modernize-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays)
+  // Intentionally a C array: fixed-capacity storage without STL containers.
+  // NOLINTNEXTLINE(*-avoid-c-arrays): fixed storage without std::array.
   std::optional<T> slots_[Capacity];
   size_t head_{0uz};
   size_t count_{0uz};

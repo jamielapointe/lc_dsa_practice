@@ -1,15 +1,16 @@
 ---
 name: systems-setup
-description: Scaffolds a low-level / embedded-style C++23 or Rust 1.100+ practice component in the systems track from a free-form problem statement (no website lookup). Produces an ASPICE-style requirements spec with traceable IDs, a documented header or module and stub implementation that outline the work (no solution), CMake/Cargo registration, and a comprehensive test suite (functional, boundary, resource, multi-thread, multi-process, fault-injection tiers) that starts in the TDD red state. Applies automotive / robotics constraints (ISO 26262 mindset, MISRA C++:2023 and AUTOSAR C++14 guidance, zero steady-state heap, no panics/exceptions or RTTI) targeting POSIX (Linux, embedded Linux, QNX).
+description: Scaffolds a low-level / embedded-style C++23, ISO C23, or Rust 1.100+ practice component in the systems track from a free-form problem statement (no website lookup). Produces an ASPICE-style requirements spec with traceable IDs, a documented header or module and stub implementation that outline the work (no solution), CMake/Cargo registration, and a comprehensive test suite (functional, boundary, resource, multi-thread, plus multi-process and fault-injection tiers where applicable) that starts in the TDD red state. Applies automotive / robotics constraints (ISO 26262 mindset, MISRA C++:2023 / C23 and AUTOSAR C++14 guidance, zero steady-state heap, no panics/exceptions or RTTI) targeting POSIX (Linux, embedded Linux, QNX).
 ---
 
-# Systems Setup Skill (safety-oriented C++23 & Rust)
+# Systems Setup Skill (safety-oriented C++23, C23 & Rust)
 
 ## 🔗 Related Skills
 
 - **cpp-pro**: Modern C++23 (LLVM/Clang 23.1.5+), RAII, concurrency, sanitizer-clean code (C++ path).
-- **cmake-pro**: Target-based CMake 4.5+, Presets v13, `FILE_SET` (`HEADERS`/`SOURCES`), `systems_add_library`, CPS `PACKAGE_INFO`, SPDX 3.0.1 `SBOM`, CTest
-  labels, gersemi (C++ path).
+- **c-pro**: Strict ISO C23 (`-std=c23`), `<stdbit.h>`, `<stdckdint.h>`, `[[nodiscard]]`, CERT C / MISRA C alignment (C23 path).
+- **cmake-pro**: Target-based CMake 4.5+, Presets v13, `FILE_SET` (`HEADERS`/`SOURCES`), `systems_add_library` / `systems_c_add_library`, CPS `PACKAGE_INFO`,
+  SPDX 3.0.1 `SBOM`, CTest labels, gersemi (C++/C23 path).
 - **rust-pro**: Modern Rust 1.100+ (Edition 2024) safety-critical systems software, zero-allocation real-time paths, lock-free concurrency, Google Rust
   Styleguide (Rust path).
 - **python-pro**: Only for the traceability checker (`scripts/ci/check_systems_traceability.py`).
@@ -18,10 +19,10 @@ description: Scaffolds a low-level / embedded-style C++23 or Rust 1.100+ practic
 
 ## Use this skill when
 
-- The user asks to "set up", "scaffold", or "start" a **systems**, embedded, real-time, robotics, or automotive-style C++ or Rust problem and describes it in
-  prose, e.g. "Set up a systems problem: a pub/sub interface over a shared-memory ring buffer, safe across processes and threads" or "Set up a systems problem
-  in Rust: a bounded FIFO queue".
-- A developer wants to begin the TDD cycle for a component that lives in `src/{cpp,rust}/systems/` and `src/include/systems/`.
+- The user asks to "set up", "scaffold", or "start" a **systems**, embedded, real-time, robotics, or automotive-style C++, C23, or Rust problem and describes
+  it in prose, e.g. "Set up a systems problem: a pub/sub interface over a shared-memory ring buffer, safe across processes and threads" or "Set up a systems
+  problem in Rust: a bounded FIFO queue".
+- A developer wants to begin the TDD cycle for a component that lives in `src/{cpp,c,rust}/systems/` and `src/include/systems/`.
 
 ## Do not use this skill when
 
@@ -33,7 +34,8 @@ description: Scaffolds a low-level / embedded-style C++23 or Rust 1.100+ practic
 
 ## Inputs
 
-There is no lookup service: **the user's prompt is the problem statement.** Supported languages: C++23 (default) and Rust 1.100+. Extract:
+There is no lookup service: **the user's prompt is the problem statement.** Supported languages: C++23 (`cpp`, default), ISO C23 (`c`), and Rust 1.100+
+(`rust`). Extract:
 
 | Item | Example (shared-memory pub/sub) |
 | --- | --- |
@@ -47,7 +49,7 @@ There is no lookup service: **the user's prompt is the problem statement.** Supp
 
 ### Step 0: Resolve ambiguity & determine language
 
-- **Language detection**: If the user mentions "Rust" (e.g. "Set up a systems problem in Rust: ..."), select the Rust systems track. Otherwise default to C++23.
+- **Language detection**: Select `rust` when the prompt asks for Rust, `c` when the prompt asks for C / C23 / ISO C23, and otherwise default to `cpp` (C++23).
 - If an item above has several reasonable answers **and** the choice changes the public API or what a test would assert, ask the user (use `ask_question` with
   concrete options and a recommended default). Ask at most once, batching all questions.
 - Everything else: choose the conventional automotive / robotics default, and record it in the spec's **Assumptions** section so the user can push back.
@@ -56,23 +58,23 @@ There is no lookup service: **the user's prompt is the problem statement.** Supp
 
 ## Repository layout
 
-| Purpose | C++ | Rust |
-| --- | --- | --- |
-| Requirements spec | `docs/systems/<name>.md` | `docs/systems/<name>.md` |
-| Public API (+ outline) | `src/include/systems/<name>.hpp` | `src/rust/systems/src/<name>.rs` |
-| Portable logic stub | `src/cpp/systems/<name>.cpp` | (same module) |
-| OS adapter stub (if calling OS APIs) | `src/cpp/systems/<name>_posix.cpp` | `src/rust/systems/src/<name>_posix.rs` (or submodule) |
-| Tests | `test/cpp/systems/<name>_test.cpp` | `test/rust/systems/<name>_test.rs` |
-| Build registration | `src/cpp/systems/CMakeLists.txt`, `test/cpp/systems/CMakeLists.txt` | `src/rust/systems/src/lib.rs` (`pub mod <name>;`) |
-| Shared test harness | `test/cpp/systems/support/systems_test/*.hpp` (`systems::test_support`) | standard library / test modules |
-| OS capability flags | `src/include/systems/platform.hpp` (`systems::platform`) | `systems` crate / target cfgs |
+| Purpose | C++23 (`cpp`) | ISO C23 (`c`) | Rust 1.100+ (`rust`) |
+| --- | --- | --- | --- |
+| Requirements spec | `docs/systems/<name>.md` | `docs/systems/<name>.md` | `docs/systems/<name>.md` |
+| Public API (+ outline) | `src/include/systems/<name>.hpp` | `src/include/systems/<name>.h` | `src/rust/systems/src/<name>.rs` |
+| Portable logic stub | `src/cpp/systems/<name>.cpp` | `src/c/systems/<name>.c` | (same module) |
+| OS adapter stub (if calling OS APIs) | `src/cpp/systems/<name>_posix.cpp` | `src/c/systems/<name>_posix.c` | `src/rust/systems/src/<name>/posix.rs` (or `<name>_posix.rs`) |
+| Tests | `test/cpp/systems/<name>_test.cpp` | `test/c/systems/<name>_c_test.cpp` | `test/rust/systems/<name>_test.rs` |
+| Build registration | `src/cpp/systems/CMakeLists.txt`, `test/cpp/systems/CMakeLists.txt` | `src/c/systems/CMakeLists.txt`, `test/c/systems/CMakeLists.txt` | `src/rust/systems/src/lib.rs` (`pub mod <name>;`), `Cargo.toml` |
+| Shared test harness | `test/cpp/systems/support/systems_test/*.hpp` (`systems::test_support`) | `test/cpp/systems/support/systems_test/*.hpp` (`systems::test_support`) | standard library / test modules |
+| OS capability flags | `src/include/systems/platform.hpp` (`systems::platform`) | `src/include/systems/platform.h` (`SYSTEMS_*`) | `src/rust/systems/src/platform.rs` |
 
 Read every reference before generating files:
 
 - [references/spec.md](references/spec.md): requirements spec template, ID scheme, traceability.
 - [references/safety.md](references/safety.md): coding constraints, standards guidance, portability and the OS-adapter rule.
-- [references/cpp.md](references/cpp.md): header outline, stub rules, CMake registration.
-- [references/rust.md](references/rust.md): Rust header/module, const generics, zero steady-state heap, 6-tier test architecture.
+- [references/cpp.md](references/cpp.md): C++23 / C23 header outline, stub rules, CMake registration.
+- [references/rust.md](references/rust.md): Rust module layout, const generics, zero steady-state heap, scoped `unsafe`, 4/6-tier test architecture.
 - [references/testing.md](references/testing.md): test tiers, harness API, concurrency / multi-process / fault-injection patterns, red-state safety.
 
 ---
@@ -98,28 +100,30 @@ method, and (for safety-relevant ones) a rationale. This document is the *proble
 
 ### Step 4: Generate the header/module, stubs, and build registration
 
-Follow [references/cpp.md](references/cpp.md) and [references/safety.md](references/safety.md) for C++, or [references/rust.md](references/rust.md) for Rust:
+Follow [references/cpp.md](references/cpp.md) and [references/safety.md](references/safety.md) for C++23 / ISO C23, or [references/rust.md](references/rust.md)
+for Rust:
 
 1. The header/module declares the **complete public API** (types, error enum, functions, documented contracts, thread-safety, blocking behavior) so tests
    compile, plus an `Implementation outline` section that describes *what* the user must build and the pitfalls, **without** giving the solution.
-2. Stubs compile cleanly under `-Werror` / clippy, never block, never crash, never allocate, and return `std::unexpected(<Error>::kNotImplemented)` in C++ or
-   `Err(<Name>Error::NotImplemented)` in Rust (or the documented "nothing happened" value). Each stub body carries a numbered `TODO(<PREFIX>-REQ-NNN)`
-   checklist.
-3. Register the library in CMake or Cargo (`src/rust/systems/src/lib.rs`).
+2. Stubs compile cleanly under `-Werror` / clippy, never block, never crash, never allocate, and return `std::unexpected(<Error>::kNotImplemented)` in C++23,
+   `<PREFIX>_ERR_NOT_IMPLEMENTED` in C23, or `Err(<Name>Error::NotImplemented)` in Rust (or the documented "nothing happened" value). Each stub body carries a
+   numbered `TODO(<PREFIX>-REQ-NNN)` checklist.
+3. Register the library in CMake (`src/{cpp,c}/systems/CMakeLists.txt`) or Cargo (`src/rust/systems/src/lib.rs` and `src/rust/systems/Cargo.toml`).
 
 ### Step 5: Generate the test suite
 
-Follow [references/testing.md](references/testing.md) (C++) or [references/rust.md](references/rust.md) (Rust). Tests assert the **correct** behavior from the
-spec (never the stub's dummy value), tag requirement IDs with `RecordProperty("requirements", "...")` (C++) or `// requirements: <PREFIX>-REQ-NNN` /
-`record_property!` (Rust), and are bounded in time so the red state is clean: failed assertions, no hangs, no crashes, no sanitizer reports, no panics.
+Follow [references/testing.md](references/testing.md) (C++23 / C23) or [references/rust.md](references/rust.md) (Rust). Tests assert the **correct** behavior
+from the spec (never the stub's dummy value), tag requirement IDs with `RecordProperty("requirements", "...")` (C++/C23) or
+`// requirements: <PREFIX>-REQ-NNN` / `record_property!` (Rust), and are bounded in time so the red state is clean: failed assertions, no hangs, no crashes,
+no sanitizer reports, no panics.
 
 ### Step 6: Verify (Pixi and presets only)
 
-For C++:
+For C++23 / ISO C23:
 
 ```bash
 pixi run cmake --preset dev-debug
-pixi run cmake --build --preset dev-debug --target <name>_test        # zero warnings, clang-tidy clean
+pixi run cmake --build --preset dev-debug --target <name>_test        # or <name>_c_test; zero warnings, clang-tidy clean
 pixi run ctest --preset dev-debug -R '^<Name>' --output-on-failure    # FAILS cleanly (red), finishes well under the 60 s ctest timeout
 pixi run cmake --workflow --preset tsan                               # only <Name> tests may fail; no ThreadSanitizer reports
 pixi run check-traceability                                           # every requirement has a test and vice versa

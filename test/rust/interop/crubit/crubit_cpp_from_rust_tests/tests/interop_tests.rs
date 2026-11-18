@@ -3,15 +3,19 @@
 use core::sync::atomic::{AtomicBool, Ordering};
 
 use cc_ownership_raii::interop::crubit::LeaseGuard;
-use cc_primitives_enums::interop::crubit::{FlightPhase, Waypoint3d, advance_phase, euclidean_distance};
+use cc_primitives_enums::interop::crubit::{
+    FlightPhase, Waypoint3d, advance_phase, euclidean_distance,
+};
 use cc_references_views::interop::crubit::{SignalWindow, scale_in_place};
-use cc_telemetry_bridge::interop::crubit::{ActuatorSink, compute_frame_crc32, make_verified_frame};
+use cc_telemetry_bridge::interop::crubit::{
+    ActuatorSink, compute_frame_crc32, make_verified_frame,
+};
 use cc_traits_errors::interop::crubit::{CalibrationCode, GainVector2d, calibrate_pd_controller};
 use crubit_cpp_from_rust_tests::{dominant_window_summary, read_window_peak};
 use ctor::{Assign, CtorNew};
 use rs_telemetry_validator::{
-    AUTH_RESET_TOKEN, FAULT_CRC_MISMATCH, FAULT_TORQUE_OUT_OF_RANGE, FAULT_WATCHDOG_EXPIRED, SafetyInterceptor,
-    SafetyState,
+    AUTH_RESET_TOKEN, FAULT_CRC_MISMATCH, FAULT_TORQUE_OUT_OF_RANGE, FAULT_WATCHDOG_EXPIRED,
+    SafetyInterceptor, SafetyState,
 };
 
 #[test]
@@ -141,12 +145,8 @@ fn telemetry_capstone_fault_latch_and_recovery() {
 
     // Trigger combined watchdog expiry, over-torque, and CRC mismatch.
     let frame2 = make_verified_frame(2, 11_000_000, 120.0, 1.2);
-    let dec2 = interceptor.validate_command(
-        frame2.timestamp_ns,
-        20_000_000,
-        frame2.torque_cmd_nm,
-        false,
-    );
+    let dec2 =
+        interceptor.validate_command(frame2.timestamp_ns, 20_000_000, frame2.torque_cmd_nm, false);
     assert_eq!(dec2.state, SafetyState::FaultEstop);
     assert!((dec2.safe_torque_nm - 0.0).abs() < 1e-12);
     assert_eq!(
@@ -167,12 +167,8 @@ fn telemetry_capstone_fault_latch_and_recovery() {
     assert_eq!(sink.latched_fault_mask(), 0);
 
     let frame3 = make_verified_frame(3, 25_000_000, -12.5, -0.4);
-    let dec3 = interceptor.validate_command(
-        frame3.timestamp_ns,
-        26_000_000,
-        frame3.torque_cmd_nm,
-        true,
-    );
+    let dec3 =
+        interceptor.validate_command(frame3.timestamp_ns, 26_000_000, frame3.torque_cmd_nm, true);
     assert_eq!(dec3.state, SafetyState::Active);
     assert!(sink.commit(dec3.safe_torque_nm, dec3.fault_mask));
     assert_eq!(sink.committed_count(), 2);

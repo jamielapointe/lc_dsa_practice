@@ -23,12 +23,15 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Annotated, Final, cast
-lazy from collections.abc import Sequence
+from typing import TYPE_CHECKING, Annotated, Final, cast
 
 import cyclopts
 import structlog
 from cyclopts import Parameter
+
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 # Paths that never count toward project coverage.
@@ -41,7 +44,7 @@ _app = cyclopts.App(name="cpp-coverage", help=__doc__)
 
 def _configure_logging() -> None:
     """Configures standard library logging for coverage CLI execution."""
-    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stderr)
 
 
 def _get_logger() -> structlog.stdlib.BoundLogger:

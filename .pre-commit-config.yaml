@@ -138,7 +138,7 @@ repos:
       - id: tombi
         name: Check and lint TOML files (tombi)
         entry: pixi run format-toml-check
-        files: (^pyproject\.toml$|^pixi\.toml$|(^|/)Cargo\.toml$|^\.cargo/config\.toml$|^rustfmt\.toml$|^clippy\.toml$)
+        files: \.toml$
         language: system
         pass_filenames: false
 

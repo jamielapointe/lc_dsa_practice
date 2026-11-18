@@ -21,7 +21,7 @@ extern "C" {
 #endif
 
 /// @brief Status codes returned by process_rendezvous operations.
-// NOLINTNEXTLINE(cppcoreguidelines-use-enum-class)
+// NOLINTNEXTLINE(cppcoreguidelines-use-enum-class): C23 public ABI enum.
 typedef enum process_rendezvous_error : int32_t {
   PROCESS_RENDEZVOUS_OK = 0,
   PROCESS_RENDEZVOUS_ERR_INVALID_ARGUMENT = 1,

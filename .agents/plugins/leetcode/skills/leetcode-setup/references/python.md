@@ -27,8 +27,8 @@ Reference examples to imitate: `src/python/leet_code/two_sum.py`, `src/python/le
      `def twoSum(self, nums: list[int], target: int) -> list[int]:  # ruff: ignore[invalid-function-name, no-self-use]`), delegating to the idiomatic
      function. For design problems (a class like `LRUCache`) provide one idiomatic `CapWords` class and a compatibility alias with the official name, as in
      `lru_cache.py`.
-4. Stub body returns a clean dummy of the declared type (`0`, `False`, `[]`, `None`, ...). Suppress unused parameters with `del a, b` so `ruff`'s `ARG` rules
-   pass. Never raise `NotImplementedError` (the red state must come from assertions, not errors).
+4. Stub body returns a clean dummy of the declared type (`0`, `False`, `[]`, `None`, ...). Acknowledge unused parameters with `del a, b` to keep strict
+   linters and type checkers clean without renaming parameters. Never raise `NotImplementedError` (the red state must come from assertions, not errors).
 
 ## Generate the 4-tier pytest suite (`test/python/leet_code/test_<slug_snake>.py`)
 

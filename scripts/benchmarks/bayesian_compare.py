@@ -1,4 +1,4 @@
-#!/usr/bin/env -S uv run --script
+#!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.15"
 # dependencies = [
@@ -31,19 +31,19 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Final, Literal, Protocol, cast
 
-import arviz_base as azb
-import numpy as np
-import plotly.graph_objects as _go  # pyright: ignore[reportMissingTypeStubs]
-import plotly.subplots as _subplots  # pyright: ignore[reportMissingTypeStubs]
-import polars as pl
 import structlog
-from arviz_stats.base.array import array_stats
 from cyclopts import App, Parameter
-from scipy import stats
+lazy import arviz_base as azb
+lazy import numpy as np
+lazy import plotly.graph_objects as _go  # pyright: ignore[reportMissingTypeStubs]
+lazy import plotly.subplots as _subplots  # pyright: ignore[reportMissingTypeStubs]
+lazy import polars as pl
+lazy from arviz_stats.base.array import array_stats
+lazy from scipy import stats
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping, Sequence
+    from collections.abc import Mapping, Sequence
 
     from numpy.typing import NDArray
 
@@ -68,19 +68,6 @@ _REVERT_P_WORSE: Final[float] = 0.50
 _POSSIBLE_REGRESSION_P_WORSE: Final[float] = 0.05
 
 type PlotlyTemplate = Literal["plotly_white", "plotly_dark"]
-
-
-def _freeze_mapping[K, V](mapping: Mapping[K, V]) -> frozendict[K, V]:
-    """Construct an immutable PEP 814 ``frozendict`` from a mapping.
-
-    Args:
-        mapping: Source mapping entries.
-
-    Returns:
-        Immutable ``frozendict`` preserving insertion order.
-    """
-    factory = cast("Callable[[Mapping[K, V]], frozendict[K, V]]", frozendict)
-    return factory(mapping)
 
 
 def _get_logger(name: str = __name__) -> structlog.stdlib.BoundLogger:
@@ -109,20 +96,20 @@ _VALID_PLOTLY_TEMPLATES: Final[frozenset[str]] = frozenset({
     "plotly_dark",
 })
 
-_VERDICT_ICONS: Final[frozendict[str, str]] = _freeze_mapping({
+_VERDICT_ICONS: Final[frozendict[str, str]] = frozendict[str, str]() | {
     "PROCEED_PROMOTE": "🚀 Superior",
     "EQUIVALENT": "⚖️ Equivalent",
     "REVERT_REGRESSION": "❌ Regressed",
     "POSSIBLE_REGRESSION": "⚠️ Slower",
     "INCONCLUSIVE": "❓ Inconclusive",
-})
+}
 
-_PLOTLY_COLORS: Final[frozendict[str, str]] = _freeze_mapping({
+_PLOTLY_COLORS: Final[frozendict[str, str]] = frozendict[str, str]() | {
     "baseline": "#4285F4",
     "candidate": "#34A853",
     "neutral": "#FBBC05",
     "regression": "#EA4335",
-})
+}
 
 
 class _HdiCallable(Protocol):

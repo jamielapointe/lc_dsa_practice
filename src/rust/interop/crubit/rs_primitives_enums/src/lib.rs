@@ -36,9 +36,13 @@ pub enum ControlCommand {
 /// `v' = v + a * dt` and `p' = p + v * dt + 0.5 * a * dt^2`.
 #[must_use]
 pub fn integrate_kinematics(sample: KinematicSample, dt_sec: f64) -> KinematicSample {
-    let velocity_mps = sample.acceleration_mps2.mul_add(dt_sec, sample.velocity_mps);
-    let position_m = (0.5 * sample.acceleration_mps2 * dt_sec)
-        .mul_add(dt_sec, sample.velocity_mps.mul_add(dt_sec, sample.position_m));
+    let velocity_mps = sample
+        .acceleration_mps2
+        .mul_add(dt_sec, sample.velocity_mps);
+    let position_m = (0.5 * sample.acceleration_mps2 * dt_sec).mul_add(
+        dt_sec,
+        sample.velocity_mps.mul_add(dt_sec, sample.position_m),
+    );
     KinematicSample {
         position_m,
         velocity_mps,
@@ -61,7 +65,9 @@ pub const fn make_climb_command(target_mps: f64, max_g: f64) -> ControlCommand {
 pub const fn evaluate_command_target(cmd: &ControlCommand, current_altitude_m: f64) -> f64 {
     match *cmd {
         ControlCommand::HoldAltitude(altitude_m) => altitude_m,
-        ControlCommand::ClimbRate { target_mps, max_g } => target_mps.mul_add(max_g.max(0.0), current_altitude_m),
+        ControlCommand::ClimbRate { target_mps, max_g } => {
+            target_mps.mul_add(max_g.max(0.0), current_altitude_m)
+        }
         ControlCommand::Abort { code: _ } => current_altitude_m,
     }
 }

@@ -14,7 +14,9 @@ use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
 pub use backoff::Backoff;
-pub use config::{MAX_SLOT_COUNT, MAX_SLOT_SIZE, MIN_SLOT_COUNT, ShmPubSubConfig, ShmReadMode, ShmSample};
+pub use config::{
+    MAX_SLOT_COUNT, MAX_SLOT_SIZE, MIN_SLOT_COUNT, ShmPubSubConfig, ShmReadMode, ShmSample,
+};
 pub use error::ShmPubSubError;
 pub use layout::ChannelView;
 use posix::SharedMemoryRegion;
@@ -83,7 +85,7 @@ impl ShmChannel {
     /// # Errors
     /// Returns `ShmPubSubError` if the name is invalid, the channel is missing,
     /// the segment is corrupt/incompatible, or memory locking fails.
-    #[allow(clippy::cast_ptr_alignment)]
+    #[allow(unsafe_code, clippy::cast_ptr_alignment)]
     pub fn open_with_options(name: &str, memory_lock: bool) -> Result<Self, ShmPubSubError> {
         posix::validate_name(name)?;
         let region = SharedMemoryRegion::open(name, memory_lock)?;
@@ -190,9 +192,10 @@ impl ShmPublisher {
         let me = SharedMemoryRegion::current_process_id();
         let mut holder = 0;
 
-        if let Err(actual) = header
-            .publisher_pid
-            .compare_exchange(holder, me, Ordering::AcqRel, Ordering::Acquire)
+        if let Err(actual) =
+            header
+                .publisher_pid
+                .compare_exchange(holder, me, Ordering::AcqRel, Ordering::Acquire)
         {
             holder = actual;
             if holder == me || SharedMemoryRegion::process_alive(holder) {
@@ -247,7 +250,9 @@ impl ShmPublisher {
 
         // (W3) Store payload words and size as relaxed atomics.
         layout::store_payload(slot.words, payload);
-        slot.header.size.store(payload.len() as u32, Ordering::Relaxed);
+        slot.header
+            .size
+            .store(payload.len() as u32, Ordering::Relaxed);
 
         // (W4) Mark slot committed with even sequence.
         slot.header.seq.store(2 * sequence, Ordering::Release);
@@ -432,7 +437,11 @@ impl ShmSubscriber {
     /// # Errors
     /// Returns `TimedOut` if `timeout` expires, `BufferTooSmall` if `buffer` is smaller than payload,
     /// or `Closed` if the channel is closed.
-    pub fn receive_for(&mut self, buffer: &mut [u8], timeout: Duration) -> Result<ShmSample, ShmPubSubError> {
+    pub fn receive_for(
+        &mut self,
+        buffer: &mut [u8],
+        timeout: Duration,
+    ) -> Result<ShmSample, ShmPubSubError> {
         self.receive_until(buffer, Some(Instant::now() + timeout))
     }
 
@@ -441,7 +450,11 @@ impl ShmSubscriber {
     /// # Errors
     /// Returns `TimedOut` if `timeout` expires, `BufferTooSmall` if `buffer` is smaller than payload,
     /// or `Closed` if the channel is closed.
-    pub fn receive_timeout(&mut self, buffer: &mut [u8], timeout: Duration) -> Result<ShmSample, ShmPubSubError> {
+    pub fn receive_timeout(
+        &mut self,
+        buffer: &mut [u8],
+        timeout: Duration,
+    ) -> Result<ShmSample, ShmPubSubError> {
         self.receive_for(buffer, timeout)
     }
 
@@ -454,7 +467,11 @@ impl ShmSubscriber {
     }
 
     /// Internal polling loop with bounded exponential backoff.
-    fn receive_until(&mut self, buffer: &mut [u8], deadline: Option<Instant>) -> Result<ShmSample, ShmPubSubError> {
+    fn receive_until(
+        &mut self,
+        buffer: &mut [u8],
+        deadline: Option<Instant>,
+    ) -> Result<ShmSample, ShmPubSubError> {
         let mut backoff = Backoff::new();
         loop {
             match self.try_receive(buffer) {

@@ -28,7 +28,8 @@ class SignalWindow {
  private:
   // Fixed inline array avoids std::array/cc_std dependencies in Crubit CMake
   // mode.
-  double samples_[8]{};  // NOLINT(modernize-avoid-c-arrays)
+  // NOLINTNEXTLINE(modernize-avoid-c-arrays): Crubit avoids std::array header.
+  double samples_[8]{};
   int count_ = 0;
 };
 
