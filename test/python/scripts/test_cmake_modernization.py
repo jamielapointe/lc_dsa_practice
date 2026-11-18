@@ -259,13 +259,33 @@ def test_cmake_presets_v13_structure() -> None:
     assert configure_by_name["base"].get("hidden") is True
     assert configure_by_name["pixi-base"].get("hidden") is True
     assert configure_by_name["pixi-base"].get("inherits") == "base"
-
-    base_cache = configure_by_name["base"].get("cacheVariables")
-    assert isinstance(base_cache, dict)
     assert (
-        cast("dict[str, object]", base_cache).get("CMAKE_VERIFY_INTERFACE_HEADER_SETS")
-        == "ON"
-    ), '"base" preset must set CMAKE_VERIFY_INTERFACE_HEADER_SETS to "ON"'
+        configure_by_name["base"].get("installDir")
+        == "${sourceDir}/build/${presetName}/install"
+    ), '"base" preset must define a build-local installDir'
+
+    base_warnings = cast("dict[str, object]", configure_by_name["base"].get("warnings"))
+    base_errors = cast("dict[str, object]", configure_by_name["base"].get("errors"))
+    assert base_warnings.get("experimental") is True
+    assert base_errors.get("experimental") is True
+    assert base_errors.get("installAbsoluteDestination") is True
+
+    base_cache = cast(
+        "dict[str, object]", configure_by_name["base"].get("cacheVariables")
+    )
+    assert base_cache.get("CMAKE_VERIFY_INTERFACE_HEADER_SETS") == "ON", (
+        '"base" preset must set CMAKE_VERIFY_INTERFACE_HEADER_SETS to "ON"'
+    )
+    assert base_cache.get("CMAKE_VERIFY_PRIVATE_HEADER_SETS") == "ON", (
+        '"base" preset must set CMAKE_VERIFY_PRIVATE_HEADER_SETS to "ON"'
+    )
+
+    sysroot_cache = cast(
+        "dict[str, object]", configure_by_name["sysroot-release"].get("cacheVariables")
+    )
+    assert sysroot_cache.get("ENABLE_CLANG_TIDY") == "OFF", (
+        '"sysroot-release" must disable clang-tidy for air-gapped SDK hosts'
+    )
 
     for preset_name, preset in configure_by_name.items():
         for section in ("warnings", "errors"):
@@ -300,21 +320,84 @@ def test_cmake_presets_v13_structure() -> None:
 
 
 @pytest.mark.unit
+def test_cmake_presets_macro_and_test_inheritance_invariants() -> None:
+    """Verify non-macro metadata fields and shared testPresets base inheritance."""
+    data = _load_json_dict(REPO_ROOT / "CMakePresets.json")
+    macro_re = re.compile(r"\$(?:env|penv|vendor)?\{[^}]+\}")
+
+    for array_key in (
+        "configurePresets",
+        "buildPresets",
+        "testPresets",
+        "packagePresets",
+        "workflowPresets",
+    ):
+        raw_array = data.get(array_key)
+        if not isinstance(raw_array, list):
+            continue
+        for entry in cast("list[object]", raw_array):
+            assert isinstance(entry, dict)
+            typed_entry = cast("dict[str, object]", entry)
+            preset_name = typed_entry.get("name")
+            for text_field in ("displayName", "description"):
+                val = typed_entry.get(text_field)
+                if isinstance(val, str):
+                    assert not macro_re.search(val), (
+                        f"{array_key}[{preset_name!r}].{text_field} contains "
+                        f"unexpanded macro syntax: {val!r}"
+                    )
+
+    raw_tests = data.get("testPresets")
+    assert isinstance(raw_tests, list)
+    tests_by_name: dict[str, dict[str, object]] = {}
+    for entry in cast("list[object]", raw_tests):
+        assert isinstance(entry, dict)
+        typed_entry = cast("dict[str, object]", entry)
+        name = typed_entry.get("name")
+        assert isinstance(name, str)
+        tests_by_name[name] = typed_entry
+
+    assert "base" in tests_by_name
+    test_base = tests_by_name["base"]
+    assert test_base.get("hidden") is True
+    base_output = cast("dict[str, object]", test_base.get("output"))
+    assert "${configurePresetName}" in str(base_output.get("outputJUnitFile"))
+    base_exec = cast("dict[str, object]", test_base.get("execution"))
+    jobs_val = base_exec.get("jobs")
+    assert isinstance(jobs_val, str)
+    assert not jobs_val
+    assert base_exec.get("noTestsAction") == "error"
+
+    for name, test_preset in tests_by_name.items():
+        if test_preset.get("hidden") is True:
+            continue
+        assert test_preset.get("inherits") == "base", (
+            f"testPreset {name!r} must inherit shared 'base' preset"
+        )
+        exec_block = test_preset.get("execution")
+        if isinstance(exec_block, dict):
+            assert cast("dict[str, object]", exec_block).get("noTestsAction") != (
+                "ignore"
+            ), f"testPreset {name!r} must not silence missing tests with 'ignore'"
+
+
+@pytest.mark.unit
 def test_cmake_list_presets_cli() -> None:
-    """Verify ``cmake --list-presets=all`` validates CMakePresets.json cleanly."""
+    """Verify ``cmake --list-presets=all-defined`` validates CMakePresets.json."""
     cmake_bin = shutil.which("cmake")
     assert cmake_bin is not None, "cmake binary must be available in Pixi environment"
 
-    result = subprocess.run(
-        [cmake_bin, "--list-presets=all"],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    assert "dev-debug" in result.stdout
-    assert "ci-debug" in result.stdout
-    assert "sysroot-release" in result.stdout
+    for flag in ("--list-presets=all", "--list-presets=all-defined"):
+        result = subprocess.run(
+            [cmake_bin, flag],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        assert "dev-debug" in result.stdout
+        assert "ci-debug" in result.stdout
+        assert "sysroot-release" in result.stdout
 
 
 @pytest.mark.unit

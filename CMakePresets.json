@@ -9,26 +9,32 @@
     {
       "name": "base",
       "hidden": true,
+      "description": "Shared Ninja generator, strict CMake 4.5 diagnostics, header-set verification, and build-local install prefix",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/${presetName}",
+      "installDir": "${sourceDir}/build/${presetName}/install",
       "warnings": {
         "author": true,
         "deprecated": true,
+        "experimental": true,
+        "installAbsoluteDestination": true,
+        "nonTargetDirective": true,
         "policy": true,
         "strict": true,
-        "nonTargetDirective": true,
-        "installAbsoluteDestination": true,
         "uninitialized": true,
         "unusedCli": true
       },
       "errors": {
-        "nonTargetDirective": true,
-        "deprecated": true
+        "deprecated": true,
+        "experimental": true,
+        "installAbsoluteDestination": true,
+        "nonTargetDirective": true
       },
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "CMAKE_CXX_SCAN_FOR_MODULES": "OFF",
         "CMAKE_VERIFY_INTERFACE_HEADER_SETS": "ON",
+        "CMAKE_VERIFY_PRIVATE_HEADER_SETS": "ON",
         "BUILD_TESTING": "ON",
         "WARNINGS_AS_ERRORS": "ON"
       }
@@ -37,7 +43,7 @@
       "name": "pixi-base",
       "hidden": true,
       "inherits": "base",
-      "description": "Inherits base when running inside an activated Pixi ($CONDA_PREFIX) shell",
+      "description": "Inherits base and binds the hermetic Pixi LLVM/Clang toolchain when CONDA_PREFIX is active",
       "condition": {
         "type": "notEquals",
         "lhs": "$env{CONDA_PREFIX}",
@@ -53,6 +59,7 @@
       "name": "dev-debug",
       "inherits": "pixi-base",
       "displayName": "Developer Debug (ASan + UBSan + clang-tidy)",
+      "description": "Local debug build with AddressSanitizer, UndefinedBehaviorSanitizer, and clang-tidy static analysis",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "ENABLE_SANITIZER_ADDRESS": "ON",
@@ -63,6 +70,7 @@
       "name": "ci-debug",
       "inherits": "pixi-base",
       "displayName": "CI Debug (ASan + UBSan, no clang-tidy)",
+      "description": "Fast debug build with AddressSanitizer and UndefinedBehaviorSanitizer without inline clang-tidy",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "ENABLE_SANITIZER_ADDRESS": "ON",
@@ -74,6 +82,7 @@
       "name": "dev-release",
       "inherits": "pixi-base",
       "displayName": "Developer Release (Optimized, LTO, SPDX SBOM)",
+      "description": "Optimized release build with IPO/LTO and SPDX 3.0.1 JSON-LD SBOM generation",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "ENABLE_IPO": "ON",
@@ -84,6 +93,7 @@
       "name": "asan",
       "inherits": "pixi-base",
       "displayName": "AddressSanitizer (ASan)",
+      "description": "Debug build instrumented solely with AddressSanitizer",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "ENABLE_SANITIZER_ADDRESS": "ON"
@@ -93,6 +103,7 @@
       "name": "ubsan",
       "inherits": "pixi-base",
       "displayName": "UndefinedBehaviorSanitizer (UBSan)",
+      "description": "Debug build instrumented solely with non-recovering UndefinedBehaviorSanitizer",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "ENABLE_SANITIZER_UNDEFINED": "ON"
@@ -102,6 +113,7 @@
       "name": "tsan",
       "inherits": "pixi-base",
       "displayName": "ThreadSanitizer (TSan)",
+      "description": "Debug concurrency verification build instrumented with ThreadSanitizer",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "ENABLE_SANITIZER_THREAD": "ON"
@@ -111,6 +123,7 @@
       "name": "coverage",
       "inherits": "pixi-base",
       "displayName": "LLVM Source-Based Coverage",
+      "description": "Debug build instrumented with LLVM source-based profile and coverage mapping",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "ENABLE_COVERAGE": "ON"
@@ -120,6 +133,7 @@
       "name": "benchmark",
       "inherits": "pixi-base",
       "displayName": "Google Benchmark (Release, Optimized, Local Only)",
+      "description": "Local-only release build with IPO/LTO for Google Benchmark suites without unit tests",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "ENABLE_IPO": "ON",
@@ -131,6 +145,7 @@
       "name": "interop-debug",
       "inherits": "pixi-base",
       "displayName": "Crubit Interop Debug (C++23 libc++ <-> Rust 2024)",
+      "description": "Isolated debug build for bidirectional Google Crubit C++23 libc++ and Rust 2024 interop targets",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BUILD_LEET_CODE": "OFF",
@@ -143,6 +158,7 @@
       "name": "interop-release",
       "inherits": "pixi-base",
       "displayName": "Crubit Interop Release (C++23 libc++ <-> Rust 2024, LTO)",
+      "description": "Isolated release build with IPO/LTO for bidirectional Google Crubit C++23 libc++ and Rust 2024 interop targets",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "ENABLE_IPO": "ON",
@@ -156,11 +172,12 @@
       "name": "sysroot-release",
       "inherits": "base",
       "displayName": "Air-Gapped Sysroot Release (IPO + SPDX SBOM)",
-      "description": "Standalone release preset without $CONDA_PREFIX for air-gapped or host SDK sysroot builds",
+      "description": "Standalone release preset without CONDA_PREFIX for air-gapped or host SDK sysroot builds",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "ENABLE_IPO": "ON",
         "ALLOW_NON_PIXI_TOOLCHAIN": "ON",
+        "ENABLE_CLANG_TIDY": "OFF",
         "CMAKE_INSTALL_SBOM_FORMATS": "spdx-3.0.1+json"
       }
     },
@@ -196,247 +213,184 @@
       "name": "dev-debug",
       "configurePreset": "dev-debug",
       "displayName": "Build Developer Debug (ASan + UBSan + clang-tidy)",
-      "description": "Build targets for configure preset ${configurePresetName}"
+      "description": "Compile all targets for the dev-debug configure preset"
     },
     {
       "name": "ci-debug",
       "configurePreset": "ci-debug",
       "displayName": "Build CI Debug (ASan + UBSan, no clang-tidy)",
-      "description": "Build targets for configure preset ${configurePresetName}"
+      "description": "Compile all targets for the ci-debug configure preset"
     },
     {
       "name": "dev-release",
       "configurePreset": "dev-release",
       "displayName": "Build Developer Release (Optimized, LTO, SPDX SBOM)",
-      "description": "Build targets for configure preset ${configurePresetName}"
+      "description": "Compile optimized release targets for the dev-release configure preset"
     },
     {
       "name": "asan",
       "configurePreset": "asan",
       "displayName": "Build AddressSanitizer (ASan)",
-      "description": "Build targets for configure preset ${configurePresetName}"
+      "description": "Compile AddressSanitizer targets for the asan configure preset"
     },
     {
       "name": "ubsan",
       "configurePreset": "ubsan",
       "displayName": "Build UndefinedBehaviorSanitizer (UBSan)",
-      "description": "Build targets for configure preset ${configurePresetName}"
+      "description": "Compile UndefinedBehaviorSanitizer targets for the ubsan configure preset"
     },
     {
       "name": "tsan",
       "configurePreset": "tsan",
       "displayName": "Build ThreadSanitizer (TSan)",
-      "description": "Build targets for configure preset ${configurePresetName}"
+      "description": "Compile ThreadSanitizer targets for the tsan configure preset"
     },
     {
       "name": "coverage",
       "configurePreset": "coverage",
       "displayName": "Build LLVM Source-Based Coverage",
-      "description": "Build targets for configure preset ${configurePresetName}"
+      "description": "Compile coverage-instrumented targets for the coverage configure preset"
     },
     {
       "name": "benchmark",
       "configurePreset": "benchmark",
       "displayName": "Build Google Benchmark (Release, Optimized, Local Only)",
-      "description": "Build targets for configure preset ${configurePresetName}"
+      "description": "Compile Google Benchmark suites for the benchmark configure preset"
     },
     {
       "name": "interop-debug",
       "configurePreset": "interop-debug",
       "displayName": "Build Crubit Interop Debug",
-      "description": "Build targets for configure preset ${configurePresetName}"
+      "description": "Compile Crubit C++23 and Rust 2024 interop targets in debug mode"
     },
     {
       "name": "interop-release",
       "configurePreset": "interop-release",
       "displayName": "Build Crubit Interop Release",
-      "description": "Build targets for configure preset ${configurePresetName}"
+      "description": "Compile Crubit C++23 and Rust 2024 interop targets in release mode with LTO"
     },
     {
       "name": "sysroot-release",
       "configurePreset": "sysroot-release",
-      "displayName": "Build Air-Gapped Sysroot Release",
-      "description": "Build targets for configure preset ${configurePresetName}"
+      "displayName": "Build Air-Gapped Sysroot Release (IPO + SPDX SBOM)",
+      "description": "Compile standalone sysroot release targets for the sysroot-release configure preset"
     },
     {
       "name": "cross-aarch64",
       "configurePreset": "cross-aarch64",
       "displayName": "Build Cross Linux AArch64",
-      "description": "Build targets for configure preset ${configurePresetName}"
+      "description": "Cross-compile Linux AArch64 targets for the cross-aarch64 configure preset"
     },
     {
       "name": "cross-riscv64",
       "configurePreset": "cross-riscv64",
       "displayName": "Build Cross Linux RISC-V 64 (RVA23)",
-      "description": "Build targets for configure preset ${configurePresetName}"
+      "description": "Cross-compile Linux RISC-V 64 RVA23 targets for the cross-riscv64 configure preset"
     }
   ],
   "testPresets": [
     {
-      "name": "dev-debug",
-      "configurePreset": "dev-debug",
-      "displayName": "Run Tests (Developer Debug (ASan + UBSan + clang-tidy))",
+      "name": "base",
+      "hidden": true,
+      "description": "Shared parallel CTest execution, JUnit XML reporting, and GoogleTest brief output defaults",
       "output": {
         "outputOnFailure": true,
+        "shortProgress": true,
         "outputJUnitFile": "${sourceDir}/build/${configurePresetName}/junit.xml"
       },
       "execution": {
+        "jobs": "",
         "noTestsAction": "error",
         "stopOnFailure": false
       },
       "environment": {
         "GTEST_BRIEF": "1"
       }
+    },
+    {
+      "name": "dev-debug",
+      "inherits": "base",
+      "configurePreset": "dev-debug",
+      "displayName": "Test Developer Debug (ASan + UBSan + clang-tidy)",
+      "description": "Run CTest suite in parallel for the dev-debug preset"
     },
     {
       "name": "ci-debug",
+      "inherits": "base",
       "configurePreset": "ci-debug",
-      "displayName": "Run Tests (CI Debug (ASan + UBSan, no clang-tidy))",
-      "output": {
-        "outputOnFailure": true,
-        "outputJUnitFile": "${sourceDir}/build/${configurePresetName}/junit.xml"
-      },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      },
-      "environment": {
-        "GTEST_BRIEF": "1"
-      }
+      "displayName": "Test CI Debug (ASan + UBSan, no clang-tidy)",
+      "description": "Run CTest suite in parallel for the ci-debug preset"
     },
     {
       "name": "dev-release",
+      "inherits": "base",
       "configurePreset": "dev-release",
-      "displayName": "Run Tests (Developer Release (Optimized, LTO))",
-      "output": {
-        "outputOnFailure": true,
-        "outputJUnitFile": "${sourceDir}/build/${configurePresetName}/junit.xml"
-      },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      },
-      "environment": {
-        "GTEST_BRIEF": "1"
-      }
+      "displayName": "Test Developer Release (Optimized, LTO, SPDX SBOM)",
+      "description": "Run CTest suite in parallel for the dev-release preset"
     },
     {
       "name": "asan",
+      "inherits": "base",
       "configurePreset": "asan",
-      "displayName": "Run Tests (AddressSanitizer (ASan))",
-      "output": {
-        "outputOnFailure": true,
-        "outputJUnitFile": "${sourceDir}/build/${configurePresetName}/junit.xml"
-      },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      },
-      "environment": {
-        "GTEST_BRIEF": "1"
-      }
+      "displayName": "Test AddressSanitizer (ASan)",
+      "description": "Run CTest suite under AddressSanitizer"
     },
     {
       "name": "ubsan",
+      "inherits": "base",
       "configurePreset": "ubsan",
-      "displayName": "Run Tests (UndefinedBehaviorSanitizer (UBSan))",
-      "output": {
-        "outputOnFailure": true,
-        "outputJUnitFile": "${sourceDir}/build/${configurePresetName}/junit.xml"
-      },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      },
-      "environment": {
-        "GTEST_BRIEF": "1"
-      }
+      "displayName": "Test UndefinedBehaviorSanitizer (UBSan)",
+      "description": "Run CTest suite under UndefinedBehaviorSanitizer"
     },
     {
       "name": "tsan",
+      "inherits": "base",
       "configurePreset": "tsan",
-      "displayName": "Run Tests (ThreadSanitizer (TSan))",
-      "output": {
-        "outputOnFailure": true,
-        "outputJUnitFile": "${sourceDir}/build/${configurePresetName}/junit.xml"
-      },
+      "displayName": "Test ThreadSanitizer (TSan)",
+      "description": "Run CTest concurrency suite under ThreadSanitizer, excluding single-threaded wall-clock stress tests",
       "filter": {
         "exclude": {
           "name": "^(NumberOfIslandsTest\\.MaxConstraintsGrid|LruCacheTest\\.StressTest)$"
         }
-      },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      },
-      "environment": {
-        "GTEST_BRIEF": "1"
       }
     },
     {
       "name": "coverage",
+      "inherits": "base",
       "configurePreset": "coverage",
-      "displayName": "Run Tests (LLVM Source-Based Coverage)",
-      "output": {
-        "outputOnFailure": true,
-        "outputJUnitFile": "${sourceDir}/build/${configurePresetName}/junit.xml"
-      },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      },
+      "displayName": "Test LLVM Source-Based Coverage",
+      "description": "Run CTest suite and emit per-process LLVM raw coverage profiles",
       "environment": {
-        "GTEST_BRIEF": "1",
         "LLVM_PROFILE_FILE": "${sourceDir}/build/${configurePresetName}/profraw/%p-%m.profraw"
       }
     },
     {
-      "name": "sysroot-release",
-      "configurePreset": "sysroot-release",
-      "displayName": "Run Tests (Air-Gapped Sysroot Release)",
-      "output": {
-        "outputOnFailure": true,
-        "outputJUnitFile": "${sourceDir}/build/${configurePresetName}/junit.xml"
-      },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      },
-      "environment": {
-        "GTEST_BRIEF": "1"
-      }
-    },
-    {
       "name": "interop-debug",
+      "inherits": "base",
       "configurePreset": "interop-debug",
-      "displayName": "Run Crubit Interop Tests (Debug)",
-      "output": {
-        "outputOnFailure": true,
-        "outputJUnitFile": "${sourceDir}/build/${configurePresetName}/junit.xml"
-      },
-      "execution": {
-        "noTestsAction": "ignore",
-        "stopOnFailure": false
-      }
+      "displayName": "Test Crubit Interop Debug",
+      "description": "Run C++23 and Rust 2024 Crubit interop CTest suite in debug mode"
     },
     {
       "name": "interop-release",
+      "inherits": "base",
       "configurePreset": "interop-release",
-      "displayName": "Run Crubit Interop Tests (Release)",
-      "output": {
-        "outputOnFailure": true,
-        "outputJUnitFile": "${sourceDir}/build/${configurePresetName}/junit.xml"
-      },
-      "execution": {
-        "noTestsAction": "ignore",
-        "stopOnFailure": false
-      }
+      "displayName": "Test Crubit Interop Release",
+      "description": "Run C++23 and Rust 2024 Crubit interop CTest suite in release mode"
+    },
+    {
+      "name": "sysroot-release",
+      "inherits": "base",
+      "configurePreset": "sysroot-release",
+      "displayName": "Test Air-Gapped Sysroot Release (IPO + SPDX SBOM)",
+      "description": "Run CTest suite for the standalone sysroot-release preset"
     }
   ],
   "workflowPresets": [
     {
       "name": "dev-debug",
       "displayName": "Developer Debug (ASan + UBSan + clang-tidy) Workflow (Configure, Build, Test)",
+      "description": "Configure, build, and test the dev-debug preset",
       "steps": [
         {
           "type": "configure",
@@ -455,6 +409,7 @@
     {
       "name": "ci-debug",
       "displayName": "CI Debug (ASan + UBSan, no clang-tidy) Workflow (Configure, Build, Test)",
+      "description": "Configure, build, and test the ci-debug preset",
       "steps": [
         {
           "type": "configure",
@@ -472,7 +427,8 @@
     },
     {
       "name": "dev-release",
-      "displayName": "Developer Release (Optimized, LTO) Workflow (Configure, Build, Test)",
+      "displayName": "Developer Release (Optimized, LTO, SPDX SBOM) Workflow (Configure, Build, Test)",
+      "description": "Configure, build, and test the optimized dev-release preset",
       "steps": [
         {
           "type": "configure",
@@ -491,6 +447,7 @@
     {
       "name": "asan",
       "displayName": "AddressSanitizer (ASan) Workflow (Configure, Build, Test)",
+      "description": "Configure, build, and test the AddressSanitizer preset",
       "steps": [
         {
           "type": "configure",
@@ -509,6 +466,7 @@
     {
       "name": "ubsan",
       "displayName": "UndefinedBehaviorSanitizer (UBSan) Workflow (Configure, Build, Test)",
+      "description": "Configure, build, and test the UndefinedBehaviorSanitizer preset",
       "steps": [
         {
           "type": "configure",
@@ -527,6 +485,7 @@
     {
       "name": "tsan",
       "displayName": "ThreadSanitizer (TSan) Workflow (Configure, Build, Test)",
+      "description": "Configure, build, and test the ThreadSanitizer concurrency preset",
       "steps": [
         {
           "type": "configure",
@@ -545,6 +504,7 @@
     {
       "name": "coverage",
       "displayName": "LLVM Source-Based Coverage Workflow (Configure, Build, Test)",
+      "description": "Configure, build, and test the LLVM source-based coverage preset",
       "steps": [
         {
           "type": "configure",
@@ -563,6 +523,7 @@
     {
       "name": "benchmark",
       "displayName": "Benchmark Workflow (Configure, Build)",
+      "description": "Configure and compile local Google Benchmark suites",
       "steps": [
         {
           "type": "configure",
@@ -577,6 +538,7 @@
     {
       "name": "interop-debug",
       "displayName": "Crubit Interop Debug Workflow (Configure, Build, Test)",
+      "description": "Configure, build, and test Crubit C++23 and Rust 2024 interop targets in debug mode",
       "steps": [
         {
           "type": "configure",
@@ -595,6 +557,7 @@
     {
       "name": "interop-release",
       "displayName": "Crubit Interop Release Workflow (Configure, Build, Test)",
+      "description": "Configure, build, and test Crubit C++23 and Rust 2024 interop targets in release mode",
       "steps": [
         {
           "type": "configure",
@@ -612,7 +575,8 @@
     },
     {
       "name": "sysroot-release",
-      "displayName": "Air-Gapped Sysroot Release Workflow (Configure, Build, Test)",
+      "displayName": "Air-Gapped Sysroot Release (IPO + SPDX SBOM) Workflow (Configure, Build, Test)",
+      "description": "Configure, build, and test the standalone air-gapped sysroot-release preset",
       "steps": [
         {
           "type": "configure",
@@ -631,6 +595,7 @@
     {
       "name": "cross-aarch64",
       "displayName": "Cross Linux AArch64 Workflow (Configure, Build)",
+      "description": "Configure and cross-compile Linux AArch64 release targets",
       "steps": [
         {
           "type": "configure",
@@ -645,6 +610,7 @@
     {
       "name": "cross-riscv64",
       "displayName": "Cross Linux RISC-V 64 (RVA23) Workflow (Configure, Build)",
+      "description": "Configure and cross-compile Linux RISC-V 64 RVA23 release targets",
       "steps": [
         {
           "type": "configure",
