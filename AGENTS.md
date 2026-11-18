@@ -92,9 +92,9 @@ pixi run lint | lint-fix | format | format-check | format-cmake | format-cpp | l
 pixi run pre-commit      # full gate via prek; run before every commit
 ```
 
-CMake presets (Schema v13; `build/<preset>`): `dev-debug`, `ci-debug`, `dev-release`, `asan`, `ubsan`, `tsan`, `coverage`, `benchmark`, `interop-debug`,
-`interop-release`, `sysroot-release`, `cross-aarch64`, `cross-riscv64`. Root enforces `CMD_NON_TARGET_DIRECTIVE` (`SEND_ERROR`) and emits CPS
-`PACKAGE_INFO` + SPDX 3.0.1 `SBOM` (`INSTALL_LC_DSA=ON`).
+CMake presets (Schema v11; `build/<preset>`): `dev-debug`, `ci-debug`, `dev-release`, `asan`, `ubsan`, `tsan`, `coverage`, `benchmark`, `interop-debug`,
+`interop-release`, `sysroot-release`, `cross-aarch64`, `cross-riscv64`. Root enforces `CMD_NON_TARGET_DIRECTIVE`, `CMD_INSTALL_ABSOLUTE_DESTINATION`, and
+`CMD_EXPERIMENTAL` (`SEND_ERROR`), and emits CPS `PACKAGE_INFO` + SPDX 3.0.1 `SBOM` (`INSTALL_LC_DSA=ON`).
 
 ## Track 1: C++ LeetCode
 

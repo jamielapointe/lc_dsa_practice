@@ -15,7 +15,7 @@
 
 LeetCode data-structure and algorithm practice in **C++23**, **ISO C23**, **Python 3.15**, and **Rust 1.100+** (Edition 2024), plus a **systems /
 embedded-style C++23, ISO C23, and Rust** tree for low-level components and **Crubit interop**. Everything (CMake 4.5+, LLVM/Clang 23.1.5+,
-`CMakePresets.json` v13, dependencies, tasks, CI) is managed with [Pixi](https://pixi.sh) (`>= 0.84.2`) and conda-forge.
+`CMakePresets.json` v11, dependencies, tasks, CI) is managed with [Pixi](https://pixi.sh) (`>= 0.84.2`) and conda-forge.
 
 ## Tracks
 
@@ -59,7 +59,7 @@ pixi run test-rust            # cargo test --workspace --all-targets
 pixi run clippy               # cargo clippy --all-targets -- -D warnings
 pixi run cov-rust             # cargo-llvm-cov line coverage, gate >= 85%
 
-# C++ presets (CMake 4.5+, Schema v13)
+# C++ presets (CMake 4.5+, Schema v11)
 pixi run cpp-debug            # configure, build, test (dev-debug: ASan + UBSan + clang-tidy)
 pixi run cpp-ci-debug         # CI debug workflow (ci-debug: ASan + UBSan, clang-tidy off)
 pixi run cpp-release          # dev-release (IPO + SPDX 3.0.1 SBOM)
@@ -102,7 +102,7 @@ pixi run pre-commit           # prek over the whole tree
 ```text
 .
 ├── AGENTS.md                      # Agent guide (read this first when automating)
-├── CMakeLists.txt, CMakePresets.json, cmake/ # CMake 4.5+ (CPS PACKAGE_INFO + SPDX 3.0.1 SBOM), Schema v13 presets, toolchains/
+├── CMakeLists.txt, CMakePresets.json, cmake/ # CMake 4.5+ (CPS PACKAGE_INFO + SPDX 3.0.1 SBOM), Schema v11 presets, toolchains/
 ├── pixi.toml, pyproject.toml, pixi.lock # Standalone Pixi workspace + PEP 621/735 pyproject + single lockfile
 ├── notebooks/
 │   └── benchmark_telemetry_explorer.py # Reactive Marimo (0.25.2+) Bayesian BEST telemetry explorer

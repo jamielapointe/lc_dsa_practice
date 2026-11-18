@@ -1,6 +1,6 @@
 # C++23 LeetCode Scaffolding Reference
 
-Used by the `leetcode-setup` skill when the user chose **`cpp`**. Follow `cpp-pro` (LLVM/Clang 23.1.5+) and `cmake-pro` (CMake 4.5+, Presets v13).
+Used by the `leetcode-setup` skill when the user chose **`cpp`**. Follow `cpp-pro` (LLVM/Clang 23.1.5+) and `cmake-pro` (CMake 4.5+, Presets v11).
 
 ## Naming conventions
 
@@ -72,7 +72,7 @@ leet_code_add_library(
 add_project_test(<slug_snake>_test SOURCES <slug_snake>_test.cpp LIBS leet_code::<slug_snake>)
 ```
 
-## Verify (always through Pixi and Schema v13 presets)
+## Verify (always through Pixi and Schema v11 presets)
 
 ```bash
 pixi run cmake --preset dev-debug

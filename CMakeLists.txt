@@ -28,8 +28,13 @@ if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
     )
 endif()
 
-# Enforce target-based commands (rejects include_directories, add_compile_options, etc.)
+# Enforce strict CMake 4.5+ diagnostics in root CMakeLists.txt (rejects non-target directives,
+# absolute install destinations, and experimental gates while keeping CMakePresets.json on IDE-safe
+# Schema v11).
+cmake_diagnostic(SET CMD_STRICT WARN RECURSE)
 cmake_diagnostic(SET CMD_NON_TARGET_DIRECTIVE SEND_ERROR)
+cmake_diagnostic(SET CMD_INSTALL_ABSOLUTE_DESTINATION SEND_ERROR)
+cmake_diagnostic(SET CMD_EXPERIMENTAL SEND_ERROR)
 
 # Default C++20/23 module scanning OFF so ccache, clang-tidy, and misc-include-cleaner stay
 # deterministic; opt in explicitly for standalone CMake 4.5 GA `import std`.

@@ -51,7 +51,7 @@ This guide covers the development workflow, security policies, and dependency ma
 
 - C++23 and ISO C23 (`-std=c23`) with CMake 4.5+ (`CMD_NON_TARGET_DIRECTIVE SEND_ERROR`, `FILE_SET HEADERS` and `FILE_SET sources TYPE SOURCES`,
   CPS `PACKAGE_INFO`, SPDX 3.0.1 `SBOM`), LLVM/Clang 23.1.5+, Google style (`.clang-format`), and strict `.clang-tidy`. Drive CMake only via
-  `CMakePresets.json` Schema v13 (`pixi run cmake --workflow --preset <name>` for `dev-debug`, `ci-debug`, `dev-release`, `asan`, `ubsan`, `tsan`,
+  `CMakePresets.json` Schema v11 (`pixi run cmake --workflow --preset <name>` for `dev-debug`, `ci-debug`, `dev-release`, `asan`, `ubsan`, `tsan`,
   `coverage`, `benchmark`, `interop-*`; plus `sysroot-release`, `cross-aarch64`, and `cross-riscv64` configure/build presets), never an ad hoc configure.
 - Rust crates target `1.100+` (`edition = "2024"`, `resolver = "3"`, `rust-version = "1.100"`; Crubit's hermetic sysroot pins `1.100.0`).
 - Python 3.15 (`PEP 649` native annotations; `TID251` bans `from __future__ import annotations`; `PEP 810` `lazy import`, `PEP 814` `frozendict`,

@@ -1,5 +1,5 @@
 {
-  "version": 13,
+  "version": 11,
   "cmakeMinimumRequired": {
     "major": 4,
     "minor": 5,
@@ -9,26 +9,18 @@
     {
       "name": "base",
       "hidden": true,
-      "description": "Shared Ninja generator, strict CMake 4.5 diagnostics, header-set verification, and build-local install prefix",
+      "description": "Shared Ninja generator, Schema v11 IDE-compatible warnings, header-set verification, and build-local install prefix",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/${presetName}",
       "installDir": "${sourceDir}/build/${presetName}/install",
       "warnings": {
-        "author": true,
+        "dev": true,
         "deprecated": true,
-        "experimental": true,
-        "installAbsoluteDestination": true,
-        "nonTargetDirective": true,
-        "policy": true,
-        "strict": true,
         "uninitialized": true,
         "unusedCli": true
       },
       "errors": {
-        "deprecated": true,
-        "experimental": true,
-        "installAbsoluteDestination": true,
-        "nonTargetDirective": true
+        "deprecated": true
       },
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
@@ -296,10 +288,10 @@
       "output": {
         "outputOnFailure": true,
         "shortProgress": true,
-        "outputJUnitFile": "${sourceDir}/build/${configurePresetName}/junit.xml"
+        "outputJUnitFile": "${sourceDir}/build/${presetName}/junit.xml"
       },
       "execution": {
-        "jobs": "",
+        "jobs": 4,
         "noTestsAction": "error",
         "stopOnFailure": false
       },
@@ -347,7 +339,10 @@
       "inherits": "base",
       "configurePreset": "tsan",
       "displayName": "Test ThreadSanitizer (TSan)",
-      "description": "Run CTest concurrency suite under ThreadSanitizer, excluding single-threaded wall-clock stress tests",
+      "description": "Run CTest concurrency suite serially under ThreadSanitizer, excluding single-threaded wall-clock stress tests",
+      "execution": {
+        "jobs": 1
+      },
       "filter": {
         "exclude": {
           "name": "^(NumberOfIslandsTest\\.MaxConstraintsGrid|LruCacheTest\\.StressTest)$"
@@ -361,7 +356,7 @@
       "displayName": "Test LLVM Source-Based Coverage",
       "description": "Run CTest suite and emit per-process LLVM raw coverage profiles",
       "environment": {
-        "LLVM_PROFILE_FILE": "${sourceDir}/build/${configurePresetName}/profraw/%p-%m.profraw"
+        "LLVM_PROFILE_FILE": "${sourceDir}/build/${presetName}/profraw/%p-%m.profraw"
       }
     },
     {

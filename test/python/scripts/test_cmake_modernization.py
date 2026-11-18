@@ -1,4 +1,4 @@
-"""E2E structural and toolchain invariants for CMake 4.5+ and Presets v13."""
+"""E2E structural and toolchain invariants for CMake 4.5+ and Presets v11."""
 
 import json
 import re
@@ -197,9 +197,21 @@ def test_root_cmakelists_cmake45_features() -> None:
         'Root project() call must define SPDX_LICENSE "Apache-2.0"'
     )
     assert re.search(
+        r"cmake_diagnostic\(\s*SET\s+CMD_STRICT\s+WARN\s+RECURSE\s*\)",
+        content,
+    ), "Root CMakeLists.txt must set CMD_STRICT to WARN RECURSE"
+    assert re.search(
         r"cmake_diagnostic\(\s*SET\s+CMD_NON_TARGET_DIRECTIVE\s+SEND_ERROR\s*\)",
         content,
     ), "Root CMakeLists.txt must set CMD_NON_TARGET_DIRECTIVE to SEND_ERROR"
+    assert re.search(
+        r"cmake_diagnostic\(\s*SET\s+CMD_INSTALL_ABSOLUTE_DESTINATION\s+SEND_ERROR\s*\)",
+        content,
+    ), "Root CMakeLists.txt must set CMD_INSTALL_ABSOLUTE_DESTINATION to SEND_ERROR"
+    assert re.search(
+        r"cmake_diagnostic\(\s*SET\s+CMD_EXPERIMENTAL\s+SEND_ERROR\s*\)",
+        content,
+    ), "Root CMakeLists.txt must set CMD_EXPERIMENTAL to SEND_ERROR"
     assert re.search(r"\binstall\(\s*PACKAGE_INFO\b", content), (
         "Root CMakeLists.txt must configure install(PACKAGE_INFO ...)"
     )
@@ -232,12 +244,16 @@ def test_zero_forbidden_non_target_directives() -> None:
 
 
 @pytest.mark.unit
-def test_cmake_presets_v13_structure() -> None:
-    """Verify CMakePresets.json conforms to Schema v13 and exposes required presets."""
+def test_cmake_presets_v11_structure() -> None:
+    """Verify CMakePresets.json conforms to Schema v11 and exposes required presets."""
     presets_path = REPO_ROOT / "CMakePresets.json"
+    raw_text = presets_path.read_text(encoding="utf-8")
     data = _load_json_dict(presets_path)
 
-    assert data.get("version") == 13, "CMakePresets.json must use Schema version 13"
+    assert data.get("version") == 11, "CMakePresets.json must use Schema version 11"
+    assert "${configurePresetName}" not in raw_text, (
+        "Schema v11 CMakePresets.json must not use v13-only ${configurePresetName}"
+    )
     assert data.get("cmakeMinimumRequired") == {
         "major": 4,
         "minor": 5,
@@ -266,9 +282,13 @@ def test_cmake_presets_v13_structure() -> None:
 
     base_warnings = cast("dict[str, object]", configure_by_name["base"].get("warnings"))
     base_errors = cast("dict[str, object]", configure_by_name["base"].get("errors"))
-    assert base_warnings.get("experimental") is True
-    assert base_errors.get("experimental") is True
-    assert base_errors.get("installAbsoluteDestination") is True
+    assert base_warnings == {
+        "dev": True,
+        "deprecated": True,
+        "uninitialized": True,
+        "unusedCli": True,
+    }
+    assert base_errors == {"deprecated": True}
 
     base_cache = cast(
         "dict[str, object]", configure_by_name["base"].get("cacheVariables")
@@ -287,14 +307,6 @@ def test_cmake_presets_v13_structure() -> None:
         '"sysroot-release" must disable clang-tidy for air-gapped SDK hosts'
     )
 
-    for preset_name, preset in configure_by_name.items():
-        for section in ("warnings", "errors"):
-            block = preset.get(section)
-            if isinstance(block, dict):
-                assert "dev" not in cast("dict[str, object]", block), (
-                    f'Preset {preset_name!r} {section} must not contain removed "dev" key'
-                )
-
     missing_configure = REQUIRED_CONFIGURE_PRESETS - set(configure_by_name)
     assert not missing_configure, (
         f"Missing configurePresets: {sorted(missing_configure)}"
@@ -302,21 +314,57 @@ def test_cmake_presets_v13_structure() -> None:
 
     raw_workflows = data.get("workflowPresets")
     assert isinstance(raw_workflows, list)
-    workflow_names: set[str] = set()
-    for entry in cast("list[object]", raw_workflows):
-        assert isinstance(entry, dict)
-        typed_entry = cast("dict[str, object]", entry)
-        name = typed_entry.get("name")
-        assert isinstance(name, str)
-        workflow_names.add(name)
-        assert "${configurePresetName}" not in json.dumps(typed_entry), (
-            f"workflowPreset {name!r} must not use ${{configurePresetName}}"
-        )
-
+    workflow_names = {
+        cast("str", cast("dict[str, object]", entry)["name"])
+        for entry in cast("list[object]", raw_workflows)
+        if isinstance(entry, dict)
+        and isinstance(cast("dict[str, object]", entry).get("name"), str)
+    }
     missing_workflows = REQUIRED_WORKFLOW_PRESETS - workflow_names
     assert not missing_workflows, (
         f"Missing workflowPresets: {sorted(missing_workflows)}"
     )
+
+
+@pytest.mark.unit
+def test_cmake_presets_v11_diagnostic_keys() -> None:
+    """Verify configurePresets warnings/errors strictly use Schema v11 keys."""
+    data = _load_json_dict(REPO_ROOT / "CMakePresets.json")
+    raw_configure = data.get("configurePresets")
+    assert isinstance(raw_configure, list)
+
+    allowed_v11_warnings = frozenset({
+        "$comment",
+        "dev",
+        "deprecated",
+        "uninitialized",
+        "unusedCli",
+        "systemVars",
+    })
+    allowed_v11_errors = frozenset({"$comment", "dev", "deprecated"})
+
+    for entry in cast("list[object]", raw_configure):
+        assert isinstance(entry, dict)
+        preset = cast("dict[str, object]", entry)
+        preset_name = preset.get("name")
+        warnings_block = preset.get("warnings")
+        if isinstance(warnings_block, dict):
+            unknown_warnings = (
+                set(cast("dict[str, object]", warnings_block)) - allowed_v11_warnings
+            )
+            assert not unknown_warnings, (
+                f"Preset {preset_name!r} warnings contains non-v11 keys: "
+                f"{sorted(unknown_warnings)}"
+            )
+        errors_block = preset.get("errors")
+        if isinstance(errors_block, dict):
+            unknown_errors = (
+                set(cast("dict[str, object]", errors_block)) - allowed_v11_errors
+            )
+            assert not unknown_errors, (
+                f"Preset {preset_name!r} errors contains non-v11 keys: "
+                f"{sorted(unknown_errors)}"
+            )
 
 
 @pytest.mark.unit
@@ -361,11 +409,9 @@ def test_cmake_presets_macro_and_test_inheritance_invariants() -> None:
     test_base = tests_by_name["base"]
     assert test_base.get("hidden") is True
     base_output = cast("dict[str, object]", test_base.get("output"))
-    assert "${configurePresetName}" in str(base_output.get("outputJUnitFile"))
+    assert "${presetName}" in str(base_output.get("outputJUnitFile"))
     base_exec = cast("dict[str, object]", test_base.get("execution"))
-    jobs_val = base_exec.get("jobs")
-    assert isinstance(jobs_val, str)
-    assert not jobs_val
+    assert base_exec.get("jobs") == 4
     assert base_exec.get("noTestsAction") == "error"
 
     for name, test_preset in tests_by_name.items():

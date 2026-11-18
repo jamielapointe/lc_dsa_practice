@@ -8,7 +8,7 @@ description: Orchestrates an agentic hypothesis-driven optimization loop for C++
 ## 🔗 Related Skills
 
 - **cpp-pro**: Modern C++23 (LLVM/Clang 23.1.5+), low-level micro-optimizations, SIMD intrinsics (NEON, AVX2/512), cache alignment, compiler optimization flags.
-- **cmake-pro**: Target-based CMake 4.5+, Presets v13 (`dev-release`, `benchmark`, `ci-debug`), `FILE_SET` (`HEADERS`/`SOURCES`), Ninja build configuration,
+- **cmake-pro**: Target-based CMake 4.5+, Presets v11 (`dev-release`, `benchmark`, `ci-debug`), `FILE_SET` (`HEADERS`/`SOURCES`), Ninja build configuration,
   IPO/LTO.
 - **python-pro**: Python 3.15 scientific stack (`NumPy`, `SciPy`, `Polars`, `arviz-stats`, `Plotly`, `Marimo`, `Cyclopts`, `Structlog`) driving Bayesian BEST +
   ROPE statistical analysis, HTML reports, and reactive notebook exploration.
