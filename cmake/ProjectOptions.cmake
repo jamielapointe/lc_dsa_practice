@@ -104,7 +104,5 @@ endif()
 # Target compile definitions (build-only so CPS consumers do not inherit internal macros)
 target_compile_definitions(
     project_options
-    INTERFACE
-        "$<BUILD_INTERFACE:$<$<CONFIG:Debug>:DEBUG=1>>"
-        "$<BUILD_INTERFACE:$<$<CONFIG:Release>:NDEBUG=1>>"
+    INTERFACE "$<BUILD_INTERFACE:$<$<CONFIG:Debug>:DEBUG=1>>"
 )

@@ -79,7 +79,8 @@ option(BUILD_BENCHMARKS "Build the benchmark targets" OFF)
 # Register modular cmake helper path
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-# Include modular configuration components
+# Include modular configuration components (CTest defines BUILD_TESTING before Dependencies)
+include(CTest)
 block(SCOPE_FOR POLICIES DIAGNOSTICS)
     include(ProjectOptions)
     include(CompilerWarnings)
@@ -129,7 +130,6 @@ if(BUILD_INTEROP)
 endif()
 
 # Tests: test/{cpp,c}/<tree>/
-include(CTest)
 if(BUILD_TESTING)
     include(Testing)
     if(BUILD_LEET_CODE)
@@ -169,6 +169,13 @@ endif()
 
 # Install internal interface targets, CPS PACKAGE_INFO descriptor, and SPDX 3.0.1 SBOM
 if(INSTALL_LC_DSA AND (BUILD_LEET_CODE OR BUILD_SYSTEMS))
+    set_target_properties(
+        project_options
+        project_warnings
+        project_sanitizers
+        project_architecture
+        PROPERTIES SPDX_LICENSE "${PROJECT_SPDX_LICENSE}"
+    )
     install(
         TARGETS project_options project_warnings project_sanitizers project_architecture
         EXPORT lc_dsa_practice_targets

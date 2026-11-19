@@ -1,6 +1,7 @@
 """E2E structural and toolchain invariants for CMake 4.5+ and Presets v11."""
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -543,3 +544,216 @@ def test_file_set_and_discovery_modernization() -> None:
     ).read_text(encoding="utf-8")
     assert "discover_tests(" in c23_test_cmake
     assert "FILE_SET sources TYPE SOURCES" in c23_test_cmake
+
+
+@pytest.mark.unit
+def test_clang_tidy_verify_config() -> None:
+    """Verify .clang-tidy passes ``clang-tidy --verify-config`` with zero warnings."""
+    clang_tidy_bin = shutil.which("clang-tidy")
+    assert clang_tidy_bin is not None, "clang-tidy binary must be available in Pixi"
+
+    result = subprocess.run(
+        [clang_tidy_bin, "--verify-config"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    combined = f"{result.stdout}\n{result.stderr}"
+    assert result.returncode == 0, f"clang-tidy --verify-config failed:\n{combined}"
+    assert "warning:" not in combined.lower(), (
+        f"clang-tidy --verify-config emitted warnings:\n{combined}"
+    )
+
+
+@pytest.mark.unit
+def test_cmake_target_hygiene_and_presets_comment() -> None:
+    """Verify presets $comment, single header ownership, and systems test labels."""
+    presets_data = _load_json_dict(REPO_ROOT / "CMakePresets.json")
+    comment = presets_data.get("$comment")
+    assert isinstance(comment, list), (
+        "CMakePresets.json must define a root '$comment' list"
+    )
+    assert comment, "CMakePresets.json root '$comment' list must not be empty"
+    comment_text = " ".join(str(item) for item in cast("list[object]", comment))
+    assert "v11" in comment_text, (
+        "CMakePresets.json root '$comment' must document Schema v11 pin"
+    )
+
+    leet_cmake = (REPO_ROOT / "src" / "cpp" / "leet_code" / "CMakeLists.txt").read_text(
+        encoding="utf-8"
+    )
+    robot_cleaner_match = re.search(
+        r"leet_code_add_library\(\s*robot_room_cleaner\b[\s\S]*?\)",
+        leet_cmake,
+    )
+    assert robot_cleaner_match is not None
+    assert "robot.hpp" not in robot_cleaner_match.group(0), (
+        "robot_room_cleaner must not duplicate header ownership of robot.hpp"
+    )
+
+    systems_test_cmake = (
+        REPO_ROOT / "test" / "cpp" / "systems" / "CMakeLists.txt"
+    ).read_text(encoding="utf-8")
+    fifo_test_match = re.search(
+        r"add_project_test\(\s*bounded_fifo_test\b[\s\S]*?\)",
+        systems_test_cmake,
+    )
+    assert fifo_test_match is not None
+    assert 'LABELS "systems"' in fifo_test_match.group(0), (
+        'bounded_fifo_test must attach LABELS "systems"'
+    )
+
+
+def _verify_installed_cps_and_sbom(install_dir: Path) -> None:
+    """Validates installed CPS package metadata and SPDX 3.0.1 SBOM artifact."""
+    cps_path = install_dir / "lib" / "cps" / "lc_dsa_practice" / "lc_dsa_practice.cps"
+    assert cps_path.is_file(), f"Missing installed CPS descriptor: {cps_path}"
+    cps_data = _load_json_dict(cps_path)
+
+    top_requires = cps_data.get("requires")
+    if isinstance(top_requires, dict):
+        assert "Threads" not in cast("dict[str, object]", top_requires), (
+            "Installed CPS must not require non-CPS 'Threads' package"
+        )
+
+    components = cast("dict[str, object]", cps_data.get("components"))
+    assert "systems_threads" in components
+    for comp_name, comp_val in components.items():
+        assert isinstance(comp_val, dict)
+        comp_dict = cast("dict[str, object]", comp_val)
+        assert comp_dict.get("license") == "Apache-2.0", (
+            f"CPS component {comp_name!r} missing Apache-2.0 license"
+        )
+
+    sbom_dir = install_dir / "lib" / "sbom" / "lc_dsa_practice"
+    sbom_files = sorted(sbom_dir.glob("*.spdx.json"))
+    assert sbom_files, f"Missing SPDX 3.0.1 SBOM files in {sbom_dir}"
+    sbom_data = _load_json_dict(sbom_files[0])
+    graph = sbom_data.get("@graph")
+    assert isinstance(graph, list)
+    assert any(
+        isinstance(node, dict)
+        and cast("dict[str, object]", node).get("specVersion") == "3.0.1"
+        for node in cast("list[object]", graph)
+    ), "Installed SBOM must specify SPDX specVersion 3.0.1"
+
+
+def _build_and_run_cps_consumer(
+    cmake_bin: str,
+    c_compiler: Path,
+    cxx_compiler: Path,
+    install_dir: Path,
+    tmp_path: Path,
+) -> None:
+    """Configures, builds, and executes a downstream CMake consumer via CPS."""
+    consumer_src = tmp_path / "consumer_src"
+    consumer_build = tmp_path / "consumer_build"
+    consumer_src.mkdir()
+    (consumer_src / "CMakeLists.txt").write_text(
+        "\n".join([
+            "cmake_minimum_required(VERSION 4.5)",
+            "project(cps_consumer LANGUAGES CXX C)",
+            "find_package(lc_dsa_practice CONFIG REQUIRED)",
+            "add_executable(consumer main.cpp)",
+            "target_link_libraries(",
+            "    consumer",
+            "    PRIVATE",
+            "        lc_dsa_practice::systems_bounded_fifo",
+            "        lc_dsa_practice::systems_c_bounded_fifo",
+            ")",
+            "",
+        ]),
+        encoding="utf-8",
+    )
+    (consumer_src / "main.cpp").write_text(
+        "\n".join([
+            "#include <array>",
+            "#include <cstdint>",
+            "#include <systems/bounded_fifo.h>",
+            "#include <systems/bounded_fifo.hpp>",
+            "",
+            "int main() {",
+            "  systems::BoundedFifo<int, 4> cpp_fifo;",
+            "  std::array<uint8_t, 16> storage{};",
+            "  struct bounded_fifo c_fifo{};",
+            "  if (bounded_fifo_init(&c_fifo, storage.data(), 4U, sizeof(int)) !=",
+            "      BOUNDED_FIFO_OK) {",
+            "    return 1;",
+            "  }",
+            "  bounded_fifo_destroy(&c_fifo);",
+            "  return cpp_fifo.try_push(42) ? 0 : 1;",
+            "}",
+            "",
+        ]),
+        encoding="utf-8",
+    )
+    subprocess.run(
+        [
+            cmake_bin,
+            "-S",
+            str(consumer_src),
+            "-B",
+            str(consumer_build),
+            "-G",
+            "Ninja",
+            f"-DCMAKE_C_COMPILER={c_compiler}",
+            f"-DCMAKE_CXX_COMPILER={cxx_compiler}",
+            f"-DCMAKE_PREFIX_PATH={install_dir}",
+        ],
+        check=True,
+    )
+    subprocess.run([cmake_bin, "--build", str(consumer_build)], check=True)
+    subprocess.run([str(consumer_build / "consumer")], check=True)
+
+
+@pytest.mark.integration
+def test_cps_package_install_and_consumer_find_package(tmp_path: Path) -> None:
+    """Verify installed CPS package and SPDX 3.0.1 SBOM work in a downstream consumer.
+
+    Args:
+        tmp_path: Temporary directory fixture provided by pytest.
+    """
+    conda_prefix = os.environ.get("CONDA_PREFIX")
+    cmake_bin = shutil.which("cmake")
+    ninja_bin = shutil.which("ninja")
+    if not conda_prefix or cmake_bin is None or ninja_bin is None:
+        pytest.skip("Requires active Pixi CONDA_PREFIX, cmake, and ninja")
+
+    conda_bin = Path(conda_prefix) / "bin"
+    c_compiler = conda_bin / "clang"
+    cxx_compiler = conda_bin / "clang++"
+    if not c_compiler.is_file() or not cxx_compiler.is_file():
+        pytest.skip("Pixi clang/clang++ compilers unavailable in CONDA_PREFIX")
+
+    build_dir = tmp_path / "pkg_build"
+    install_dir = tmp_path / "pkg_install"
+    subprocess.run(
+        [
+            cmake_bin,
+            "-S",
+            str(REPO_ROOT),
+            "-B",
+            str(build_dir),
+            "-G",
+            "Ninja",
+            "-DCMAKE_BUILD_TYPE=Release",
+            "-DBUILD_LEET_CODE=OFF",
+            "-DBUILD_SYSTEMS=ON",
+            "-DBUILD_TESTING=OFF",
+            "-DBUILD_EXAMPLES=OFF",
+            "-DENABLE_CLANG_TIDY=OFF",
+            f"-DCMAKE_C_COMPILER={c_compiler}",
+            f"-DCMAKE_CXX_COMPILER={cxx_compiler}",
+            f"-DCMAKE_PREFIX_PATH={conda_prefix}",
+            f"-DCMAKE_INSTALL_PREFIX={install_dir}",
+        ],
+        check=True,
+    )
+    subprocess.run([cmake_bin, "--build", str(build_dir)], check=True)
+    subprocess.run([cmake_bin, "--install", str(build_dir)], check=True)
+
+    _verify_installed_cps_and_sbom(install_dir)
+    _build_and_run_cps_consumer(
+        cmake_bin, c_compiler, cxx_compiler, install_dir, tmp_path
+    )

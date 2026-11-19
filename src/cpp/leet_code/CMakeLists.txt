@@ -89,14 +89,7 @@ leet_code_add_library(number_of_islands SOURCES number_of_islands.cpp)
 
 leet_code_add_library(robot SOURCES robot.cpp)
 
-leet_code_add_library(
-    robot_room_cleaner
-    HEADERS
-        "${PROJECT_SOURCE_DIR}/src/include/leet_code/robot.hpp"
-        "${PROJECT_SOURCE_DIR}/src/include/leet_code/robot_room_cleaner.hpp"
-    SOURCES robot_room_cleaner.cpp
-    LIBS leet_code::robot
-)
+leet_code_add_library(robot_room_cleaner SOURCES robot_room_cleaner.cpp LIBS leet_code::robot)
 
 leet_code_add_library(lru_cache SOURCES lru_cache.cpp)
 

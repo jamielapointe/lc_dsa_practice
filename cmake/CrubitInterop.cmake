@@ -548,7 +548,7 @@ function(crubit_add_rust_binary_or_test target_name)
     _crubit_collect_link_targets(cpp_link_targets ${seed_cpp_targets} crubit::support_cc)
 
     string(ASCII 31 _unit_sep)
-    set(rustflags_list "-C" "linker=${CMAKE_CXX_COMPILER}" "-C" "link-arg=-stdlib=libc++")
+    set(rustflags_list "-C" "linker=${CMAKE_CXX_COMPILER}")
     if(UNIX AND NOT APPLE)
         if(CMAKE_LINKER_TYPE STREQUAL "LLD")
             list(APPEND rustflags_list "-C" "link-arg=-fuse-ld=lld")

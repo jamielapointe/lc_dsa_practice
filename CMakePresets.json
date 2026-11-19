@@ -1,5 +1,10 @@
 {
   "version": 11,
+  "$comment": [
+    "Pinned to CMakePresets Schema v11 because the CMake Tools extension (ms-vscode.cmake-tools) in VS Code and Antigravity IDE currently caps preset schema support at v11.",
+    "Enforce CMake 4.5+ diagnostics (CMD_STRICT, CMD_NON_TARGET_DIRECTIVE, CMD_INSTALL_ABSOLUTE_DESTINATION, CMD_EXPERIMENTAL) in root CMakeLists.txt via cmake_diagnostic(), and use ${presetName} + environment.GTEST_BRIEF instead of v12/v13-only fields.",
+    "Upgrade to Schema v13+ once CMake Tools adds upstream v13 support (replace warnings.dev with author/policy/strict/nonTargetDirective/installAbsoluteDestination, adopt the Schema v13 configurePresetName macro, and migrate GTEST_BRIEF to testPassthroughArguments)."
+  ],
   "cmakeMinimumRequired": {
     "major": 4,
     "minor": 5,
