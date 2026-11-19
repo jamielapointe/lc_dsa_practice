@@ -52,7 +52,12 @@ add_project_test(
     LABELS "systems;multiprocess"
 )
 
-add_project_test(bounded_fifo_test SOURCES bounded_fifo_test.cpp LIBS systems::bounded_fifo)
+add_project_test(
+    bounded_fifo_test
+    SOURCES bounded_fifo_test.cpp
+    LIBS systems::bounded_fifo
+    LABELS "systems"
+)
 
 add_project_test(
     shm_pubsub_test

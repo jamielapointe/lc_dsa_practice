@@ -9,7 +9,7 @@ description: Scaffolds a low-level / embedded-style C++23, ISO C23, or Rust 1.10
 
 - **cpp-pro**: Modern C++23 (LLVM/Clang 23.1.5+), RAII, concurrency, sanitizer-clean code (C++ path).
 - **c-pro**: Strict ISO C23 (`-std=c23`), `<stdbit.h>`, `<stdckdint.h>`, `[[nodiscard]]`, CERT C / MISRA C alignment (C23 path).
-- **cmake-pro**: Target-based CMake 4.5+, Presets v13, `FILE_SET` (`HEADERS`/`SOURCES`), `systems_add_library` / `systems_c_add_library`, CPS `PACKAGE_INFO`,
+- **cmake-pro**: Target-based CMake 4.5+, Presets v11, `FILE_SET` (`HEADERS`/`SOURCES`), `systems_add_library` / `systems_c_add_library`, CPS `PACKAGE_INFO`,
   SPDX 3.0.1 `SBOM`, CTest labels, gersemi (C++/C23 path).
 - **rust-pro**: Modern Rust 1.100+ (Edition 2024) safety-critical systems software, zero-allocation real-time paths, lock-free concurrency, Google Rust
   Styleguide (Rust path).

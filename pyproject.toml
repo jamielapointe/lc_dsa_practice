@@ -136,6 +136,10 @@ known_first_party = [
   "scripts",
 ]
 
+[tool.deptry.package_module_name_map]
+tombi = ["tombi"]
+zizmor = ["zizmor"]
+
 [tool.deptry.per_rule_ignores]
 DEP004 = [
   "hypothesis",

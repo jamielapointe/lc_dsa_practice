@@ -21,6 +21,7 @@ add_project_test(
     number_of_islands_test
     SOURCES number_of_islands_test.cpp
     LIBS leet_code::number_of_islands
+    RUN_SERIAL
 )
 
 add_project_test(
@@ -36,9 +37,15 @@ add_project_test(
     SOURCES robot_room_cleaner_perf_test.cpp
     LIBS leet_code::robot_room_cleaner
     LABELS "Performance"
+    RUN_SERIAL
 )
 
-add_project_test(lru_cache_test SOURCES lru_cache_test.cpp LIBS leet_code::lru_cache)
+add_project_test(
+    lru_cache_test
+    SOURCES lru_cache_test.cpp
+    LIBS leet_code::lru_cache
+    RUN_SERIAL
+)
 
 add_project_test(
     moving_average_from_data_stream_test

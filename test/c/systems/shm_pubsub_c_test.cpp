@@ -47,8 +47,7 @@ class ScopedChannel {
   ~ScopedChannel() { shm_channel_destroy(&ch_); }
   ScopedChannel(const ScopedChannel&) = delete;
   auto operator=(const ScopedChannel&) -> ScopedChannel& = delete;
-  ScopedChannel(ScopedChannel&& other) noexcept {
-    ch_ = other.ch_;
+  ScopedChannel(ScopedChannel&& other) noexcept : ch_(other.ch_) {
     other.ch_ = {};
   }
   auto operator=(ScopedChannel&& other) noexcept -> ScopedChannel& {

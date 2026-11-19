@@ -33,7 +33,7 @@ attributes.
 ### `-stdlib=libc++` Isolation & CMake Integration
 
 Crubit's C++ support runtime and generated thunks require LLVM `libc++` (`-stdlib=libc++`). Because `lc_dsa_practice` isolates interop builds behind
-`BUILD_INTEROP=ON` (used by the `interop-debug` and `interop-release` presets in `CMakePresets.json` Schema v13):
+`BUILD_INTEROP=ON` (used by the `interop-debug` and `interop-release` presets in `CMakePresets.json` Schema v11):
 
 - Pixi installs `libcxx >= 23.1.5` and `libcxx-devel >= 23.1.5` on `linux-64` and `osx-arm64` (plus `libcxxabi >= 23.1.5` on `linux-64`).
 - `cmake/CrubitInterop.cmake` compiles `crubit::support_cc` and all generated `*_impl_cc` targets (`PRIVATE FILE_SET generated_sources TYPE SOURCES` with

@@ -5,6 +5,7 @@
 # SOURCES <name>.cpp [HEADERS ...] [LIBS ...]). Tests live in test/cpp/systems/ and link
 # systems::<name>.
 
+set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 set(_systems_spdx_license "Apache-2.0")
@@ -102,9 +103,32 @@ if(INSTALL_LC_DSA)
     install(TARGETS systems::platform EXPORT lc_dsa_practice_targets FILE_SET HEADERS)
 endif()
 
+# Exportable threading interface target: uses CMake's FindThreads target in-tree and emits
+# portable CPS compile/link usage requirements on install (CPS resolves requires in CONFIG mode
+# only, where FindThreads.cmake cannot be found).
+add_library(systems_threads INTERFACE)
+add_library(systems::threads ALIAS systems_threads)
+target_link_libraries(systems_threads INTERFACE $<BUILD_INTERFACE:Threads::Threads>)
+if(THREADS_HAVE_PTHREAD_ARG)
+    target_compile_options(systems_threads INTERFACE $<INSTALL_INTERFACE:-pthread>)
+    target_link_options(systems_threads INTERFACE $<INSTALL_INTERFACE:-pthread>)
+elseif(CMAKE_THREAD_LIBS_INIT)
+    target_link_libraries(
+        systems_threads
+        INTERFACE "$<INSTALL_INTERFACE:$<LINK_ONLY:${CMAKE_THREAD_LIBS_INIT}>>"
+    )
+endif()
+set_target_properties(
+    systems::threads
+    PROPERTIES EXPORT_NAME systems_threads SPDX_LICENSE "${_systems_spdx_license}"
+)
+if(INSTALL_LC_DSA)
+    install(TARGETS systems::threads EXPORT lc_dsa_practice_targets)
+endif()
+
 # Fixed-capacity, thread-safe MPMC FIFO. The class is a header-only template; the .cpp provides an
 # explicit instantiation so the template is always compiled and linted by the build.
-systems_add_library(bounded_fifo SOURCES bounded_fifo.cpp LIBS Threads::Threads)
+systems_add_library(bounded_fifo SOURCES bounded_fifo.cpp LIBS systems::threads)
 
 # Single-publisher / multi-subscriber channel over a shared-memory ring buffer, safe across threads
 # and processes (spec: docs/systems/shm_pubsub.md). OS calls live only in shm_pubsub_posix.cpp.
@@ -115,7 +139,7 @@ endif()
 systems_add_library(
     shm_pubsub
     SOURCES ${SHM_PUBSUB_SOURCES}
-    LIBS systems::platform Threads::Threads
+    LIBS systems::platform systems::threads
 )
 
 # Cross-process initialization handshake (spec: docs/systems/process_rendezvous.md). OS calls live
@@ -127,7 +151,7 @@ endif()
 systems_add_library(
     process_rendezvous
     SOURCES ${PROCESS_RENDEZVOUS_SOURCES}
-    LIBS systems::platform Threads::Threads
+    LIBS systems::platform systems::threads
 )
 
 # In-place horizontal flipping for 1-bpp monochrome bitmaps (spec: docs/systems/bitmap_flip.md).

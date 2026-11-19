@@ -1,6 +1,6 @@
 # C++23 Header, Stub, and CMake Reference
 
-Used by `systems-setup` for Step 4. Follow `cpp-pro` (LLVM/Clang 23.1.5+), `cmake-pro` (CMake 4.5+, Presets v13, `FILE_SET HEADERS`/`SOURCES`), and
+Used by `systems-setup` for Step 4. Follow `cpp-pro` (LLVM/Clang 23.1.5+), `cmake-pro` (CMake 4.5+, Presets v11, `FILE_SET HEADERS`/`SOURCES`), and
 [safety.md](safety.md). Style reference for finished code: `src/include/systems/bounded_fifo.hpp`.
 
 ## Naming
@@ -75,7 +75,7 @@ systems_add_library(
 )
 ```
 
-Pass `HEADERS <header1;...>` if the component exposes headers beyond `src/include/systems/<name>.hpp` (`CMAKE_VERIFY_INTERFACE_HEADER_SETS=ON` in Presets v13
+Pass `HEADERS <header1;...>` if the component exposes headers beyond `src/include/systems/<name>.hpp` (`CMAKE_VERIFY_INTERFACE_HEADER_SETS=ON` in Presets v11
 verifies standalone header compilation). Platform libraries such as `rt` are wrapped via `$<LINK_ONLY:...>` in `systems::platform` so `install(SBOM ...)` stays
 valid without per-component `if(CMAKE_SYSTEM_NAME STREQUAL "Linux")` link boilerplate.
 

@@ -10,7 +10,7 @@ endif()
 
 # Helper function to register and configure a Google Test executable.
 function(add_project_test test_target)
-    cmake_parse_arguments(ARG "" "" "SOURCES;LIBS;LABELS;EXTRA_ARGS" ${ARGN})
+    cmake_parse_arguments(ARG "RUN_SERIAL" "" "SOURCES;LIBS;LABELS;EXTRA_ARGS" ${ARGN})
 
     if(NOT ARG_SOURCES)
         message(FATAL_ERROR "add_project_test called without SOURCES for target ${test_target}")
@@ -45,19 +45,24 @@ function(add_project_test test_target)
         return()
     endif()
 
+    set(_run_serial_prop "")
+    if(ARG_RUN_SERIAL)
+        set(_run_serial_prop RUN_SERIAL TRUE)
+    endif()
+
     if(ARG_LABELS)
         gtest_discover_tests(
             ${test_target}
             DISCOVERY_MODE ${_discovery_mode}
             EXTRA_ARGS ${ARG_EXTRA_ARGS}
-            PROPERTIES TIMEOUT ${_test_timeout} LABELS "${ARG_LABELS}"
+            PROPERTIES TIMEOUT ${_test_timeout} LABELS "${ARG_LABELS}" ${_run_serial_prop}
         )
     else()
         gtest_discover_tests(
             ${test_target}
             DISCOVERY_MODE ${_discovery_mode}
             EXTRA_ARGS ${ARG_EXTRA_ARGS}
-            PROPERTIES TIMEOUT ${_test_timeout}
+            PROPERTIES TIMEOUT ${_test_timeout} ${_run_serial_prop}
         )
     endif()
 endfunction()

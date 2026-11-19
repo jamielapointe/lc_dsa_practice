@@ -37,8 +37,7 @@ class ScopedRendezvous {
   ~ScopedRendezvous() { process_rendezvous_destroy(&rdv_); }
   ScopedRendezvous(const ScopedRendezvous&) = delete;
   auto operator=(const ScopedRendezvous&) -> ScopedRendezvous& = delete;
-  ScopedRendezvous(ScopedRendezvous&& other) noexcept {
-    rdv_ = other.rdv_;
+  ScopedRendezvous(ScopedRendezvous&& other) noexcept : rdv_(other.rdv_) {
     other.rdv_ = {};
   }
   auto operator=(ScopedRendezvous&& other) noexcept -> ScopedRendezvous& {

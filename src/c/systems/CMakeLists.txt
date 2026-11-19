@@ -5,8 +5,6 @@
 # SOURCES <name>.c [HEADERS ...] [PRIVATE_HEADERS ...] [LIBS ...]). Tests live in test/c/systems/
 # and link systems_c::<name>.
 
-find_package(Threads REQUIRED)
-
 set(_systems_c_spdx_license "Apache-2.0")
 if(DEFINED PROJECT_SPDX_LICENSE AND NOT "${PROJECT_SPDX_LICENSE}" STREQUAL "")
     set(_systems_c_spdx_license "${PROJECT_SPDX_LICENSE}")
@@ -30,19 +28,6 @@ target_compile_definitions(
 )
 if(SYSTEMS_POSIX_SUPPORTED)
     target_compile_definitions(systems_c_platform INTERFACE SYSTEMS_POSIX_SUPPORTED=1)
-    if(APPLE)
-        target_compile_definitions(
-            systems_c_platform
-            INTERFACE
-                $<BUILD_INTERFACE:$<$<COMPILE_LANGUAGE:C>:_POSIX_C_SOURCE=200809L;_DARWIN_C_SOURCE=1>>
-        )
-    else()
-        target_compile_definitions(
-            systems_c_platform
-            INTERFACE
-                $<BUILD_INTERFACE:$<$<COMPILE_LANGUAGE:C>:_POSIX_C_SOURCE=200809L;_GNU_SOURCE=1>>
-        )
-    endif()
 endif()
 
 # POSIX shared memory (shm_open/shm_unlink) lives in librt on older glibc, including the
@@ -134,7 +119,7 @@ endfunction()
 
 # Fixed-capacity, heap-free, thread-safe MPMC bounded FIFO in C23.
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bounded_fifo.c")
-    systems_c_add_library(bounded_fifo SOURCES bounded_fifo.c LIBS Threads::Threads)
+    systems_c_add_library(bounded_fifo SOURCES bounded_fifo.c LIBS systems::threads)
 endif()
 
 # Wait-free single-publisher / lock-free multi-subscriber shared-memory ring buffer (C23).
@@ -151,7 +136,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/shm_pubsub.c")
         shm_pubsub
         PRIVATE_HEADERS ${SHM_PUBSUB_C_PRIVATE_HEADERS}
         SOURCES ${SHM_PUBSUB_C_SOURCES}
-        LIBS Threads::Threads
+        LIBS systems::threads
     )
 endif()
 
@@ -169,7 +154,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/process_rendezvous.c")
         process_rendezvous
         PRIVATE_HEADERS ${PROCESS_RENDEZVOUS_C_PRIVATE_HEADERS}
         SOURCES ${PROCESS_RENDEZVOUS_C_SOURCES}
-        LIBS Threads::Threads
+        LIBS systems::threads
     )
 endif()
 
@@ -193,6 +178,6 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/priority_scheduler.c")
     systems_c_add_library(
         priority_scheduler
         SOURCES priority_scheduler.c
-        LIBS Threads::Threads
+        LIBS systems::threads
     )
 endif()
