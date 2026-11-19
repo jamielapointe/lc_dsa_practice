@@ -17,6 +17,10 @@ path = "../../../test/rust/leet_code/two_sum_test.rs"
 name = "lru_cache_test"
 path = "../../../test/rust/leet_code/lru_cache_test.rs"
 
+[[test]]
+name = "summary_ranges_test"
+path = "../../../test/rust/leet_code/summary_ranges_test.rs"
+
 [dependencies]
 thiserror = { workspace = true }
 

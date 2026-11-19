@@ -102,3 +102,5 @@ leet_code_add_library(sliding_window_maximum SOURCES sliding_window_maximum.cpp)
 leet_code_add_library(design_circular_queue SOURCES design_circular_queue.cpp)
 
 leet_code_add_library(course_schedule_ii SOURCES course_schedule_ii.cpp)
+
+leet_code_add_library(summary_ranges SOURCES summary_ranges.cpp)

@@ -76,3 +76,9 @@ add_project_test(
     SOURCES course_schedule_ii_test.cpp
     LIBS leet_code::course_schedule_ii
 )
+
+add_project_test(
+    summary_ranges_test
+    SOURCES summary_ranges_test.cpp
+    LIBS leet_code::summary_ranges
+)
