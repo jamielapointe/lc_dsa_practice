@@ -21,6 +21,10 @@ path = "../../../test/rust/leet_code/lru_cache_test.rs"
 name = "summary_ranges_test"
 path = "../../../test/rust/leet_code/summary_ranges_test.rs"
 
+[[test]]
+name = "valid_parentheses_test"
+path = "../../../test/rust/leet_code/valid_parentheses_test.rs"
+
 [dependencies]
 thiserror = { workspace = true }
 
