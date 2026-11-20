@@ -82,3 +82,9 @@ add_project_test(
     SOURCES summary_ranges_test.cpp
     LIBS leet_code::summary_ranges
 )
+
+add_project_test(
+    valid_parentheses_test
+    SOURCES valid_parentheses_test.cpp
+    LIBS leet_code::valid_parentheses
+)
