@@ -1,8 +1,8 @@
-# Subagent Coordination Protocols in Google Antigravity 2.24.0
+# Subagent Coordination Protocols in Google Antigravity 2.34+
 
 ## 1. Architectural Philosophy: Division of Cognitive Labor
 
-In Google Antigravity 2.24.0 with Gemini 4 Argon (High Thinking), multi-turn optimization workflows benefit greatly from specialized subagents:
+In Google Antigravity 2.34+ with Gemini 4 (Neon / Carbon), multi-turn optimization workflows benefit greatly from specialized subagents:
 
 1. **Context Cleanliness**: Micro-optimizing assembly/C++ kernels generates high-density code and compiler diagnostic context. Mixing this with long-form
    LaTeX/academic report writing accelerates context window degradation and compaction.
@@ -32,7 +32,7 @@ In Google Antigravity 2.24.0 with Gemini 4 Argon (High Thinking), multi-turn opt
                 |                                           |
                 v                                           v
 +-------------------------------+           +-------------------------------+
-|   Kernel Specialist (Argon)   |           |    Academic Scribe Agent      |
+| Kernel Specialist (Gemini 4)  |           |    Academic Scribe Agent      |
 |  - SIMD / Bitwise Hypotheses  |           |  - BEST Statistical Synthesis |
 |  - Kernel C++ Implementation  |           |  - Empirical Paper Production |
 +-------------------------------+           +-------------------------------+
@@ -101,7 +101,7 @@ Large artifacts (benchmark JSONs, statistical summaries, git patches, long-form 
 
 ---
 
-## 4. Antigravity 2.24.0 SDK Configuration Example
+## 4. Antigravity 2.34+ SDK Configuration Example
 
 ```python
 from google.antigravity import Agent, LocalAgentConfig, types

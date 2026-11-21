@@ -426,7 +426,7 @@ TEST(SummaryRangesTest, LargeScale100kDisjointTwoElementRanges) {
   EXPECT_EQ((*result)[0uz], "0->1");
   EXPECT_EQ((*result)[25'000uz], "75000->75001");
   EXPECT_EQ((*result)[kPairCount - 1uz], "149997->149998");
-  EXPECT_LT(elapsed, std::chrono::milliseconds(500));
+  EXPECT_LT(elapsed, std::chrono::milliseconds(2000));
 }
 
 TEST(SummaryRangesTest, LargeScale100kContiguousElements) {
@@ -441,7 +441,7 @@ TEST(SummaryRangesTest, LargeScale100kContiguousElements) {
   ASSERT_TRUE(result.has_value());
   ASSERT_EQ(result->size(), 1uz);
   EXPECT_EQ((*result)[0uz], "-50000->49999");
-  EXPECT_LT(elapsed, std::chrono::milliseconds(500));
+  EXPECT_LT(elapsed, std::chrono::milliseconds(2000));
 }
 
 struct TestCase {

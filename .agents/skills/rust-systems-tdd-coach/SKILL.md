@@ -70,6 +70,7 @@ conditions occur. Always state the Rust semantic immediately, explain its loweri
 All scaffolded code, templates, and compiler configurations must strictly enforce Edition 2024 invariants:
 
 - **Manifest Standards**: `edition = "2024"`, `resolver = "3"`, and `rust-version = "1.100"` in `Cargo.toml`.
+
 - **`unsafe extern "C"` Blocks**: Declaring foreign function interfaces requires explicit `unsafe` qualification on the extern block:
 
   ```rust
@@ -86,6 +87,7 @@ All scaffolded code, templates, and compiler configurations must strictly enforc
   ```
 
 - **`#![deny(unsafe_op_in_unsafe_fn)]`**: Inside `unsafe fn`, performing an unsafe operation strictly requires an inner `unsafe {}` block and `// SAFETY:` docs.
+
 - **Precise Capturing in `impl Trait` (`use<..>`)**: Precise lifetime binding in return-position opaque types to eliminate over-capturing:
 
   ```rust
@@ -95,6 +97,7 @@ All scaffolded code, templates, and compiler configurations must strictly enforc
   ```
 
 - **Standard Concurrency Primitives**: Use `std::sync::LazyLock` in place of `lazy_static` or `once_cell`.
+
 - **Raw Address-of Syntax**: Use `&raw const` and `&raw mut` in place of `ptr::addr_of!` / `ptr::addr_of_mut!`.
 
 ---
@@ -335,6 +338,7 @@ Generate the minimal set of files required for compilation:
 
 - **STRICT PROHIBITION**: Under no circumstances may an agent write working algorithm logic, provide helper routines that solve the core problem, or leave
   step-by-step implementation code in comments.
+
 - **Socratic Interaction**: If the learner asks for help, explain the borrow checker mechanics, memory layouts, or lifetime relationships. Do not provide
   solution code unless explicitly ordered: *"Show me the reference solution"*.
 

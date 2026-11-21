@@ -1,6 +1,6 @@
 ---
 name: optimization-loop
-description: Orchestrates an agentic hypothesis-driven optimization loop for C++23 systems components using Google Benchmark and Bayesian (BEST + ROPE) performance analysis. Designed for Google Antigravity 2.24.0 and Gemini 4 Argon (High Thinking), featuring fast-screen and full-benchmark phases, automated git clean/commit rollbacks, pre-commit enforcement, and Academic Scribe reporting.
+description: Orchestrates an agentic hypothesis-driven optimization loop for C++23 systems components using Google Benchmark and Bayesian (BEST + ROPE) performance analysis. Designed for Google Antigravity 2.34+ (Gemini 4 Neon / Carbon), featuring fast-screen and full-benchmark phases, automated git clean/commit rollbacks, pre-commit enforcement, and Academic Scribe reporting.
 ---
 
 # Agentic Optimization Loop Skill (C++23 Systems & Bayesian BEST)
@@ -31,9 +31,9 @@ description: Orchestrates an agentic hypothesis-driven optimization loop for C++
 
 ---
 
-## Architecture & Model Optimization (Antigravity 2.24.0 + Gemini 4 Argon)
+## Architecture & Model Optimization (Antigravity 2.34+ & Gemini 4)
 
-This skill leverages the deep cognitive capabilities of **Gemini 4 Argon (High Thinking)** running inside **Google Antigravity 2.24.0**:
+This skill leverages the deep cognitive capabilities of **Gemini 4 (Neon / Carbon)** running inside **Google Antigravity 2.34+**:
 
 - **Extended Thinking**: Exploits deep architectural reasoning to formulate non-obvious mechanical hypotheses (cache line layout, SIMD shuffle masks, branchless
   bitwise arithmetic, loop vectorization).
@@ -55,7 +55,7 @@ Detailed technical specifications and protocols are available in the `references
 - [Hardware Tuning & Variance Mitigation Guide](references/hardware_tuning.md): CPU frequency governance, core isolation (`isolcpus`), QoS policies, and
   determinism.
 - [Subagent Coordination Protocols](references/subagent_coordination.md): Lead Optimizer and Academic Scribe hierarchy, file-first message schema, and
-  Antigravity 2.24.0 API configuration.
+  Antigravity 2.34+ API configuration.
 - [Academic Scribe Agent Guidelines](references/scribe_guidelines.md): Publication-grade empirical report structure, ACM SIGPLAN / IEEE Micro prose, and
   ASCII/LaTeX templates.
 
@@ -148,9 +148,10 @@ The skill accepts or resolves the following parameters:
      ```
 
    - Verify raw telemetry exists: `data/baseline/flip_bitmap_unaligned/benchmark_raw.json` and `telemetry.json`.
+
    - Calculate baseline Student-$t$ prior parameters ($\mu_{\text{base}}, \sigma_{\text{base}}, \nu_{\text{base}}$).
 3. **Formulate Initial Hypothesis Backlog**:
-   - With Gemini 4 Argon (High Thinking), analyze the mechanical bottlenecks of the baseline code.
+   - With extended thinking (Gemini 4 Neon / Carbon), analyze the mechanical bottlenecks of the baseline code.
    - Generate a prioritized queue of 3–5 hypotheses detailing:
      - Expected mechanism (e.g. SIMD vectorization, 64-bit word chunking, lookup-table reversal, branch removal).
      - Target code region.
@@ -255,6 +256,7 @@ Extract key posterior parameters:
    - Investigate root cause (e.g. bit-shift edge condition, endianness, unaligned boundary overrun).
    - Under NO circumstances modify test assertions or skip tests to make it pass.
    - If the bug cannot be fixed cleanly without losing performance, treat as failed: revert to `BASE_HASH`.
+
 3. If unit tests pass 100%:
    - Stage ONLY code and documentation changes:
 
@@ -263,6 +265,7 @@ Extract key posterior parameters:
      ```
 
      *(Never stage `data/` or temporary benchmark outputs!)*
+
    - Commit to Git:
 
      ```bash
@@ -282,11 +285,13 @@ Extract key posterior parameters:
      ```
 
    - Update `BASE_HASH=$(git rev-parse HEAD)`.
+
    - Log successful experiment in experiment ledger.
 
 **Scenario B: Candidate is Not Better ($P(\text{better}) < 0.95$ or regressed):**
 
 1. Log experiment details (hypothesis, timings, posterior probabilities) into `data/latest/flip_bitmap_unaligned/analysis.json`.
+
 2. Revert workspace cleanly to `BASE_HASH`:
 
    ```bash
@@ -325,17 +330,19 @@ Extract key posterior parameters:
 
 ---
 
-## Subagent Coordination Protocol (Antigravity 2.24.0)
+## Subagent Coordination Protocol (Antigravity 2.34+)
 
 When operating with subagents in Antigravity:
 
 - **Lead Optimizer (Orchestrator)**:
   - Manages Git status, file replacement, Pixi build commands, and runner scripts.
   - Keeps core context compact by offloading narrative reporting.
+
 - **Academic Scribe Agent (`academic_scribe`)**:
   - Activated at Post Loop.
   - Inputs: Path to `data/latest/<experiment>/analysis.json`, `data/latest/<experiment>/telemetry.json`, and git diff.
   - Outputs: Formal report (`data/latest/<experiment>/ACADEMIC_REPORT.md` or embedded handoff).
+
 - **Communication Pattern**:
 
   ```text

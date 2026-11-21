@@ -21,6 +21,7 @@ embedded-style C++23, ISO C23, and Rust** tree for low-level components and **Cr
 
 | Track | Sources | Tests | Namespace / package |
 | :--- | :--- | :--- | :--- |
+| Common C++23 | `src/cpp/common`, `src/include/common` | `test/cpp/common` | `common` (`common::common` CMake interface target) |
 | C++ LeetCode | `src/cpp/leet_code`, `src/include/leet_code` | `test/cpp/leet_code` | `leet_code` (`leet_code::<slug>` CMake aliases) |
 | C LeetCode | `src/c/leet_code`, `src/include/leet_code` | `test/c/leet_code` | `leet_code_c` (`leet_code_c::<slug>` CMake aliases) |
 | Python LeetCode | `src/python/leet_code` | `test/python/leet_code` | `leet_code` |
@@ -86,7 +87,7 @@ pixi run lint                 # ruff check (23 rule families, preview rules)
 pixi run lint-fix             # ruff check --fix
 pixi run format               # ruff format
 pixi run format-check         # ruff format --check
-pixi run format-toml          # tombi format (pixi.toml, pyproject.toml)
+pixi run format-toml          # tombi format (all workspace TOML files)
 pixi run format-toml-check    # tombi format --check
 pixi run format-cmake         # gersemi -i
 pixi run format-cpp           # clang-format via the CMake `format` target
@@ -107,13 +108,13 @@ pixi run pre-commit           # prek over the whole tree
 ├── notebooks/
 │   └── benchmark_telemetry_explorer.py # Reactive Marimo (0.25.2+) Bayesian BEST telemetry explorer
 ├── src/
-│   ├── include/{leet_code,systems,interop/crubit}/ # public C (.h) and C++ (.hpp) headers
-│   ├── cpp/{leet_code,systems,interop/crubit}/     # C++23 sources and per-track CMakeLists.txt
+│   ├── include/{common,leet_code,systems,interop/crubit}/ # public C (.h) and C++ (.hpp) headers
+│   ├── cpp/{common,leet_code,systems,interop/crubit}/     # C++23 sources and per-track CMakeLists.txt
 │   ├── c/{leet_code,systems}/                      # ISO C23 sources and per-track CMakeLists.txt
 │   ├── rust/{crash_course,leet_code,systems,interop/crubit}/ # Rust crates, crash_course, and Crubit crates
 │   └── python/leet_code/                           # Python package (typed)
 ├── test/
-│   ├── cpp/{leet_code,systems,interop/crubit}/     # C++ GoogleTest and Crubit interop suites
+│   ├── cpp/{common,leet_code,systems,interop/crubit}/     # C++ GoogleTest and Crubit interop suites
 │   ├── c/{leet_code,systems}/                      # C23 GoogleTest (*_c_test.cpp) + pure C23 (*_c23_test.c) suites
 │   ├── rust/{leet_code,systems,interop/crubit}/    # Rust integration test suites
 │   └── python/{leet_code,scripts}/                 # pytest suites
@@ -133,7 +134,8 @@ pixi run pre-commit           # prek over the whole tree
 │   ├── crubit/                                     # hermetic Crubit bootstrapper and rs_bindings_from_cc wrapper
 │   └── examples/                                   # multi-process and Crubit example runners and log verifiers
 ├── .agents/
-│   ├── plugins/{leetcode,systems}/    # track plugins and skills
+│   ├── rules/                                      # scoped Antigravity rules (.agents/rules/*.md)
+│   ├── plugins/{leetcode,systems}/                 # track plugins and skills
 │   └── skills/{optimization-loop,rust-systems-tdd-coach}/ # workspace skills & references
 └── .github/workflows/             # ci, pixi-update, scorecard
 ```
@@ -157,8 +159,8 @@ automotive / robotics practice: no heap after initialization, no exceptions or R
 ## Optimizing a systems component
 
 Use the workspace `optimization-loop` skill (`.agents/skills/optimization-loop/SKILL.md`) to systematically optimize
-a systems kernel (such as `systems::flip_bitmap_unaligned_optimized`). The agentic workflow uses Gemini 4 Argon (High Thinking)
-in Google Antigravity 2.24.0:
+a systems kernel (such as `systems::flip_bitmap_unaligned_optimized`). The agentic workflow runs in Google Antigravity
+2.34+ (Gemini 4 Neon / Carbon):
 
 1. **Preloop**: Establishes a deterministic baseline (`data/baseline/`) with reproducible random seeding (`0x5EED`) and host stabilization.
 2. **Two-Stage Performance Testing**: Evaluates candidate hypotheses through a fast 3-repetition screen (aborting if >5% slower),
@@ -192,8 +194,8 @@ Rust crash course and senior interview preparation workflow tailored for veteran
   `undocumented_unsafe_blocks` denied), `cargo test --workspace`, 85% line coverage (`cov-rust`), and bidirectional Crubit interop (`test-interop`,
   `interop-release`, `clippy-interop`).
 - **Python**: Python 3.15 (`PEP 649` native annotations, `TID251` bans `from __future__ import annotations`), ruff (23 families, 88 cols, double quotes,
-  `RUF201` full rule names), `basedpyright` strict + `ty`, pytest 9+ (`hypothesis`, `pytest-randomly`) with 85% coverage on `src/python/leet_code`,
-  `deptry` + `pip-audit` (`audit`), and reactive Marimo (`notebook-check`).
+  `RUF201` full rule names), `basedpyright` strict + `ty`, pytest 9+ (`hypothesis`, `pytest-randomly`) with 85% coverage on `src/python/leet_code` and
+  `leetcode_mcp`, `deptry` + `pip-audit` (`audit`), and reactive Marimo (`notebook-check`).
 - **Repo**: gersemi, tombi (`format-toml-check`), prek, rumdl, gitleaks, actionlint, zizmor, Renovate config validation.
 
 Contributor workflow and supply-chain rules are in [`CONTRIBUTING.md`](CONTRIBUTING.md).

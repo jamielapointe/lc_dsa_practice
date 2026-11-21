@@ -42,7 +42,7 @@ target_compile_features(systems_test_support PUBLIC cxx_std_23)
 target_link_libraries(
     systems_test_support
     PRIVATE project_options project_warnings project_sanitizers project_architecture
-    PUBLIC systems::platform Threads::Threads
+    PUBLIC common::common systems::platform Threads::Threads
 )
 
 add_project_test(

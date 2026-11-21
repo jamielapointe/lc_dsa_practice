@@ -27,6 +27,7 @@ function(interop_add_cpp_library target_name)
     target_link_libraries(
         ${target_name}
         PRIVATE project_options project_warnings project_architecture
+        PUBLIC common::common
     )
 
     if(CMAKE_CXX_CLANG_TIDY)
@@ -34,7 +35,7 @@ function(interop_add_cpp_library target_name)
             ${target_name}
             PROPERTIES
                 CXX_CLANG_TIDY
-                    "${CMAKE_CXX_CLANG_TIDY};--header-filter=.*/src/include/interop/crubit/.*"
+                    "${CMAKE_CXX_CLANG_TIDY};--header-filter=.*/src/include/(interop/crubit|common)/.*"
         )
     endif()
 endfunction()

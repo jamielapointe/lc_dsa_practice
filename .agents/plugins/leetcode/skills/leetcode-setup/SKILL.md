@@ -49,7 +49,7 @@ Language-specific templates and conventions live in the reference files; read th
 | Public API | `src/include/leet_code/<slug_snake>.hpp` | `src/python/leet_code/<slug_snake>.py` | `src/rust/leet_code/src/<slug_snake>.rs` |
 | Implementation | `src/cpp/leet_code/<slug_snake>.cpp` | (same module) | (same module) |
 | Tests | `test/cpp/leet_code/<slug_snake>_test.cpp` | `test/python/leet_code/test_<slug_snake>.py` | `test/rust/leet_code/<slug_snake>_test.rs` |
-| Build registration | `src/cpp/leet_code/CMakeLists.txt`, `test/cpp/leet_code/CMakeLists.txt` | none (package auto-discovered via `PYTHONPATH`) | `src/rust/leet_code/src/lib.rs` (`pub mod <slug_snake>;`) |
+| Build registration | `src/cpp/leet_code/CMakeLists.txt`, `test/cpp/leet_code/CMakeLists.txt` | none (package auto-discovered via `PYTHONPATH`) | `src/rust/leet_code/src/lib.rs` (`pub mod <slug_snake>;`), `src/rust/leet_code/Cargo.toml` (`[[test]]`) |
 
 `slug_snake` is the LeetCode slug with hyphens replaced by underscores (`add-two-numbers` -> `add_two_numbers`).
 

@@ -25,7 +25,7 @@ function(interop_add_cpp_test target_name)
     target_link_options(${target_name} PRIVATE -stdlib=libc++)
     target_link_libraries(
         ${target_name}
-        PRIVATE ${ARG_LIBS} project_options project_warnings project_architecture
+        PRIVATE ${ARG_LIBS} common::common project_options project_warnings project_architecture
     )
 
     if(BUILD_TESTING OR CMAKE_TESTING_ENABLED)

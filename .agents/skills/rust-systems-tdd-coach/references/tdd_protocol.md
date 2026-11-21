@@ -270,6 +270,7 @@ pixi run cargo test --manifest-path src/rust/crash_course/<exercise>/Cargo.toml
 The coach evaluates the terminal output against three mandatory criteria:
 
 1. **Formatting and Compilation Exit Code**: Stages 1, 2, and 3 must exit with status code `0` and zero compiler errors.
+
 2. **Failure Summary**: Stage 4 must report:
 
    ```text
@@ -277,6 +278,7 @@ The coach evaluates the terminal output against three mandatory criteria:
    ```
 
    If `passed > 0`, the test suite contains trivial or defective tests that do not exercise the target stub.
+
 3. **Panic String Match**: Every failed test's panic output must match:
 
    ```text

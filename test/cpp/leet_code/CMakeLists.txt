@@ -81,10 +81,17 @@ add_project_test(
     summary_ranges_test
     SOURCES summary_ranges_test.cpp
     LIBS leet_code::summary_ranges
+    RUN_SERIAL
 )
 
 add_project_test(
     valid_parentheses_test
     SOURCES valid_parentheses_test.cpp
     LIBS leet_code::valid_parentheses
+)
+
+add_project_test(
+    merge_sorted_array_test
+    SOURCES merge_sorted_array_test.cpp
+    LIBS leet_code::merge_sorted_array
 )

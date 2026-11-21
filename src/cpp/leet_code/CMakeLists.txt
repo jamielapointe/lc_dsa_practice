@@ -15,7 +15,12 @@ target_sources(
 target_compile_features(list_node INTERFACE cxx_std_23)
 target_link_libraries(
     list_node
-    INTERFACE project_options project_warnings project_sanitizers project_architecture
+    INTERFACE
+        common::common
+        project_options
+        project_warnings
+        project_sanitizers
+        project_architecture
 )
 set_target_properties(
     leet_code::list_node
@@ -53,14 +58,15 @@ function(leet_code_add_library name)
     target_link_libraries(
         ${name}
         PRIVATE project_options project_warnings project_sanitizers project_architecture
-        PUBLIC ${ARG_LIBS}
+        PUBLIC common::common ${ARG_LIBS}
     )
 
     if(CMAKE_CXX_CLANG_TIDY)
         set_target_properties(
             ${name}
             PROPERTIES
-                CXX_CLANG_TIDY "${CMAKE_CXX_CLANG_TIDY};--header-filter=.*/src/include/leet_code/.*"
+                CXX_CLANG_TIDY
+                    "${CMAKE_CXX_CLANG_TIDY};--header-filter=.*/src/include/(leet_code|common)/.*"
         )
     endif()
 
@@ -106,3 +112,5 @@ leet_code_add_library(course_schedule_ii SOURCES course_schedule_ii.cpp)
 leet_code_add_library(summary_ranges SOURCES summary_ranges.cpp)
 
 leet_code_add_library(valid_parentheses SOURCES valid_parentheses.cpp)
+
+leet_code_add_library(merge_sorted_array SOURCES merge_sorted_array.cpp)

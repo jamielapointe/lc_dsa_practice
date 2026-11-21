@@ -95,6 +95,9 @@ endblock()
 include(GNUInstallDirs)
 option(INSTALL_LC_DSA "Enable installation, CPS PACKAGE_INFO, and SPDX 3.0.1 SBOM generation" ON)
 
+# Shared header-only C++23 utilities (src/include/common/) available to all C++ targets
+add_subdirectory(src/cpp/common)
+
 # C and C++ libraries: src/{cpp,c}/<tree>/ with headers in src/include/<tree>/
 if(BUILD_LEET_CODE)
     add_subdirectory(src/cpp/leet_code)
@@ -132,6 +135,11 @@ endif()
 # Tests: test/{cpp,c}/<tree>/
 if(BUILD_TESTING)
     include(Testing)
+    if(BUILD_LEET_CODE OR BUILD_SYSTEMS)
+        if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test/cpp/common/CMakeLists.txt")
+            add_subdirectory(test/cpp/common)
+        endif()
+    endif()
     if(BUILD_LEET_CODE)
         add_subdirectory(test/cpp/leet_code)
         if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test/c/leet_code/CMakeLists.txt")

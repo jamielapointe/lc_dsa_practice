@@ -44,8 +44,10 @@ anchors.
 - **Systems Challenge**: Implement a fixed-capacity shared-memory packet handoff pipeline where packet ownership transfer from producer to consumer is
   strictly enforced at compile time by Rust's affine type system, completely eliminating double-frees and dangling buffer references without runtime reference
   counting.
+
 - **Core Mechanics**: Bitwise `memcpy` move semantics, static invalidation of source bindings in the compiler CFG, runtime stack drop flags, zero sentinel
   values, non-copyable ownership tokens.
+
 - **Code Snippets & Signatures**:
 
   ```rust
@@ -93,6 +95,7 @@ anchors.
   - *Tier 2 (Boundary)*: Send fails when slot is full; receive returns `None` when empty; 0-byte packet handling.
   - *Tier 3 (Invariants & RAII)*: Custom RAII drop tracker proves dropped packets release underlying resources exactly once.
   - *Tier 4 (Ownership Proof)*: Verification that moved packets cannot be accessed in the producer frame.
+
 - **Interview Criteria**:
   - Explains the contrast between C++ move constructors (`T(T&&)`) leaving moved-from objects in valid states vs. Rust static dead-binding drops.
   - Demonstrates why stack drop flags are omitted by the compiler when transfers are unconditional.
@@ -103,8 +106,10 @@ anchors.
 
 - **Systems Challenge**: Parse a multiplexed binary telemetry stream into sub-frame view structs that reference the backing arena without copying, enforcing
   lifetime bounds where sub-frame lifetimes cannot outlive the parent arena.
+
 - **Core Mechanics**: Lifetime subtyping (`'a: 'b`), covariance of `&'a T`, invariance of `&'a mut T`, compiler NLL regions, precise lifetime capturing via
   Rust Edition 2024 `use<..>` syntax.
+
 - **Code Snippets & Signatures**:
 
   ```rust
@@ -142,6 +147,7 @@ anchors.
   - *Tier 2 (Boundary)*: Truncated frame header returns `SlicerError::UnexpectedEof`; zero-length payload.
   - *Tier 3 (Invariants & Lifetime Scopes)*: Multiple sub-frames simultaneously borrowed from the same backing slice.
   - *Tier 4 (Variance & Invariance Proof)*: Static assertion proving `&'arena mut T` cannot accept narrowed lifetimes.
+
 - **Interview Criteria**:
   - Articulates why `&'a mut T` must be invariant over `T` to prevent storing short-lived references into long-lived memory.
   - Correctly applies Edition 2024 `use<'buf>` syntax in return-position `impl Trait`.
@@ -152,8 +158,10 @@ anchors.
 
 - **Systems Challenge**: Build an interrupt service routine (ISR) context object that allows safe interior mutation of status counters, error flags, and
   callback registrations across shared references (`&self`) without global mutex locking.
+
 - **Core Mechanics**: The `UnsafeCell<T>` core primitive, `Cell<T>` for `Copy` types, `RefCell<T>` dynamic borrow checking, thread-local reentrancy, atomic
   state flags.
+
 - **Code Snippets & Signatures**:
 
   ```rust
@@ -187,6 +195,7 @@ anchors.
   - *Tier 2 (Boundary)*: Circular buffer wrap-around on `handler_log` when exceeding 16 entries.
   - *Tier 3 (Borrow Violation Panic)*: Intentional reentrant borrow collision on `RefCell` verifies dynamic borrow panic.
   - *Tier 4 (Single-Thread Concurrency)*: Reentrant callback execution mutating state through `&self`.
+
 - **Interview Criteria**:
   - Contrasts `Cell<T>` (zero-cost `memcpy` of value) with `RefCell<T>` (runtime borrow counter `isize`).
   - Explains why `Cell` and `RefCell` are `!Sync` and how compiler prevents data races across threads.
@@ -197,8 +206,10 @@ anchors.
 
 - **Systems Challenge**: Implement a fixed-size, 64-byte cache-line aligned direct memory access (DMA) pool that provides custom smart-pointer handles
   (`DmaHandle<T>`) returning memory to the pool on drop without invoking the global heap allocator.
+
 - **Core Mechanics**: `core::ptr::NonNull`, `core::alloc::Layout`, `Drop` trait implementation, custom pointer wrappers, alignment calculation, free-list
   management.
+
 - **Code Snippets & Signatures**:
 
   ```rust
@@ -244,6 +255,7 @@ anchors.
   - *Tier 2 (Boundary)*: Exhaust pool blocks; assert `DmaPoolError::PoolExhausted`.
   - *Tier 3 (Alignment & Zero Heap)*: Assert `(ptr as usize) % 64 == 0` for every block; verify zero global heap allocations during steady state.
   - *Tier 4 (RAII Reclamation)*: Dropping `DmaHandle<T>` releases slot back to pool; slot immediately reusable.
+
 - **Interview Criteria**:
   - Explains how `NonNull<T>` participates in compiler pointer niche optimization (`Option<DmaHandle<T>>` is 8 bytes).
   - Documents explicit `// SAFETY:` rationale on raw pointer dereferencing and alignment arithmetic.
@@ -254,8 +266,10 @@ anchors.
 
 - **Systems Challenge**: Parse high-frequency CAN-FD bus frames with variable payload lengths (up to 64 bytes) zero-copy directly from raw network byte
   buffers with bounds-check elimination.
+
 - **Core Mechanics**: `&[u8]` slicing, `split_at`, `u16::from_be_bytes`, `u32::from_le_bytes`, endianness conversion, SIMD auto-vectorization, panic-free
   parsing.
+
 - **Code Snippets & Signatures**:
 
   ```rust
@@ -278,6 +292,7 @@ anchors.
   - *Tier 2 (Boundary)*: Buffer smaller than minimum header (5 bytes); invalid DLC code (`> 15`); CRC mismatch.
   - *Tier 3 (Zero Allocation)*: Run parser in loop over 100,000 frames; verify 0 bytes allocated on heap.
   - *Tier 4 (Assembly Inspection / Stress)*: Verify disassembly emits branchless slice loads without panic landing pads.
+
 - **Interview Criteria**:
   - Explains how compiler eliminates array bounds checks when length preconditions are proven upfront (`if buffer.len() < HEADER_SIZE`).
   - Contrasts zero-copy slicing with C++ `std::string_view` and `std::span`.
@@ -288,8 +303,10 @@ anchors.
 
 - **Systems Challenge**: Write a custom bidirectional, exact-size iterator over an in-memory circular ring buffer supporting forward and reverse traversal
   without allocating heap collections.
+
 - **Core Mechanics**: `Iterator`, `DoubleEndedIterator`, `ExactSizeIterator`, `size_hint`, fused iterator contract, functional combinator composition (`map`,
   `filter`, `fold`).
+
 - **Code Snippets & Signatures**:
 
   ```rust
@@ -330,6 +347,7 @@ anchors.
   - *Tier 2 (Boundary)*: Empty buffer; completely full buffer; single element.
   - *Tier 3 (Double-Ended Invariant)*: Alternating `next()` and `next_back()` meets in the middle without duplicate yields.
   - *Tier 4 (Combinator Inlining)*: Compose with `.filter().map().sum()`; verify zero heap overhead.
+
 - **Interview Criteria**:
   - Explains the exact semantics of `size_hint()` and why `ExactSizeIterator` requires exact length tracking.
   - Demonstrates how Rust iterator monomorphization compares to C++20 `std::ranges::views`.
@@ -340,8 +358,10 @@ anchors.
 
 - **Systems Challenge**: Construct a synchronous 1-to-1 rendezvous thread handoff channel where sender and receiver threads must meet at a synchronization
   point, supporting timeouts and clean shutdown.
+
 - **Core Mechanics**: `std::thread::scope` (eliminating `'static` lifetime bounds), `std::sync::Mutex`, `Condvar`, `atomic::AtomicBool`, spurious wakeup
   guards, timeout bounds.
+
 - **Code Snippets & Signatures**:
 
   ```rust
@@ -377,6 +397,7 @@ anchors.
   - *Tier 2 (Boundary & Timeout)*: Sender times out when no receiver arrives; receiver times out when no sender arrives.
   - *Tier 3 (Shutdown Invariant)*: Calling `close()` unblocks all parked threads with `ChannelError::Closed`.
   - *Tier 4 (Scoped Thread Contention)*: 10,000 sequential handoffs inside `std::thread::scope` with zero data races.
+
 - **Interview Criteria**:
   - Explains why `std::thread::scope` allows borrowing local stack variables into spawned threads safely.
   - Demonstrates correct handling of condition variable spurious wakeups via `wait_timeout_while`.
@@ -387,8 +408,10 @@ anchors.
 
 - **Systems Challenge**: Implement a high-throughput single-producer single-consumer (SPSC) lock-free ring buffer with separated, cache-line padded head and
   tail indices to eliminate false sharing.
+
 - **Core Mechanics**: Hardware memory models (x86 TSO vs. ARM/RISC-V weak ordering), `AtomicUsize`, `Ordering::Acquire`, `Ordering::Release`,
   `Ordering::Relaxed`, `#[repr(align(64))]` cache-line isolation.
+
 - **Code Snippets & Signatures**:
 
   ```rust
@@ -424,6 +447,7 @@ anchors.
   - *Tier 2 (Boundary)*: Queue full condition; queue empty condition; capacity power-of-two wrap.
   - *Tier 3 (False Sharing Verification)*: Static assertion: `align_of::<CachePadded<AtomicUsize>>() == 64` and addresses differ by at least 64 bytes.
   - *Tier 4 (High-Contention MPMC Stress)*: 10,000,000 items transferred between dedicated producer and consumer threads; verify 0 dropped items, 0 corruption.
+
 - **Interview Criteria**:
   - Justifies why `Acquire`/`Release` ordering is sufficient on SPSC ring buffers without requiring expensive `SeqCst` full memory barriers.
   - Explains false sharing at the L1/L2 cache coherency protocol level (MESI/MOESI) and how 64-byte padding prevents cache line bouncing.
@@ -434,7 +458,9 @@ anchors.
 
 - **Systems Challenge**: Design a type-safe peripheral device bus registry capable of managing heterogeneous devices either via monomorphized static drivers
   or dynamic trait objects (`dyn Device`), enforcing `Send + Sync` thread-safety bounds.
+
 - **Core Mechanics**: Auto traits `Send` and `Sync`, `PhantomData`, trait object fat pointer vtables, object safety constraints, downcasting with `Any`.
+
 - **Code Snippets & Signatures**:
 
   ```rust
@@ -469,6 +495,7 @@ anchors.
   - *Tier 2 (Boundary)*: Empty bus broadcast; handling devices that report hardware timeout on reset.
   - *Tier 3 (Thread-Safety Bounds)*: Verify that `DeviceBus` is statically proven `Send` and `Sync`.
   - *Tier 4 (Vtable Layout Assertions)*: Assert size and alignment of `&dyn Device` fat pointers (16 bytes).
+
 - **Interview Criteria**:
   - Explains the mathematical relationship: `T: Sync` if and only if `&T: Send`.
   - Analyzes why methods returning `Self` or containing generic parameters break trait object safety.
@@ -479,8 +506,10 @@ anchors.
 
 - **Systems Challenge**: Implement a bidirectional bridge connecting a modern C++23 Kalman filter state machine with a Rust sensor telemetry ingestion engine
   via `cxx` and raw C ABI hooks.
+
 - **Core Mechanics**: `#[cxx::bridge]`, `cxx::UniquePtr`, `Pin<&mut CppClass>`, `#[repr(C)]`, `unsafe extern "C"`, `panic = "abort"`, `build.rs` compilation
   via `cxx_build`.
+
 - **Code Snippets & Signatures**:
 
   ```rust
@@ -514,6 +543,7 @@ anchors.
   - *Tier 2 (Boundary)*: Zero measurement inputs; extreme variance bounds (`f64::MAX`).
   - *Tier 3 (Address Invariance under Pin)*: Proof that C++ mutating methods cannot be invoked on unpinned instances.
   - *Tier 4 (Destructor Verification)*: Dropping `UniquePtr<KalmanEstimator>` invokes C++ destructor without leaking memory.
+
 - **Interview Criteria**:
   - Explains why `Pin<&mut CppClass>` is strictly required when mutating foreign C++ classes across FFI.
   - Discusses allocator segregation and why Rust `Box` must never be deallocated with C++ `free`/`delete`.

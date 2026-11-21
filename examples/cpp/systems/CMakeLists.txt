@@ -23,7 +23,13 @@ function(systems_add_example target_name)
     target_compile_features(${target_name} PRIVATE cxx_std_23)
     target_link_libraries(
         ${target_name}
-        PRIVATE ${ARG_LIBS} project_options project_warnings project_sanitizers project_architecture
+        PRIVATE
+            ${ARG_LIBS}
+            common::common
+            project_options
+            project_warnings
+            project_sanitizers
+            project_architecture
     )
 
     if(CMAKE_CXX_CLANG_TIDY)

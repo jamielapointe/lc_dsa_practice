@@ -23,8 +23,11 @@ This guide covers the development workflow, security policies, and dependency ma
    pixi run test-cpp        # GoogleTest via the dev-debug workflow preset (ASan, UBSan, clang-tidy)
    pixi run cpp-ci-debug    # GoogleTest via ci-debug workflow preset (ASan, UBSan, clang-tidy off)
    pixi run test-python     # pytest 9+ (hypothesis, pytest-randomly)
+   pixi run test-rust       # cargo test --workspace --all-targets
+   pixi run clippy          # cargo clippy --workspace --all-targets -- -D warnings
    pixi run cov-python      # Python coverage, >= 85%
    pixi run cov-cpp         # C++ coverage, >= 85%
+   pixi run cov-rust        # Rust line coverage (cargo-llvm-cov), >= 85%
    pixi run cpp-tsan        # ThreadSanitizer, required for anything in src/cpp/systems
    pixi run cpp-benchmark   # Google Benchmark suite workflow (local only, never on CI)
    pixi run cpp-benchmark-build # build benchmark executable
@@ -34,7 +37,7 @@ This guide covers the development workflow, security policies, and dependency ma
    pixi run interop-release     # build and test Crubit C++23 <-> Rust 2024 interop suite (Release/LTO)
    pixi run examples-interop    # build C++23 and Rust 2024 Crubit showcase demo executables
    pixi run clippy-interop      # run cargo clippy (-D warnings) across interop Rust crates
-   pixi run check-traceability  # systems specs (docs/systems) <-> GoogleTest RecordProperty IDs
+   pixi run check-traceability  # systems specs (docs/systems) <-> GoogleTest RecordProperty / Rust // requirements: IDs
    pixi run typecheck           # basedpyright (strict) && ty check
    pixi run audit               # deptry && pip-audit
    pixi run notebook-check      # marimo check --strict notebooks/
@@ -57,8 +60,9 @@ This guide covers the development workflow, security policies, and dependency ma
 - Python 3.15 (`PEP 649` native annotations; `TID251` bans `from __future__ import annotations`; `PEP 810` `lazy import`, `PEP 814` `frozendict`,
   `PEP 661`, `PEP 750`), double quotes, 88 columns, grouped imports, Google-style docstrings, 23 Ruff families (`RUF201` full rule names), and strict
   typing via `basedpyright` + `ty`.
-- C++ LeetCode code lives in namespace `leet_code`; C++ systems code lives in namespace `systems`; ISO C23 systems code lives in `src/c/systems` with public
-  headers in `src/include/systems/*.h`.
+- Shared C++23 header-only utilities live in `src/include/common/*.hpp` (`namespace common`, CMake interface target `common::common`, linked across all C++
+  tracks); C++ LeetCode code lives in namespace `leet_code`; C++ systems code lives in namespace `systems`; ISO C23 systems code lives in `src/c/systems` with
+  public headers in `src/include/systems/*.h`.
 - Crubit C++23 <-> Rust 2024 interop code lives under `src/{include,cpp,rust}/interop/crubit`, `examples/interop/crubit`, and `test/{cpp,rust}/interop/crubit`
   (see [`docs/interop/crubit.md`](docs/interop/crubit.md) for `-stdlib=libc++` isolation and public-header purity rules).
 - New problems start in a TDD-red state: stubs compile and tests assert the correct answers.
@@ -71,7 +75,7 @@ This guide covers the development workflow, security policies, and dependency ma
 ## Commits and pull requests
 
 - Create a feature branch and open a pull request against `main`; CI must be green on every matrix job.
-- Keep commits focused. Update `README.md`, `CONTRIBUTING.md`, and `AGENTS.md` whenever layout, tasks, or conventions change.
+- Keep commits focused. Update `README.md`, `CONTRIBUTING.md`, `AGENTS.md`, and `.agents/rules/*.md` whenever layout, tasks, or conventions change.
 
 ## GitHub Actions and security pinning
 
@@ -82,7 +86,9 @@ This guide covers the development workflow, security policies, and dependency ma
    ```
 
 2. **Least privilege**: workflows declare the minimum `permissions:`.
+
 3. **Pre-commit freezing**: remote hooks in `.pre-commit-config.yaml` (run via `prek`) are pinned to commit SHAs with `# frozen: vX.Y.Z`.
+
 4. **Security linters**: workflows are validated by `actionlint` and `zizmor` locally and in CI.
 
 ## Automated dependency maintenance
