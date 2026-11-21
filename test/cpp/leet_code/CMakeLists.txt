@@ -95,3 +95,9 @@ add_project_test(
     SOURCES merge_sorted_array_test.cpp
     LIBS leet_code::merge_sorted_array
 )
+
+add_project_test(
+    kth_largest_element_in_a_stream_test
+    SOURCES kth_largest_element_in_a_stream_test.cpp
+    LIBS leet_code::kth_largest_element_in_a_stream
+)

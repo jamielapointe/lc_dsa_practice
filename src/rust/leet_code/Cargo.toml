@@ -29,6 +29,10 @@ path = "../../../test/rust/leet_code/valid_parentheses_test.rs"
 name = "merge_sorted_array_test"
 path = "../../../test/rust/leet_code/merge_sorted_array_test.rs"
 
+[[test]]
+name = "kth_largest_element_in_a_stream_test"
+path = "../../../test/rust/leet_code/kth_largest_element_in_a_stream_test.rs"
+
 [dependencies]
 thiserror = { workspace = true }
 
