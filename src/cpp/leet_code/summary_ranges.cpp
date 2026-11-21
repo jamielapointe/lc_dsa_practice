@@ -1,9 +1,12 @@
 #include "leet_code/summary_ranges.hpp"
 
 #include <algorithm>
+#include <array>
+#include <charconv>
+#include <cstddef>
 #include <expected>
-#include <format>
 #include <functional>
+#include <limits>
 #include <ranges>
 #include <span>
 #include <string>
@@ -13,10 +16,24 @@
 namespace leet_code {
 
 [[nodiscard]] static auto format_range(int first, int end) -> std::string {
-  if (first == end) {
-    return std::format("{}", first);
+  constexpr size_t kMaxIntChars =
+      static_cast<size_t>(std::numeric_limits<int>::digits10) + 2uz;
+  constexpr size_t kBufferSize = 32uz;
+  static_assert(kBufferSize >= (2uz * kMaxIntChars) + 2uz);
+
+  std::array<char, kBufferSize> buffer{};
+  char* const begin = buffer.data();
+  char* const limit = begin + buffer.size();
+
+  char* out = std::to_chars(begin, limit, first).ptr;
+  if (first != end) {
+    *out = '-';
+    ++out;
+    *out = '>';
+    ++out;
+    out = std::to_chars(out, limit, end).ptr;
   }
-  return std::format("{}->{}", first, end);
+  return {begin, static_cast<size_t>(out - begin)};
 }
 
 [[nodiscard]] auto summary_ranges(std::span<const int> nums)

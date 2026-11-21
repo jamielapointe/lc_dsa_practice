@@ -18,6 +18,7 @@ function(add_project_benchmark benchmark_target)
         ${benchmark_target}
         PRIVATE
             ${ARG_LIBS}
+            common::common
             benchmark::benchmark
             project_options
             project_warnings

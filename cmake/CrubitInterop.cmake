@@ -467,6 +467,9 @@ function(crubit_add_rust_api_from_cpp target_name)
         PRIVATE FILE_SET generated_sources TYPE SOURCES BASE_DIRS "${out_dir}" FILES "${cc_out}"
     )
     set_property(FILE_SET generated_sources TARGET ${target_name}_impl_cc PROPERTY SKIP_LINTING ON)
+    # Per-source COMPILE_OPTIONS are emitted after transitive target INTERFACE_COMPILE_OPTIONS,
+    # keeping generated Crubit thunks immune to upstream warning flags (e.g. -Werror).
+    set_source_files_properties("${cc_out}" PROPERTIES COMPILE_OPTIONS "-Wno-everything")
     set_target_properties(
         ${target_name}_impl_cc
         PROPERTIES

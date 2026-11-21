@@ -25,6 +25,10 @@ path = "../../../test/rust/leet_code/summary_ranges_test.rs"
 name = "valid_parentheses_test"
 path = "../../../test/rust/leet_code/valid_parentheses_test.rs"
 
+[[test]]
+name = "merge_sorted_array_test"
+path = "../../../test/rust/leet_code/merge_sorted_array_test.rs"
+
 [dependencies]
 thiserror = { workspace = true }
 

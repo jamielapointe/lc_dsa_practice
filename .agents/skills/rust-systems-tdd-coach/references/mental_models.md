@@ -287,7 +287,9 @@ This mirrors C++23 `std::expected<T, E>`, but provides seamless type conversion 
 
 1. **Domain / Library Errors (`thiserror`)**:
    - Used in low-level drivers, protocols, and library crates.
+
    - Strongly-typed, zero-allocation enums.
+
    - Implements `std::error::Error` and `Display` via declarative derive macros:
 
      ```rust

@@ -42,7 +42,7 @@ function(systems_add_library name)
     target_link_libraries(
         ${name}
         PRIVATE project_options project_warnings project_sanitizers project_architecture
-        PUBLIC ${ARG_LIBS}
+        PUBLIC common::common ${ARG_LIBS}
     )
 
     # Systems headers are header-heavy templates; make clang-tidy analyze them as well as the .cpp
@@ -51,7 +51,8 @@ function(systems_add_library name)
         set_target_properties(
             ${name}
             PROPERTIES
-                CXX_CLANG_TIDY "${CMAKE_CXX_CLANG_TIDY};--header-filter=.*/src/include/systems/.*"
+                CXX_CLANG_TIDY
+                    "${CMAKE_CXX_CLANG_TIDY};--header-filter=.*/src/include/(systems|common)/.*"
         )
     endif()
 
@@ -82,6 +83,7 @@ target_sources(
             FILES "${PROJECT_SOURCE_DIR}/src/include/systems/platform.hpp"
 )
 target_compile_features(systems_platform INTERFACE cxx_std_23)
+target_link_libraries(systems_platform INTERFACE common::common)
 if(SYSTEMS_POSIX_SUPPORTED)
     target_compile_definitions(systems_platform INTERFACE SYSTEMS_POSIX_SUPPORTED=1)
 endif()

@@ -23,6 +23,7 @@ function(add_project_test test_target)
         ${test_target}
         PRIVATE
             ${ARG_LIBS}
+            common::common
             GTest::gtest_main
             project_options
             project_warnings

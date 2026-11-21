@@ -23,7 +23,7 @@ from scripts.ci import check_systems_traceability as trace
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-AGENTS_MD_MAX_BYTES = 24576
+AGENTS_MD_MAX_BYTES = 24000
 
 
 # ---------------------------------------------------------------------------

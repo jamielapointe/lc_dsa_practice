@@ -1,283 +1,112 @@
 # AGENTS.md
 
-Guidance for AI agents working in `lc_dsa_practice`. Humans: see [README.md](README.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
+Guidance for AI agents in `lc_dsa_practice`. Humans: see [README.md](README.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Project overview
+## Project overview & tracks
 
-A personal practice repository with independent tracks that share one Pixi workspace, unified toolchain, and CI:
-
-| Track | Purpose | Sources | Tests | Namespace / Prefix / Crate |
+| Track | Purpose | Sources | Tests | Namespace / Crate |
 | :--- | :--- | :--- | :--- | :--- |
-| C++ LeetCode | Data-structure and algorithm problems in modern C++23 | `src/cpp/leet_code/`, `src/include/leet_code/` | `test/cpp/leet_code/` | `leet_code` |
-| C LeetCode | Data-structure and algorithm problems in strict ISO C23 | `src/c/leet_code/`, `src/include/leet_code/` | `test/c/leet_code/` | `leet_code_c` |
-| Python LeetCode | The same problems in typed Python 3.15 | `src/python/leet_code/` | `test/python/leet_code/` | package `leet_code` |
-| Rust LeetCode | The same problems in idiomatic Rust 1.100+ | `src/rust/leet_code/` | `test/rust/leet_code/` | crate `leet_code` |
-| Systems C++, C23 & Rust | Reusable low-level, system-level, and embedded-style components (fixed capacity, no heap, explicit concurrency) | `src/{cpp,c,rust}/systems/`, `src/include/systems/` | `test/{cpp,c,rust}/systems/` | `systems` / `systems_c` / `systems` |
-| Crubit Interop | Bidirectional C++23 <-> Rust 2024 FFI bindings via Google Crubit | `src/{include,cpp,rust}/interop/crubit/`, `examples/interop/crubit/` | `test/{cpp,rust}/interop/crubit/` | `interop::crubit` / `rs_*` / `cc_*` |
+| Common C++23 | Shared header-only C++23 utilities (`common::common`) | `src/cpp/common/`, `src/include/common/` | `test/cpp/common/` | `common` |
+| C++ LeetCode | DSA problems in modern C++23 | `src/cpp/leet_code/`, `src/include/leet_code/` | `test/cpp/leet_code/` | `leet_code` |
+| C LeetCode | ISO C23 LeetCode (scaffolded; 0 problems) | `src/c/leet_code/`, `src/include/leet_code/` | `test/c/leet_code/` | `leet_code_c` |
+| Python LeetCode | DSA problems in typed Python 3.15 | `src/python/leet_code/` | `test/python/leet_code/` | `leet_code` |
+| Rust LeetCode | DSA problems in Rust 1.100+ (Ed. 2024) | `src/rust/leet_code/` | `test/rust/leet_code/` | `leet_code` |
+| Systems C++, C23 & Rust | Portable low-level/embedded components (fixed capacity, zero steady-state heap) | `src/{cpp,c,rust}/systems/`, `src/include/systems/` | `test/{cpp,c,rust}/systems/` | `systems` / `systems_c` / `systems` |
+| Rust Crash Course | Isolated TDD sub-workspaces (excluded from root `Cargo.toml`) | `src/rust/crash_course/` | per-exercise | standalone |
+| Crubit Interop | Bidirectional C++23 <-> Rust 2024 FFI via Google Crubit | `src/{include,cpp,rust}/interop/crubit/`, `examples/interop/crubit/` | `test/{cpp,rust}/interop/crubit/` | `interop::crubit` / `rs_*` / `cc_*` |
 
-`systems::BoundedFifo<T, Capacity>` (and its C23 and Rust counterparts) is the primary systems component and the style reference for new ones.
+Top-level layout:
 
-## Directory layout
+- Build & env: `CMakeLists.txt` (`BUILD_LEET_CODE`, `BUILD_SYSTEMS`, `BUILD_INTEROP`, `BUILD_EXAMPLES`, `BUILD_BENCHMARKS`, `INSTALL_LC_DSA`),
+  `CMakePresets.json` (Schema v11), `cmake/`, `Cargo.toml` (`resolver = "3"`, Ed. 2024, `rust-version = "1.100"`), `rustfmt.toml`, `clippy.toml`,
+  `.cargo/config.toml`, `pixi.toml`, `pyproject.toml`, `pixi.lock`.
+- Code, docs & tooling: `src/`, `test/`, `examples/{cpp,c}/systems/`, `examples/interop/crubit/`, `benchmarks/{cpp,c}/systems/`,
+  `docs/{systems/,interop/crubit.md}`, `notebooks/benchmark_telemetry_explorer.py` (Marimo `0.25.2+`), `scripts/{benchmarks,ci,crubit,examples}/`.
+- Automation: `.agents/{rules/,plugins/{leetcode,systems}/,skills/{optimization-loop,rust-systems-tdd-coach}/}`,
+  `.github/workflows/{ci,pixi-update,scorecard}.yml`.
 
-```text
-.
-├── AGENTS.md, README.md, CONTRIBUTING.md
-├── Cargo.toml, rustfmt.toml, clippy.toml, .cargo/config.toml # Cargo workspace config
-├── CMakeLists.txt, CMakePresets.json, cmake/      # options: BUILD_LEET_CODE, BUILD_SYSTEMS, BUILD_BENCHMARKS
-├── pixi.toml, pyproject.toml, pixi.lock           # Standalone Pixi workspace/tasks, PEP 621/735 pyproject, single lockfile
-├── notebooks/benchmark_telemetry_explorer.py      # Reactive Marimo (0.25.2+) telemetry explorer
-├── src/
-│   ├── include/{leet_code,systems,interop/crubit}/ # public C (.h) and C++ (.hpp) headers
-│   ├── cpp/{leet_code,systems,interop/crubit}/     # .cpp files and per-track CMakeLists.txt
-│   ├── c/{leet_code,systems}/                      # ISO C23 .c files and the track's CMakeLists.txt
-│   ├── rust/{crash_course,leet_code,systems,interop/crubit}/ # Rust crates, crash_course, and Crubit crates
-│   └── python/leet_code/                           # __init__.py, py.typed, one module per problem
-├── test/
-│   ├── cpp/{leet_code,systems,interop/crubit}/     # GoogleTest and Crubit interop suites
-│   ├── c/{leet_code,systems}/                      # GoogleTest (<name>_c_test.cpp) + pure C23 (*_c23_test.c)
-│   ├── rust/{leet_code,systems,interop/crubit}/    # Rust integration test suites
-│   └── python/{leet_code,scripts}/                 # pytest, test_<name>.py
-├── examples/
-│   ├── cpp/systems/                                # standalone multi-process C++ systems examples
-│   ├── c/systems/                                  # standalone multi-process C23 systems examples
-│   └── interop/crubit/                             # C++23 and Rust 2024 Crubit showcase demos
-├── benchmarks/
-│   ├── cpp/systems/                                # Google Benchmark suites for C++ systems components
-│   └── c/systems/                                  # Google Benchmark suites for C23 systems components
-├── docs/{interop/crubit.md,systems/}               # Crubit interop guide and systems requirements specs
-├── scripts/
-│   ├── benchmarks/                                 # runner and Bayesian BEST + ROPE analysis scripts
-│   ├── ci/                                         # cpp_coverage.py, check_systems_traceability.py
-│   ├── crubit/                                     # bootstrap_crubit.py and invoke_rs_bindings_from_cc.py
-│   └── examples/                                   # run_shm_pubsub_example.py, run_crubit_examples.py
-├── .agents/
-│   ├── plugins/{leetcode,systems}/                # track plugins and skills
-│   └── skills/{optimization-loop,rust-systems-tdd-coach}/ # workspace skills & references
-└── .github/workflows/                             # ci.yml, pixi-update.yml, scorecard.yml
-```
-
-Do not recreate the old top-level `include/`, `src/*.cpp`, or `tests/` paths, and do not use the old `lc_dsa` namespace.
+Never recreate legacy `include/`, `src/*.cpp`, or `tests/` paths, and never use the legacy `lc_dsa` namespace.
 
 ## Toolchain rules (Pixi only)
 
-- Run every tool via `pixi run` (standalone `pixi.toml`, `requires-pixi = ">=0.84.2"`). Never `pip install`, `uv`, global `cmake`, `cargo`, or system
-  compilers. Clang 23.1.5+, CMake 4.5+, Ninja, GoogleTest, Rust 1.100+ (Edition 2024), Python 3.15, ruff, basedpyright, ty, pytest 9+, marimo, tombi, deptry,
-  pip-audit, prek, gersemi, and rumdl pin in `pixi.lock`.
-- Drive CMake only via presets: `pixi run cmake --workflow --preset <name>` (`ALLOW_NON_PIXI_TOOLCHAIN` overrides; avoid). Cargo build artifacts
-  isolate to `build/cargo/` via `.cargo/config.toml` and `CARGO_TARGET_DIR`.
-- Add deps in `pixi.toml` / `pyproject.toml` (PEP 621/735, `uv_build`), then run `pixi run format-toml` (`tombi`). Never hand-edit `pixi.lock`.
-- Tool configs (`ruff`, `basedpyright`, `ty`, `pytest` native `[tool.pytest]`, `deptry`, `coverage`, `rumdl`) live in `pyproject.toml`; Pixi deps/tasks
-  live in `pixi.toml`. Keep order-sensitive values as strings where needed (e.g., pytest `addopts`).
-
-### Common tasks
+- Run every tool via `pixi run` (`pixi.toml`, `requires-pixi = ">=0.84.2"`). Never run `pip install`, `uv`, global `cmake`, `cargo`, or system compilers. All
+  tools (Clang 23.1.5+, CMake 4.5+, Ninja, GoogleTest, Rust 1.100+, Python 3.15, ruff, basedpyright, ty, pytest 9+, marimo, tombi, deptry, pip-audit, prek,
+  gersemi, rumdl) pin in `pixi.lock`. Never hand-edit `pixi.lock`.
+- Drive CMake via presets only (`build/<preset>`): `pixi run cmake --workflow --preset <name>` (avoid `ALLOW_NON_PIXI_TOOLCHAIN`). Cargo artifacts isolate to
+  `build/cargo/` via `.cargo/config.toml` and `CARGO_TARGET_DIR`.
+- Split TOML: Pixi workspace/deps/tasks live in `pixi.toml`; PEP 621/735 (`uv_build`) and tool configs (`ruff`, `basedpyright`, `ty`, `pytest`, `deptry`,
+  `coverage`, `rumdl`, `tombi`) live in `pyproject.toml`. Run `pixi run format-toml` after TOML edits; keep order-sensitive values as strings where required.
 
 ```bash
-pixi run test            # C++ (dev-debug) + Python + Rust
-pixi run test-cpp        # dev-debug: ASan + UBSan + clang-tidy, build & ctest
-pixi run test-python     # pytest 9+ (live-network tests deselected)
-pixi run test-rust       # cargo test --workspace (all 4 tiers)
-pixi run clippy | clippy-fix # cargo clippy --all-targets -- -D warnings
-pixi run format-rust | format-rust-check # cargo fmt
-pixi run cov-rust        # cargo-llvm-cov, gate >= 85%
-pixi run cpp-ci-debug | cpp-release | cpp-asan | cpp-ubsan | cpp-tsan
-pixi run cpp-benchmark | cpp-benchmark-build # local Google Benchmark suite
-pixi run cov-cpp | cov-python # llvm-cov / pytest-cov, gate >= 85%
-pixi run crubit-bootstrap # clone pinned Crubit, verify Rust 1.100.0 sysroot, build generators
-pixi run test-interop | interop-release | examples-interop | clippy-interop
-pixi run typecheck       # basedpyright (strict) && ty check
-pixi run audit           # deptry && pip-audit
-pixi run notebook-check  # marimo check --strict on notebooks/
-pixi run format-toml | format-toml-check # tombi TOML formatting
-pixi run lint | lint-fix | format | format-check | format-cmake | format-cpp | lint-md
-pixi run pre-commit      # full gate via prek; run before every commit
+pixi run test                                # C++ (dev-debug) + Python + Rust
+pixi run test-cpp | cpp-ci-debug | cpp-release | cpp-asan | cpp-ubsan | cpp-tsan
+pixi run test-python                         # pytest 9+ (live-network tests deselected)
+pixi run test-rust | clippy | format-rust    # Rust workspace tests, Clippy (-D warnings), rustfmt
+pixi run cov-cpp | cov-python | cov-rust     # coverage gates (>= 85%)
+pixi run crubit-bootstrap | test-interop | interop-release | examples-interop | clippy-interop
+pixi run cpp-benchmark | cpp-benchmark-build # local-only Google Benchmark suite
+pixi run check-traceability                  # docs/systems <-> C++/C/Rust test traceability
+pixi run typecheck | audit | notebook-check  # basedpyright+ty, deptry+pip-audit, marimo --strict
+pixi run format-toml | format-toml-check | format-cmake | format-cpp | lint | format | lint-md
+pixi run pre-commit                          # full prek gate; run before every commit
 ```
 
-CMake presets (Schema v11; `build/<preset>`): `dev-debug`, `ci-debug`, `dev-release`, `asan`, `ubsan`, `tsan`, `coverage`, `benchmark`, `interop-debug`,
-`interop-release`, `sysroot-release`, `cross-aarch64`, `cross-riscv64`. Root enforces `CMD_NON_TARGET_DIRECTIVE`, `CMD_INSTALL_ABSOLUTE_DESTINATION`, and
-`CMD_EXPERIMENTAL` (`SEND_ERROR`), and emits CPS `PACKAGE_INFO` + SPDX 3.0.1 `SBOM` (`INSTALL_LC_DSA=ON`).
+## Scoped rules, plugins & cross-cutting guardrails
 
-## Track 1: C++ LeetCode
+Detailed per-track rules live in flat `.agents/rules/*.md` files (Antigravity does not auto-load subfolder `AGENTS.md` below workspace root):
 
-- Each problem `<slug_snake>` has `src/include/leet_code/<slug_snake>.hpp`, `src/cpp/leet_code/<slug_snake>.cpp`, and
-  `test/cpp/leet_code/<slug_snake>_test.cpp`, registered in the two track `CMakeLists.txt` files.
-- Header: `#pragma once`, `namespace leet_code`, Doxygen `@file`/`@brief`, a modern interface
-  (`[[nodiscard]] auto f(...) -> ...`, `std::span`, `std::optional`/`std::expected`) and a LeetCode-compatible
-  `class Solution` wrapper delegating to it.
-- CMake registration: `leet_code_add_library(<slug> SOURCES <slug>.cpp [HEADERS ...] [LIBS ...])` registers alias `leet_code::<slug>`,
-  `FILE_SET HEADERS`, and `FILE_SET sources TYPE SOURCES`. Tests use `add_project_test(<slug>_test SOURCES <slug>_test.cpp LIBS leet_code::<slug>)`.
-- Shared structures live in `src/include/leet_code/list_node.hpp` (`ListNode`, RAII `ScopedLinkedList`); reuse them.
-- Tests have four tiers: canonical examples, boundary cases, invariants, and a max-constraint stress test. New stubs
-  compile cleanly and return dummy values, so tests start red without crashing (guard pointers with `ASSERT_NE`).
-- Warnings are errors and clang-tidy is strict; suppress unused parameters with `static_cast<void>(x)`.
-- Wall-clock assertions are noisy under sanitizers: keep bounds generous. `NumberOfIslandsTest.MaxConstraintsGrid` and
-  `LruCacheTest.StressTest` are single-threaded and excluded from the `tsan` test preset (TSan slows them past their time
-  bounds); keep new wall-clock tests out of the threading signal.
+| Rule file | Trigger | Scope |
+| :--- | :--- | :--- |
+| `.agents/rules/cpp-and-c23.md` | `glob` | Common C++23, C++23/C23 LeetCode, CMake 4.5+, Clang 23.1.5+ |
+| `.agents/rules/python.md` | `glob` | Python 3.15, Ruff 23 families, basedpyright/ty, LeetCode, Marimo, coverage |
+| `.agents/rules/rust.md` | `glob` | Rust 1.100+ Ed. 2024, Clippy denied lints, LeetCode, Systems Rust, exclusions |
+| `.agents/rules/systems-engineering.md` | `glob` | Embedded/safety invariants, `BoundedFifo`, OS adapters, `test_support`, ASPICE, TSan |
+| `.agents/rules/crubit-interop.md` | `glob` | Hermetic Crubit bootstrap, `-stdlib=libc++`, STL-free headers, 1-staticlib rule |
+| `.agents/rules/benchmarks.md` | `model_decision` | Local Google Benchmark suites, Bayesian BEST + ROPE, telemetry hygiene |
 
-## Track 2: Python LeetCode
+Workspace plugins & skills:
 
-- Modules go in `src/python/leet_code/<slug_snake>.py`; tests in `test/python/leet_code/test_<slug_snake>.py`. No
-  registration is needed: `PYTHONPATH` is set by the Pixi activation (`src/python`, plugin source, repo root).
-- Each module exposes an idiomatic, fully typed API (`snake_case`, Google docstrings, `ValueError` on invalid input) and the
-  LeetCode wrapper `class Solution` with the official method name (suppress `invalid-function-name` on that line). Design
-  problems use a `CapWords` class plus an official-name alias (see `lru_cache.py`).
-- References: `two_sum.py` and `lru_cache.py`. Four test tiers: Tier 3 uses `hypothesis` properties, Tier 4 carries `@pytest.mark.stress` +
-  `time.perf_counter()` (`pytest-randomly` shuffles runs).
-- Style: Python 3.15 (`PEP 649` native annotations; `TID251` bans `from __future__ import annotations`; `PEP 810` `lazy import`, `PEP 814` `frozendict`,
-  `PEP 661`, `PEP 750`), double quotes, 88 columns, grouped imports (`lines-after-imports = 2`), typing-only imports under `TYPE_CHECKING`, 23 Ruff
-  preview families (`RUF201` full rule names), `basedpyright` strict + `ty`, no `print` or bare `except`.
-- Coverage gate: 85% on `src/python/leet_code`. Never raise `NotImplementedError` in stubs (the red state comes from assertions).
+- **`.agents/plugins/leetcode`** (`leetcode-setup` + `leetcode` MCP via `pixi run --quiet leetcode-mcp`): **user MUST specify language (`cpp`, `python`, or
+  `rust`); ask if missing.**
+- **`.agents/plugins/systems`** (`systems-setup`, no MCP): scaffolds traceable specs (`docs/systems/<name>.md`), outline/stubs, and red tests (`cpp`, `c`, or
+  `rust`).
+- **`.agents/skills/optimization-loop`**: C++23 systems benchmarking + Bayesian BEST + ROPE optimization loop.
+- **`.agents/skills/rust-systems-tdd-coach`**: TDD Rust 1.100+ Ed. 2024 crash course under `src/rust/crash_course/`.
 
-## Track 3: Systems / low-level / embedded-style C++23 and ISO C23
+Always-enforced cross-cutting guardrails:
 
-Intent: portable building blocks that could move to a small target without redesign, implemented in both modern C++23 and strict ISO C23 (`-std=c23`).
+- **Local-only benchmarks**: `BUILD_BENCHMARKS` defaults to `OFF`; benchmarks MUST NEVER run on GitHub Actions CI (`.github/workflows/ci.yml`), and `data/`
+  telemetry/reports are gitignored and must never be committed.
+- **Root Cargo exclusions**: `src/rust/crash_course`, `src/rust/interop`, `examples/interop`, and `test/rust/interop` stay excluded from root `Cargo.toml`.
+- **Scaffolding push ban**: `/leetcode-setup` and `/systems-setup` forbid `git push` so TDD-red stubs remain local.
 
-- C++23 headers in `src/include/systems/<name>.hpp`, sources in `src/cpp/systems/<name>.cpp`, tests in `test/cpp/systems/<name>_test.cpp`
-  (`systems_add_library` with `FILE_SET HEADERS`/`SOURCES`, alias `systems::<name>`).
-- ISO C23 headers in `src/include/systems/<name>.h`, sources in `src/c/systems/<name>.c`, tests in `test/c/systems/<name>_c_test.cpp` (GoogleTest via
-  `extern "C"`) and `test/c/systems/systems_c23_test.c` (pure `-std=c23` CTest target) (`systems_c_add_library`, alias `systems_c::<name>`).
-- clang-tidy analyzes `src/include/systems/` headers and both `src/cpp/systems/` and `src/c/systems/` translation units.
-- Style rules:
-  - Compile-time capacity and storage inside the object; no `new`/`malloc`; no STL containers
-    (`std::vector`, `std::queue`, `std::deque`, ...). Small value types like `std::optional`, `std::array`, `std::span` and
-    `<atomic>`/`<mutex>`/`<condition_variable>` (or C23 `<stdatomic.h>`, `<stdckdint.h>`, `pthread_*`) primitives are fine.
-  - Prefer `constexpr`, `noexcept`, `[[nodiscard]]`, and `static_assert` for invariants; document thread-safety and blocking
-    behavior in Doxygen.
-  - Provide try/blocking/timed variants for blocking APIs and a `close()` path that wakes every waiter.
-  - Enforce the Google C++ Style Guide Integer Types rule in C++: allow `int`, unqualified `<cstdint>` types (`uint32_t`, `int64_t`, etc.), and
-    `size_t`/`ptrdiff_t` (`<cstddef>`), never built-in `short`/`long`/`unsigned`. Bit-twiddling or register code should pair fixed-width integers with
-    `std::bit_cast`/`<bit>` (or C23 `<stdbit.h>`/`memcpy`), never type punning.
-  - Public operations are `noexcept` and report errors via `std::expected<T, <Name>Error>` in C++ or `[[nodiscard]] enum <name>_error` in C23; no exceptions or
-    RTTI in runtime paths. Heap is allowed only in an explicit init phase (`create()`/`open()`), never in steady-state operations.
-  - OS calls (`shm_open`, `mmap`, `pthread_*attr*`, ...) live only in an adapter TU (`<name>_posix.cpp` / `<name>_posix.c`); branch on
-    `systems/platform.hpp` or `systems/platform.h` capabilities (`kHasRobustMutex`, ...), not raw `#ifdef`s. Targets: Linux, QNX; macOS is a dev host.
-- Every systems component needs a test suite with functional, boundary, resource (no heap after init), and multi-threaded
-  stress tiers, plus multi-process and SIGKILL fault-injection tiers when it crosses processes. Reuse
-  `systems::test_support` (`test/cpp/systems/support/systems_test/`: `ChildProcess`, `SharedRegion`, `unique_shm_name`,
-  `AllocationScope`); never copy it. Its self-test `test_support_test` must stay green. Run `pixi run cpp-tsan` in addition
-  to `test-cpp` before finishing.
-- Deliberate NOLINTs (for example a C array backing the FIFO) must carry a one-line justification.
-- Avoid `std::chrono` literals (`10ms`); `misc-include-cleaner` cannot attribute them. Include public POSIX headers.
-
-## Track 4: Rust LeetCode
-
-- Crates live in `src/rust/leet_code/` with `Cargo.toml`, `src/lib.rs`, and one module per problem `src/<slug_snake>.rs`.
-- Integration tests live in `test/rust/leet_code/<slug_snake>_test.rs`.
-- Each module exposes:
-  - An idiomatic, safe function (`&[i32]`, `Result<T, <Name>Error>` or `Option<T>`, `#[must_use]`, arithmetic overflow protection).
-  - The LeetCode compatibility wrapper `pub struct Solution;` with `impl Solution { pub fn <method>(...) -> ... }`.
-- Shared structures live in `src/rust/leet_code/src/list_node.rs` (`ListNode`, `create_linked_list`, `linked_list_to_vec`).
-- Tests follow the 4-tier model: canonical examples, boundary & corner cases, invariants & ownership, and stress/simulation.
-
-## Track 5: Systems Rust
-
-Intent: portable, safe, and deterministic low-level building blocks implemented in idiomatic Rust (edition 2024, rust-version 1.100).
-
-- Crates live in `src/rust/systems/` with `Cargo.toml`, `src/lib.rs`, and components in `src/<name>.rs`.
-- Integration tests live in `test/rust/systems/<name>_test.rs`.
-- Style and safety rules:
-  - Compile-time capacity and storage inline inside the struct using const generics (e.g., `BoundedFifo<T, const CAPACITY: usize>`).
-  - Zero heap allocation in steady-state operations; no dynamic collections (`Vec`, `VecDeque`) after initialization.
-  - Public operations are safe, deterministic, and report errors via `Result<T, <Name>Error>`.
-  - Provide try, timed (`push_timeout`, `pop_timeout`), and blocking variants, with a `close()` path that unblocks all waiters.
-  - Safe concurrency primitives (e.g., `BoundedFifo`) use `std::sync::{Mutex, Condvar}` with zero `unsafe` (`unsafe_code = "deny"`).
-  - OS/FFI shared-memory modules (e.g., `shm_pubsub`, `platform`) isolate item-scoped `#[allow(unsafe_code)]` with multi-point `// SAFETY:` proofs
-    (never crate-wide `#![allow(unsafe_code)]`).
-- Tests cover 4 tiers (canonical FIFO, boundary/timeouts/drainage, RAII/drop invariants, multi-threaded MPMC stress).
-- Requirements traceability: tests declare traceability tags (`// requirements: <PREFIX>-REQ-NNN`), verified by `pixi run check-traceability`.
-
-## Track 6: Crubit C++23 <-> Rust 2024 Interop
-
-- Architecture, type-mapping matrix, and showcase details live in [`docs/interop/crubit.md`](docs/interop/crubit.md) and
-  [`cmake/CrubitInterop.cmake`](cmake/CrubitInterop.cmake).
-- Hermetic toolchain: `scripts/crubit/bootstrap_crubit.py` pins Crubit `b7805b5d09574033ec3144d59715a539a4f652b0` and Rust `1.100.0` + `rustc-dev` under
-  `build/crubit/`. `RUSTC_BOOTSTRAP=1` is scoped strictly to Crubit generators and interop Cargo invocations.
-- Isolation rules: interop targets build with `BUILD_INTEROP=ON` (`interop-debug`/`interop-release`) and `-stdlib=libc++`; public headers parsed by
-  `rs_bindings_from_cc` avoid STL headers (`<string>`, `<vector>`, `<memory>`, `<optional>`, `<expected>`); C++ tests use
-  `test/cpp/interop/crubit/interop_test_harness.hpp` and link at most one Rust `staticlib` per binary; interop Rust crates are excluded from root `Cargo.toml`.
-- Verify showcase demos via `pixi run python scripts/examples/run_crubit_examples.py --preset interop-debug`.
-
-## Systems benchmarks and Bayesian optimization
-
-Intent: empirical microbenchmarking and statistical performance evaluation for systems components.
-
-- Benchmarks live in `benchmarks/{cpp,c}/systems/<name>_benchmark.cpp`, registered in `benchmarks/{cpp,c}/systems/CMakeLists.txt`.
-- Built via CMake presets (`benchmark` preset or `dev-release` with IPO). CMake option `BUILD_BENCHMARKS` defaults to `OFF`.
-- **Exclusion from CI**: Benchmarks are local-only and MUST NEVER run on GitHub Actions CI (`.github/workflows/ci.yml`).
-- Runner and Bayesian BEST analysis scripts in `scripts/benchmarks/` (`run_benchmark.py`, `bayesian_compare.py`, `host_tuner.py`) use `cyclopts`,
-  `structlog`, `polars`, and `arviz-stats`.
-- Interactive telemetry explorer: `notebooks/benchmark_telemetry_explorer.py` (Marimo `0.25.2+`; `pixi run notebook-check`, `/marimo-pro`, `/marimo-pair`).
-- Telemetry and reports live in `data/{latest,baseline}/<experiment>`. `data/` is gitignored and must never be committed.
-- Workspace agentic optimization skill: `.agents/skills/optimization-loop/SKILL.md` (orchestrating preloop, two-stage fast-screen
-  then full 30-rep BEST benchmark, unit test gate, atomic git commits, and Academic Scribe report).
-- Baseline promotion requires Bayesian BEST $P(\text{better}) \ge 0.95$ with ROPE (e.g. 2%), zero unit-test regressions,
-  and clean pre-commit.
-
-## Rust systems TDD coach (`.agents/skills/rust-systems-tdd-coach`)
-
-Intent: intensive, TDD-driven Rust crash course and senior interview preparation for veteran systems architects.
-
-- Exercises live in `src/rust/crash_course/<exercise_slug>/` as isolated sub-workspaces.
-- **Root workspace exclusion**: `src/rust/crash_course` is excluded from root `Cargo.toml` so active red-phase `todo!()`
-  stubs and failing tests do not break root CI gates (`clippy`, `test-rust`, `cov-rust`).
-- Enforces Rust 1.100+ and Edition 2024 (`edition = "2024"`, `resolver = "3"`, `rust-version = "1.100"` in `Cargo.toml`),
-  `#![deny(unsafe_op_in_unsafe_fn)]`, and bidirectional C++/Rust interop (`cxx`, raw C ABI, `Pin<&mut T>`).
-- Strict red-green-refactor TDD protocol: target methods stubbed solely with `todo!()` (anti-solution leakage); automated
-  red-phase verification (`cargo test --no-run` -> `cargo clippy --no-deps` -> `cargo test` confirming failure strictly on
-  `todo!()` panics); green/refactor critique mode evaluated against a 4-pillar interview rubric.
-
-## Systems plugin (`.agents/plugins/systems`)
-
-- No MCP server: the user's prompt is the problem statement. The `systems-setup` skill asks only about choices that change
-  the API or the test oracle (including target language: `cpp`, `c`, or `rust`), records other decisions as assumptions, and generates
-  `docs/systems/<name>.md` (requirements `### <PREFIX>-REQ-NNN: Title` with a `- **Verification:**` line), an outline header or module,
-  stubs, build registration, and red tests.
-- Each test starts with `RecordProperty("requirements", "<IDs>")` (C++) or `// requirements: <PREFIX>-REQ-NNN` (Rust);
-  `pixi run check-traceability` (also a pre-commit hook) enforces requirement <-> test traceability in both directions.
-- References: `skills/systems-setup/references/{spec,safety,cpp,testing,rust}.md`. Layout changes must be mirrored there, in the
-  plugin README, and in this file.
-
-## LeetCode plugin (`.agents/plugins/leetcode`)
-
-- One MCP server (`leetcode`, started with `pixi run --quiet leetcode-mcp`) exposes `get_problem(problem_query)`, returning
-  statement, constraints, examples, and starter snippets (`cpp_snippet`, `python_snippet`, `rust_snippet`).
-- The `leetcode-setup` skill scaffolds one problem. **The user must specify the language (`cpp`, `python`, or `rust`); ask if it is
-  missing.** Language details are in `skills/leetcode-setup/references/cpp.md`, `references/python.md`, and `references/rust.md`.
-- The server's own tests are in `.agents/plugins/leetcode/tests/` and run under the root pytest config
-  (`pixi run test-python`). Live-network tests are marked `live` and skipped by default.
-- Layout changes must be mirrored in `SKILL.md`, the reference files, the plugin README, and this file.
-
-## Quality gates
+## Quality gates & definition of done
 
 | Area | Gate |
 | :--- | :--- |
-| C++ format and lint | clang-format (Google), clang-tidy (`WarningsAsErrors: "*"`), Google Integer Types (`int`, `<cstdint>`, `size_t`/`ptrdiff_t`) |
-| C++ runtime | ASan, UBSan, TSan presets; 85% line coverage (`cov-cpp`) |
-| Python | `ruff check` (23 families, `RUF201`), `ruff format`, `basedpyright` strict + `ty`, pytest 9+ (`hypothesis`, `pytest-randomly`), `deptry` + `pip-audit` (`audit`), 85% coverage |
-| Notebooks | Marimo `0.25.2+` (`pixi run notebook-check`: `marimo check --strict`), embedded pytest, headless run (`/marimo-pro`, `/marimo-pair`) |
-| Rust format and lint | `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` |
-| Rust runtime | `cargo test --workspace` (all 4 tiers), coverage >= 85% (`cov-rust`) |
-| CMake | `gersemi` (config `.gersemirc`: 100 columns, 4-space indent); run `pixi run format-cmake` |
-| Markdown | `rumdl` (160 columns) |
-| Repo hygiene | `prek`, `tombi` (`format-toml-check`), `gitleaks`, `actionlint`, `zizmor`, Renovate validator |
+| C++23 & ISO C23 | `clang-format` (Google), `clang-tidy` (`WarningsAsErrors: "*"`), Google Integer Types, pure `-std=c23`, ASan/UBSan/TSan, >= 85% (`cov-cpp`) |
+| Rust 1.100+ | `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test --workspace`, >= 85% (`cov-rust`) |
+| Python 3.15 | `ruff` (23 preview families, `RUF201`), `basedpyright` strict + `ty`, pytest 9+ (`hypothesis`, `pytest-randomly`), `audit`, >= 85% (`src/python/leet_code` + `leetcode_mcp`) |
+| Notebooks | Marimo `0.25.2+` (`pixi run notebook-check`: `marimo check --strict`, headless run, embedded pytest) |
+| CMake, Docs & Hygiene | `gersemi` (100 cols), `rumdl` (160 cols GFM), `prek`, `tombi`, `gitleaks`, `actionlint`, `zizmor`, Renovate validator |
 
-Done means `pixi run pre-commit` and `pixi run test` pass. Run `pixi run cpp-tsan` for threading changes. Fix root causes
-instead of suppressing; keep existing comments and docstrings that your change does not touch.
+Done means `pixi run pre-commit` and `pixi run test` pass (plus `pixi run cpp-tsan` for threading/systems changes and `pixi run check-traceability` for systems
+specs/tests). Fix root causes instead of suppressing; preserve untouched comments and docstrings.
 
-## Git and GitHub rules
+## Git, GitHub & supply-chain rules
 
-- Use the `github-mcp-server` MCP tools for **all** GitHub platform interactions (branches, issues, pull requests, reviews,
-  Actions status and logs). Do not use the `gh` CLI.
-- Local `git` is for working-tree and branch operations: `status`, `diff`, `add`, `mv`, `commit`, local branches, and
-  `push` on feature branches (note: `/leetcode-setup` and `/systems-setup` explicitly forbid `git push` so TDD-red stubs stay local).
-- Work on a feature branch, never on `main`. Use `git mv` for moves so history is preserved.
-- CI (`.github/workflows/ci.yml`) runs lint/hygiene, Python tests on Linux x86-64, Linux arm64, and macOS, C++ release tests on
-  the same matrix, C++ coverage, the ASan/UBSan/TSan presets, Rust tests on the same matrix, and Rust coverage.
-- Workflow `uses:` entries and remote pre-commit hooks must be pinned to full commit SHAs with a version comment. Look up
-  SHAs with the GitHub MCP, never from memory.
+- Use `github-mcp-server` MCP tools for **all** GitHub platform actions (branches, issues, PRs, reviews, Actions). Never use `gh`.
+- Local `git` handles working-tree/branch ops (`status`, `diff`, `add`, `mv`, `commit`, feature-branch `push` except scaffolding skills). Work on feature
+  branches, never `main`; use `git mv` for moves.
+- CI (`.github/workflows/ci.yml`) runs: `lint-and-hygiene` (`prek`, `audit`, Marimo checks/tests), `python-tests` (`cov-python`), `cpp-tests` (`cpp-release`),
+  `rust-tests` (all on Linux x86-64/arm64 + macOS), `cpp-coverage`, `sanitizers` (`asan`/`ubsan`/`tsan`), `rust-coverage`, and `crubit-interop` (bootstrap,
+  debug/release tests, examples, clippy on Linux x86-64 + macOS).
+- Pin workflow `uses:` and remote pre-commit hooks to 40-char commit SHAs with version comments; look up SHAs via GitHub MCP, never from memory.
 
-## Checklist when changing structure
+## Structure & rule maintenance checklist
 
-1. Update CMake registration, Cargo workspace members, `pixi.toml` (deps/tasks), `pyproject.toml` paths (pytest `testpaths`/`pythonpath`, `basedpyright`
-   `include`, `ty.src`, `coverage` `source`), and CI if paths change; run `pixi run format-toml`.
-2. Update `README.md`, `CONTRIBUTING.md`, the plugin docs and skill, and this file.
-3. Keep this file under 24 KB (Antigravity truncates larger rule files); check with `wc -c AGENTS.md`.
+1. Sync CMake, Cargo workspace members, `pixi.toml`, `pyproject.toml`, and CI on layout changes; run `pixi run format-toml`.
+2. Sync `README.md`, `CONTRIBUTING.md`, `.agents/rules/*.md`, plugin docs/skills, and `AGENTS.md`.
+3. Enforce Antigravity 2.34.0 limits: keep every rule file (`AGENTS.md` and `.agents/rules/*.md`) strictly under `24,000` bytes (after expanding any inline
+   file includes; target root `AGENTS.md` <= 12 KB), keep `.agents/rules/` flat (1 level, valid YAML frontmatter), and stay lean inside the `20,000`-token
+   `defaultRulesBudget`. Verify with `wc -c AGENTS.md .agents/rules/*.md` and `pixi run pytest test/python/scripts/test_agent_rules.py`.

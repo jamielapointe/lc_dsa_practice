@@ -104,6 +104,7 @@ pub mod ffi {
    - Cloning in Rust increments the C++ use count; dropping in Rust decrements the use count.
 3. **`cxx::CxxVector<T>`**:
    - Represents `std::vector<T>`.
+
    - Rust can inspect the vector without copying via `.as_slice()`:
 
      ```rust

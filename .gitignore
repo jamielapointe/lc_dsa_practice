@@ -83,7 +83,7 @@ lcov.info
 *.profdata
 htmlcov/
 
-# Antigravity 2.29.0 ephemeral runtime, teamwork & scratch directories
+# Antigravity ephemeral runtime, teamwork & scratch directories
 .agents/scratch/
 .agents/swarm/
 .agents/teamwork/
