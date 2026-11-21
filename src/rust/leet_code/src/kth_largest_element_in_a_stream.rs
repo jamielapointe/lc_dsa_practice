@@ -50,6 +50,8 @@
 //!    `k = 1, nums = &[]` or `k = 3, nums = &[10, 20]`) is valid, guaranteeing
 //!    at least `k` elements exist once the first [`KthLargestStream::add`] call
 //!    is made.
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 
 /// Errors that may occur when constructing a [`KthLargestStream`].
 #[must_use]
@@ -72,7 +74,7 @@ pub enum KthLargestError {
 #[derive(Clone, Debug)]
 pub struct KthLargestStream {
     k: usize,
-    len: usize,
+    min_heap: BinaryHeap<Reverse<i32>>,
 }
 
 impl KthLargestStream {
@@ -111,13 +113,24 @@ impl KthLargestStream {
     /// # Ok(())
     /// # }
     /// ```
-    #[expect(
-        clippy::missing_const_for_fn,
-        reason = "Min-heap construction allocates once implemented"
-    )]
     pub fn new(k: usize, nums: &[i32]) -> Result<Self, KthLargestError> {
-        let _ = (k, nums);
-        Err(KthLargestError::NotImplemented)
+        if k == 0 {
+            return Err(KthLargestError::InvalidK);
+        }
+        if nums.len().saturating_add(1) < k {
+            return Err(KthLargestError::InsufficientInitialElements);
+        }
+
+        let mut min_heap = BinaryHeap::with_capacity(k + 1);
+        for &num in nums {
+            min_heap.push(Reverse(num));
+
+            if min_heap.len() > k {
+                min_heap.pop();
+            }
+        }
+
+        Ok(Self { k, min_heap })
     }
 
     /// Returns the target rank `k` (`>= 1`) configured for this stream.
@@ -129,16 +142,16 @@ impl KthLargestStream {
     /// Returns the number of elements currently retained in the bounded state
     /// (`<= self.k()`).
     #[must_use]
-    pub const fn len(&self) -> usize {
-        self.len
+    pub fn len(&self) -> usize {
+        self.min_heap.len()
     }
 
     /// Returns `true` if the stream currently retains zero elements (possible
     /// only before the first [`Self::add`] when initialized with `k = 1` and
     /// `nums = &[]`).
     #[must_use]
-    pub const fn is_empty(&self) -> bool {
-        self.len == 0
+    pub fn is_empty(&self) -> bool {
+        self.min_heap.is_empty()
     }
 
     /// Inserts `val` into the stream and returns the `k`th largest element seen
@@ -157,14 +170,12 @@ impl KthLargestStream {
     /// # Ok(())
     /// # }
     /// ```
-    #[must_use]
-    #[expect(
-        clippy::missing_const_for_fn,
-        reason = "Min-heap insertion mutates heap storage once implemented"
-    )]
     pub fn add(&mut self, val: i32) -> i32 {
-        let _ = (&mut self.k, &mut self.len, val);
-        0
+        self.min_heap.push(Reverse(val));
+        if self.min_heap.len() > self.k {
+            self.min_heap.pop();
+        }
+        self.min_heap.peek().map_or(val, |&Reverse(kth)| kth)
     }
 }
 
