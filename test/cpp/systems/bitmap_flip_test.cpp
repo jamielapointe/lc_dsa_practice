@@ -1005,7 +1005,7 @@ TEST(BitmapFlipRoiTest, DoubleFlipRestoresRoiExactly) {
 
 TEST(BitmapFlipRoiTest, OnePixelWideRoiIsIdentity) {
   RecordProperty("requirements", "BMFLP-REQ-011");
-  const Bytes before = random_bytes(3 * 4, 1);
+  const Bytes before = random_bytes(3uz * 4uz, 1);
   Bytes image = before;
   const FlipResult result = flip_bitmap_roi(
       image, 20, 4, 3, BitmapRoi{.x = 9, .y = 0, .width = 1, .height = 4});

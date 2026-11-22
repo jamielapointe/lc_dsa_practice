@@ -21,7 +21,7 @@ This guide covers the development workflow, security policies, and dependency ma
 
    ```bash
    pixi run test-cpp        # GoogleTest via the dev-debug workflow preset (ASan, UBSan, clang-tidy)
-   pixi run cpp-ci-debug    # GoogleTest via ci-debug workflow preset (ASan, UBSan, clang-tidy off)
+   pixi run cpp-ci-debug    # GoogleTest via ci-debug workflow preset (ASan, UBSan, clang-tidy)
    pixi run test-python     # pytest 9+ (hypothesis, pytest-randomly)
    pixi run test-rust       # cargo test --workspace --all-targets
    pixi run clippy          # cargo clippy --workspace --all-targets -- -D warnings

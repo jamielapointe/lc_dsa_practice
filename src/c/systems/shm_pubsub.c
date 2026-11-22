@@ -203,10 +203,9 @@ static_assert(sizeof(enum shm_read_outcome) == 1U,
       atomic_load_explicit(&slot.header->size, memory_order_relaxed);
   const bool size_plausible = size <= view.slot_size;
   bool fits = false;
-  if (size_plausible && (size_t)size <= buffer_size) {
-    if (size == 0U || buffer != nullptr) {
-      fits = true;
-    }
+  if (size_plausible && (size_t)size <= buffer_size &&
+      (size == 0U || buffer != nullptr)) {
+    fits = true;
   }
   if (fits && size > 0U) {
     load_payload(slot.words, buffer, (size_t)size);
