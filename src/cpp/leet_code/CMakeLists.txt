@@ -114,3 +114,5 @@ leet_code_add_library(summary_ranges SOURCES summary_ranges.cpp)
 leet_code_add_library(valid_parentheses SOURCES valid_parentheses.cpp)
 
 leet_code_add_library(merge_sorted_array SOURCES merge_sorted_array.cpp)
+
+leet_code_add_library(kth_largest_element_in_a_stream SOURCES kth_largest_element_in_a_stream.cpp)

@@ -1,5 +1,6 @@
 //! LeetCode Data Structures and Algorithms practice in idiomatic Rust.
 
+pub mod kth_largest_element_in_a_stream;
 pub mod list_node;
 pub mod lru_cache;
 pub mod merge_sorted_array;
@@ -7,6 +8,7 @@ pub mod summary_ranges;
 pub mod two_sum;
 pub mod valid_parentheses;
 
+pub use kth_largest_element_in_a_stream::{KthLargest, KthLargestError, KthLargestStream};
 pub use list_node::{ListNode, create_linked_list, linked_list_to_vec};
 pub use lru_cache::{LRUCache, LruCache};
 pub use merge_sorted_array::{MergeSortedArrayError, merge_sorted_array};
