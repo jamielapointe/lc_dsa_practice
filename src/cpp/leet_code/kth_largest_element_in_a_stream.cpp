@@ -2,7 +2,9 @@
 
 #include <cstddef>
 #include <expected>
+#include <functional>
 #include <optional>
+#include <queue>
 #include <span>
 #include <utility>
 #include <vector>
@@ -14,15 +16,30 @@ KthLargestStream::KthLargestStream(size_t k) noexcept : k_(k) {
 
 auto KthLargestStream::create(int k, std::span<const int> nums)
     -> std::expected<KthLargestStream, KthLargestError> {
-  static_cast<void>(k);
-  static_cast<void>(nums);
-  return std::unexpected(KthLargestError::kNotImplemented);
-}
+  if (k < 1) {
+    return std::unexpected(KthLargestError::kInvalidK);
+  }
+  auto kz = static_cast<size_t>(k);
+  if (nums.size() + 1 < kz) {
+    return std::unexpected(KthLargestError::kInsufficientInitialElements);
+  }
+  auto kth_largest_stream = KthLargestStream(kz);
+  kth_largest_stream.min_heap_ =
+      std::priority_queue<int, std::vector<int>, std::greater<>>{nums.begin(),
+                                                                 nums.end()};
+  while (kth_largest_stream.min_heap_.size() > kz) {
+    kth_largest_stream.min_heap_.pop();
+  }
+  return kth_largest_stream;
+};
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static): TDD stub.
 auto KthLargestStream::add(int val) -> int {
-  static_cast<void>(val);
-  return 0;
+  min_heap_.push(val);
+  if (min_heap_.size() > k_) {
+    min_heap_.pop();
+  }
+  return min_heap_.top();
 }
 
 auto KthLargestStream::k() const noexcept -> size_t {
@@ -30,7 +47,7 @@ auto KthLargestStream::k() const noexcept -> size_t {
 }
 
 auto KthLargestStream::size() const noexcept -> size_t {
-  return heap_.size();
+  return min_heap_.size();
 }
 
 KthLargest::KthLargest(int k, std::vector<int>& nums) {

@@ -74,7 +74,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <expected>
+#include <functional>
 #include <optional>
+#include <queue>
 #include <span>
 #include <vector>
 
@@ -130,7 +132,7 @@ class KthLargestStream {
   explicit KthLargestStream(size_t k) noexcept;
 
   size_t k_{0uz};
-  std::vector<int> heap_;
+  std::priority_queue<int, std::vector<int>, std::greater<>> min_heap_;
 };
 
 /// @brief Official LeetCode #703 `KthLargest` compatibility wrapper.
