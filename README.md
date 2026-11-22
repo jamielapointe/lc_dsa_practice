@@ -62,7 +62,7 @@ pixi run cov-rust             # cargo-llvm-cov line coverage, gate >= 85%
 
 # C++ presets (CMake 4.5+, Schema v11)
 pixi run cpp-debug            # configure, build, test (dev-debug: ASan + UBSan + clang-tidy)
-pixi run cpp-ci-debug         # CI debug workflow (ci-debug: ASan + UBSan, clang-tidy off)
+pixi run cpp-ci-debug         # CI debug workflow (ci-debug: ASan + UBSan + clang-tidy)
 pixi run cpp-release          # dev-release (IPO + SPDX 3.0.1 SBOM)
 pixi run cpp-asan             # AddressSanitizer
 pixi run cpp-ubsan            # UndefinedBehaviorSanitizer

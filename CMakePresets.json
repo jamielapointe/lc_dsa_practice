@@ -66,13 +66,12 @@
     {
       "name": "ci-debug",
       "inherits": "pixi-base",
-      "displayName": "CI Debug (ASan + UBSan, no clang-tidy)",
-      "description": "Fast debug build with AddressSanitizer and UndefinedBehaviorSanitizer without inline clang-tidy",
+      "displayName": "CI Debug (ASan + UBSan + clang-tidy)",
+      "description": "CI debug build with AddressSanitizer, UndefinedBehaviorSanitizer, and mandatory clang-tidy static analysis",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "ENABLE_SANITIZER_ADDRESS": "ON",
-        "ENABLE_SANITIZER_UNDEFINED": "ON",
-        "ENABLE_CLANG_TIDY": "OFF"
+        "ENABLE_SANITIZER_UNDEFINED": "ON"
       }
     },
     {
@@ -174,7 +173,6 @@
         "CMAKE_BUILD_TYPE": "Release",
         "ENABLE_IPO": "ON",
         "ALLOW_NON_PIXI_TOOLCHAIN": "ON",
-        "ENABLE_CLANG_TIDY": "OFF",
         "CMAKE_INSTALL_SBOM_FORMATS": "spdx-3.0.1+json"
       }
     },
@@ -187,8 +185,7 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BUILD_TESTING": "OFF",
-        "ALLOW_NON_PIXI_TOOLCHAIN": "ON",
-        "ENABLE_CLANG_TIDY": "OFF"
+        "ALLOW_NON_PIXI_TOOLCHAIN": "ON"
       }
     },
     {
@@ -200,8 +197,7 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BUILD_TESTING": "OFF",
-        "ALLOW_NON_PIXI_TOOLCHAIN": "ON",
-        "ENABLE_CLANG_TIDY": "OFF"
+        "ALLOW_NON_PIXI_TOOLCHAIN": "ON"
       }
     }
   ],
@@ -215,7 +211,7 @@
     {
       "name": "ci-debug",
       "configurePreset": "ci-debug",
-      "displayName": "Build CI Debug (ASan + UBSan, no clang-tidy)",
+      "displayName": "Build CI Debug (ASan + UBSan + clang-tidy)",
       "description": "Compile all targets for the ci-debug configure preset"
     },
     {
@@ -315,7 +311,7 @@
       "name": "ci-debug",
       "inherits": "base",
       "configurePreset": "ci-debug",
-      "displayName": "Test CI Debug (ASan + UBSan, no clang-tidy)",
+      "displayName": "Test CI Debug (ASan + UBSan + clang-tidy)",
       "description": "Run CTest suite in parallel for the ci-debug preset"
     },
     {
@@ -408,7 +404,7 @@
     },
     {
       "name": "ci-debug",
-      "displayName": "CI Debug (ASan + UBSan, no clang-tidy) Workflow (Configure, Build, Test)",
+      "displayName": "CI Debug (ASan + UBSan + clang-tidy) Workflow (Configure, Build, Test)",
       "description": "Configure, build, and test the ci-debug preset",
       "steps": [
         {

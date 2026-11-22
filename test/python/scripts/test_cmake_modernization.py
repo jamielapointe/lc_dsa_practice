@@ -301,12 +301,11 @@ def test_cmake_presets_v11_structure() -> None:
         '"base" preset must set CMAKE_VERIFY_PRIVATE_HEADER_SETS to "ON"'
     )
 
-    sysroot_cache = cast(
-        "dict[str, object]", configure_by_name["sysroot-release"].get("cacheVariables")
-    )
-    assert sysroot_cache.get("ENABLE_CLANG_TIDY") == "OFF", (
-        '"sysroot-release" must disable clang-tidy for air-gapped SDK hosts'
-    )
+    for preset_name, preset_cfg in configure_by_name.items():
+        cache_vars = cast("dict[str, object]", preset_cfg.get("cacheVariables") or {})
+        assert cache_vars.get("ENABLE_CLANG_TIDY") != "OFF", (
+            f"Preset {preset_name!r} must not disable mandatory clang-tidy"
+        )
 
     missing_configure = REQUIRED_CONFIGURE_PRESETS - set(configure_by_name)
     assert not missing_configure, (
@@ -567,6 +566,163 @@ def test_clang_tidy_verify_config() -> None:
 
 
 @pytest.mark.unit
+def test_clang_tidy_is_mandatory_in_cmake_and_presets() -> None:
+    """Verify StaticAnalysis.cmake requires clang-tidy on every build and preset."""
+    static_analysis = (REPO_ROOT / "cmake" / "StaticAnalysis.cmake").read_text(
+        encoding="utf-8"
+    )
+    assert "CMAKE_CROSSCOMPILING" not in static_analysis, (
+        "StaticAnalysis.cmake must not skip clang-tidy during cross-compilation"
+    )
+    assert "option(ENABLE_CLANG_TIDY" not in static_analysis, (
+        "StaticAnalysis.cmake must not expose an optional ENABLE_CLANG_TIDY toggle"
+    )
+    assert "FATAL_ERROR" in static_analysis, (
+        "StaticAnalysis.cmake must throw FATAL_ERROR when clang-tidy is missing"
+    )
+    assert "CMAKE_C_CLANG_TIDY" in static_analysis
+    assert "CMAKE_CXX_CLANG_TIDY" in static_analysis
+
+    presets_data = _load_json_dict(REPO_ROOT / "CMakePresets.json")
+    raw_configure = cast("list[object]", presets_data.get("configurePresets"))
+    for entry in raw_configure:
+        preset = cast("dict[str, object]", entry)
+        cache_vars = cast("dict[str, object]", preset.get("cacheVariables") or {})
+        assert "ENABLE_CLANG_TIDY" not in cache_vars, (
+            f"Preset {preset.get('name')!r} must not override ENABLE_CLANG_TIDY"
+        )
+
+
+@pytest.mark.unit
+def test_clang_tidy_enables_iwyu_google_and_recommended_checks() -> None:
+    """Verify .clang-tidy enables IWYU, Google C++ checks, and recommended rules."""
+    clang_tidy_cfg = _load_yaml_dict(REPO_ROOT / ".clang-tidy")
+    assert clang_tidy_cfg.get("WarningsAsErrors") == "*"
+
+    raw_checks = str(clang_tidy_cfg.get("Checks", ""))
+    checks = {
+        part.strip()
+        for part in raw_checks.split(",")
+        if part.strip() and not part.strip().startswith("-")
+    }
+    required_checks = {
+        "misc-include-cleaner",
+        "misc-header-include-cycle",
+        "google-build-explicit-make-pair",
+        "google-build-namespaces",
+        "google-build-using-namespace",
+        "google-default-arguments",
+        "google-explicit-constructor",
+        "google-global-names-in-headers",
+        "google-readability-avoid-underscore-in-googletest-name",
+        "google-readability-braces-around-statements",
+        "google-readability-casting",
+        "google-readability-function-size",
+        "google-readability-namespace-comments",
+        "google-readability-todo",
+        "google-runtime-float",
+        "google-runtime-int",
+        "google-runtime-operator",
+        "google-upgrade-googletest-case",
+        "concurrency-mt-unsafe",
+        "concurrency-thread-canceltype-asynchronous",
+        "misc-anonymous-namespace-in-header",
+        "bugprone-implicit-widening-of-multiplication-result",
+    }
+    missing_checks = required_checks - checks
+    assert not missing_checks, (
+        f".clang-tidy missing required checks: {sorted(missing_checks)}"
+    )
+
+    options_list = cast("list[object]", clang_tidy_cfg.get("CheckOptions") or [])
+    options_map = {
+        str(cast("dict[str, object]", item)["key"]): str(
+            cast("dict[str, object]", item)["value"]
+        )
+        for item in options_list
+        if isinstance(item, dict)
+    }
+    assert options_map.get("misc-include-cleaner.MissingIncludes") == "true"
+    assert options_map.get("misc-include-cleaner.UnusedIncludes") == "true"
+
+
+@pytest.mark.integration
+def test_cmake_configure_fails_without_clang_tidy(tmp_path: Path) -> None:
+    """Verify CMake configure fails with FATAL_ERROR if clang-tidy is unavailable.
+
+    Args:
+        tmp_path: Temporary directory fixture provided by pytest.
+    """
+    conda_prefix = os.environ.get("CONDA_PREFIX")
+    cmake_bin = shutil.which("cmake")
+    ninja_bin = shutil.which("ninja")
+    if not conda_prefix or cmake_bin is None or ninja_bin is None:
+        pytest.skip("Requires active Pixi CONDA_PREFIX, cmake, and ninja")
+
+    conda_bin = Path(conda_prefix) / "bin"
+    c_compiler = conda_bin / "clang"
+    cxx_compiler = conda_bin / "clang++"
+    if not c_compiler.is_file() or not cxx_compiler.is_file():
+        pytest.skip("Pixi clang/clang++ compilers unavailable in CONDA_PREFIX")
+
+    missing_tidy_dir = tmp_path / "missing_tidy_build"
+    clean_env = dict(os.environ)
+    clean_env["PATH"] = "/usr/bin:/bin"
+    missing_res = subprocess.run(
+        [
+            cmake_bin,
+            "-S",
+            str(REPO_ROOT),
+            "-B",
+            str(missing_tidy_dir),
+            "-G",
+            "Ninja",
+            f"-DCMAKE_MAKE_PROGRAM={ninja_bin}",
+            f"-DCMAKE_C_COMPILER={c_compiler}",
+            f"-DCMAKE_CXX_COMPILER={cxx_compiler}",
+            f"-DCMAKE_IGNORE_PREFIX_PATH={conda_prefix}",
+            f"-DCMAKE_IGNORE_PATH={conda_bin};/opt/homebrew/bin;/opt/homebrew/opt/llvm/bin;/usr/local/bin;/usr/bin",
+        ],
+        env=clean_env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert missing_res.returncode != 0, (
+        "CMake configure must fail when clang-tidy cannot be found"
+    )
+    assert "clang-tidy executable was not found" in (
+        f"{missing_res.stdout}\n{missing_res.stderr}"
+    )
+
+    disabled_tidy_dir = tmp_path / "disabled_tidy_build"
+    disabled_res = subprocess.run(
+        [
+            cmake_bin,
+            "-S",
+            str(REPO_ROOT),
+            "-B",
+            str(disabled_tidy_dir),
+            "-G",
+            "Ninja",
+            "-DENABLE_CLANG_TIDY=OFF",
+            f"-DCMAKE_C_COMPILER={c_compiler}",
+            f"-DCMAKE_CXX_COMPILER={cxx_compiler}",
+            f"-DCMAKE_PREFIX_PATH={conda_prefix}",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert disabled_res.returncode != 0, (
+        "CMake configure must reject -DENABLE_CLANG_TIDY=OFF"
+    )
+    assert "clang-tidy is mandatory" in (
+        f"{disabled_res.stdout}\n{disabled_res.stderr}"
+    )
+
+
+@pytest.mark.unit
 def test_cmake_target_hygiene_and_presets_comment() -> None:
     """Verify presets $comment, single header ownership, and systems test labels."""
     presets_data = _load_json_dict(REPO_ROOT / "CMakePresets.json")
@@ -742,7 +898,6 @@ def test_cps_package_install_and_consumer_find_package(tmp_path: Path) -> None:
             "-DBUILD_SYSTEMS=ON",
             "-DBUILD_TESTING=OFF",
             "-DBUILD_EXAMPLES=OFF",
-            "-DENABLE_CLANG_TIDY=OFF",
             f"-DCMAKE_C_COMPILER={c_compiler}",
             f"-DCMAKE_CXX_COMPILER={cxx_compiler}",
             f"-DCMAKE_PREFIX_PATH={conda_prefix}",

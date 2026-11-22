@@ -301,7 +301,8 @@ TEST(ShmPubSubTest, PublishAssignsSequencesStartingAtOne) {
   ASSERT_TRUE(channel.has_value()) << error_text(channel.error());
   auto publisher = ShmPublisher::attach(*channel);
   ASSERT_TRUE(publisher.has_value()) << error_text(publisher.error());
-  for (uint64_t expected = 1; expected <= 3 * kSmall.slot_count; ++expected) {
+  for (uint64_t expected = 1; expected <= uint64_t{3} * kSmall.slot_count;
+       ++expected) {
     const auto sequence = publisher->publish(make_payload(expected, 8));
     ASSERT_TRUE(sequence.has_value()) << error_text(sequence.error());
     EXPECT_EQ(*sequence, expected);
