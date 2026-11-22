@@ -666,8 +666,6 @@ def test_cmake_configure_fails_without_clang_tidy(tmp_path: Path) -> None:
         pytest.skip("Pixi clang/clang++ compilers unavailable in CONDA_PREFIX")
 
     missing_tidy_dir = tmp_path / "missing_tidy_build"
-    clean_env = dict(os.environ)
-    clean_env["PATH"] = "/usr/bin:/bin"
     missing_res = subprocess.run(
         [
             cmake_bin,
@@ -680,10 +678,12 @@ def test_cmake_configure_fails_without_clang_tidy(tmp_path: Path) -> None:
             f"-DCMAKE_MAKE_PROGRAM={ninja_bin}",
             f"-DCMAKE_C_COMPILER={c_compiler}",
             f"-DCMAKE_CXX_COMPILER={cxx_compiler}",
-            f"-DCMAKE_IGNORE_PREFIX_PATH={conda_prefix}",
-            f"-DCMAKE_IGNORE_PATH={conda_bin};/opt/homebrew/bin;/opt/homebrew/opt/llvm/bin;/usr/local/bin;/usr/bin",
+            "-DCMAKE_FIND_USE_CMAKE_PATH=OFF",
+            "-DCMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH=OFF",
+            "-DCMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH=OFF",
+            "-DCMAKE_FIND_USE_CMAKE_SYSTEM_PATH=OFF",
+            "-DCMAKE_FIND_USE_INSTALL_PREFIX=OFF",
         ],
-        env=clean_env,
         capture_output=True,
         text=True,
         check=False,
