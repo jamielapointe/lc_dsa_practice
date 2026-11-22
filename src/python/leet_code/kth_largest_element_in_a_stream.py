@@ -30,6 +30,7 @@ Complexity: O(n log k) (or O(n + (n - k) log k)) initialization time, O(log k) t
 ``add`` call, and O(k) auxiliary space using a bounded min-heap of size at most ``k``.
 """
 
+import heapq
 from typing import TYPE_CHECKING
 
 
@@ -67,9 +68,13 @@ class KthLargestStream:
         Raises:
             ValueError: If ``k < 1`` (checked first, even if ``nums`` is empty) or if
                 ``len(nums) + 1 < k``.
-        """  # ruff: ignore[docstring-extraneous-exception] - TDD-red stub.
-        self._k = k
-        del nums
+        """
+        if k < 1:
+            raise ValueError("k must be greater than or equal to 1.")
+        if len(nums) + 1 < k:
+            raise ValueError("nums must contain at least k - 1 elements.")
+        self._k: int = k
+        self._min_heap: list[int] = sorted(nums)[-k:]
 
     @property
     def k(self) -> int:
@@ -78,9 +83,9 @@ class KthLargestStream:
 
     def __len__(self) -> int:
         """Returns the number of retained elements (at most ``k``)."""
-        return 0
+        return len(self._min_heap)
 
-    def add(  # ruff: ignore[no-self-use] - TDD-red stub.
+    def add(
         self,
         val: int,
     ) -> int:
@@ -92,8 +97,14 @@ class KthLargestStream:
         Returns:
             The ``k``th largest integer among all initial and added elements so far.
         """
-        del val
-        return 0
+        heapq.heappush(self._min_heap, val)
+        if len(self._min_heap) > self._k:
+            heapq.heappop(self._min_heap)
+        return self.peek()
+
+    def peek(self) -> int:
+        """Returns the ``k``th largest element without removing it."""
+        return self._min_heap[0]
 
 
 class KthLargest:
